@@ -1,6 +1,47 @@
+import { useState, useEffect, useCallback } from "react";
+import LoginForm from "./components/LoginForm";
 import RegistrationForm from "./components/RegistrationForm";
+import Dashboard from "./components/Dashboard";
+import { getStoredTokens } from "./api/auth";
+
+type Route = "login" | "register" | "dashboard";
+
+function getRoute(): Route {
+  const hash = window.location.hash.replace("#/", "");
+  if (hash === "register") return "register";
+  if (hash === "dashboard") return "dashboard";
+  return "login";
+}
 
 export default function App() {
+  const [route, setRoute] = useState<Route>(getRoute);
+
+  useEffect(() => {
+    function onHashChange() {
+      setRoute(getRoute());
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  // If user has tokens, redirect to dashboard
+  useEffect(() => {
+    if (route === "login" || route === "register") {
+      const { accessToken } = getStoredTokens();
+      if (accessToken) {
+        navigate("dashboard");
+      }
+    }
+  }, [route]);
+
+  function navigate(r: Route) {
+    window.location.hash = `#/${r}`;
+  }
+
+  const handleLogout = useCallback(() => {
+    navigate("login");
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header bar */}
@@ -28,7 +69,18 @@ export default function App() {
       {/* Main content */}
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-          <RegistrationForm />
+          {route === "login" && (
+            <LoginForm
+              onSuccess={() => navigate("dashboard")}
+              onNavigateRegister={() => navigate("register")}
+            />
+          )}
+          {route === "register" && (
+            <RegistrationForm onNavigateLogin={() => navigate("login")} />
+          )}
+          {route === "dashboard" && (
+            <Dashboard onLogout={handleLogout} />
+          )}
           <p className="mt-6 text-center text-xs text-slate-400">
             Powered by Rampart Identity Server
           </p>

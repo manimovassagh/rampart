@@ -12,6 +12,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/handler"
 	"github.com/manimovassagh/rampart/internal/server"
+	"github.com/manimovassagh/rampart/internal/session"
 )
 
 func main() {
@@ -52,6 +53,12 @@ func run(_ *slog.Logger) error {
 
 	registerHandler := handler.NewRegisterHandler(db, logger)
 	server.RegisterAuthRoutes(router, registerHandler.Register)
+
+	sessionStore := session.NewPGStore(db.Pool)
+	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout)
+
+	server.RegisterProtectedRoutes(router, cfg.JWTSecret, handler.Me)
 
 	srv := server.New(cfg.Addr(), router, logger)
 

@@ -2,10 +2,19 @@ package config
 
 import (
 	"testing"
+	"time"
 )
 
-func TestLoadDefaults(t *testing.T) {
+const testJWTSecret = "this-is-a-test-secret-that-is-at-least-32-bytes-long"
+
+func setRequiredEnv(t *testing.T) {
+	t.Helper()
 	t.Setenv("RAMPART_DB_URL", "postgres://localhost:5432/rampart")
+	t.Setenv("RAMPART_JWT_SECRET", testJWTSecret)
+}
+
+func TestLoadDefaults(t *testing.T) {
+	setRequiredEnv(t)
 
 	cfg, err := Load()
 	if err != nil {
@@ -21,6 +30,15 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.LogLevel != "info" {
 		t.Errorf("LogLevel = %q, want info", cfg.LogLevel)
 	}
+	if cfg.JWTSecret != testJWTSecret {
+		t.Errorf("JWTSecret = %q, want test secret", cfg.JWTSecret)
+	}
+	if cfg.AccessTokenTTL != 900*time.Second {
+		t.Errorf("AccessTokenTTL = %v, want 900s", cfg.AccessTokenTTL)
+	}
+	if cfg.RefreshTokenTTL != 604800*time.Second {
+		t.Errorf("RefreshTokenTTL = %v, want 604800s", cfg.RefreshTokenTTL)
+	}
 }
 
 func TestLoadEnvOverrides(t *testing.T) {
@@ -28,6 +46,9 @@ func TestLoadEnvOverrides(t *testing.T) {
 	t.Setenv("RAMPART_DB_URL", "postgres://custom:secret@db:5432/custom")
 	t.Setenv("RAMPART_REDIS_URL", "redis://cache:6379/1")
 	t.Setenv("RAMPART_LOG_LEVEL", "debug")
+	t.Setenv("RAMPART_JWT_SECRET", testJWTSecret)
+	t.Setenv("RAMPART_ACCESS_TOKEN_TTL", "300")
+	t.Setenv("RAMPART_REFRESH_TOKEN_TTL", "86400")
 
 	cfg, err := Load()
 	if err != nil {
@@ -46,6 +67,12 @@ func TestLoadEnvOverrides(t *testing.T) {
 	if cfg.LogLevel != "debug" {
 		t.Errorf("LogLevel = %q, want debug", cfg.LogLevel)
 	}
+	if cfg.AccessTokenTTL != 300*time.Second {
+		t.Errorf("AccessTokenTTL = %v, want 300s", cfg.AccessTokenTTL)
+	}
+	if cfg.RefreshTokenTTL != 86400*time.Second {
+		t.Errorf("RefreshTokenTTL = %v, want 86400s", cfg.RefreshTokenTTL)
+	}
 }
 
 func TestLoadMissingDatabaseURL(t *testing.T) {
@@ -57,8 +84,28 @@ func TestLoadMissingDatabaseURL(t *testing.T) {
 	}
 }
 
-func TestLoadInvalidPort(t *testing.T) {
+func TestLoadMissingJWTSecret(t *testing.T) {
 	t.Setenv("RAMPART_DB_URL", "postgres://localhost:5432/rampart")
+	t.Setenv("RAMPART_JWT_SECRET", "")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error when RAMPART_JWT_SECRET is not set")
+	}
+}
+
+func TestLoadJWTSecretTooShort(t *testing.T) {
+	t.Setenv("RAMPART_DB_URL", "postgres://localhost:5432/rampart")
+	t.Setenv("RAMPART_JWT_SECRET", "short")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error when RAMPART_JWT_SECRET is too short")
+	}
+}
+
+func TestLoadInvalidPort(t *testing.T) {
+	setRequiredEnv(t)
 	t.Setenv("RAMPART_PORT", "not-a-number")
 
 	_, err := Load()
@@ -68,7 +115,7 @@ func TestLoadInvalidPort(t *testing.T) {
 }
 
 func TestLoadPortOutOfRange(t *testing.T) {
-	t.Setenv("RAMPART_DB_URL", "postgres://localhost:5432/rampart")
+	setRequiredEnv(t)
 	t.Setenv("RAMPART_PORT", "99999")
 
 	_, err := Load()
@@ -77,8 +124,28 @@ func TestLoadPortOutOfRange(t *testing.T) {
 	}
 }
 
+func TestLoadInvalidAccessTokenTTL(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("RAMPART_ACCESS_TOKEN_TTL", "not-a-number")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid access token TTL")
+	}
+}
+
+func TestLoadInvalidRefreshTokenTTL(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("RAMPART_REFRESH_TOKEN_TTL", "0")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for zero refresh token TTL")
+	}
+}
+
 func TestLoadAllowedOrigins(t *testing.T) {
-	t.Setenv("RAMPART_DB_URL", "postgres://localhost:5432/rampart")
+	setRequiredEnv(t)
 	t.Setenv("RAMPART_ALLOWED_ORIGINS", "http://localhost:3000, https://app.example.com")
 
 	cfg, err := Load()
@@ -98,7 +165,7 @@ func TestLoadAllowedOrigins(t *testing.T) {
 }
 
 func TestLoadAllowedOriginsDefault(t *testing.T) {
-	t.Setenv("RAMPART_DB_URL", "postgres://localhost:5432/rampart")
+	setRequiredEnv(t)
 
 	cfg, err := Load()
 	if err != nil {
