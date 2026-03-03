@@ -1,0 +1,59 @@
+{
+  "name": "@rampart/node",
+  "version": "0.1.0",
+  "description": "Rampart authentication middleware for Express / Node.js",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "rampart",
+    "auth",
+    "jwt",
+    "middleware",
+    "express",
+    "oidc"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manimovassagh/rampart",
+    "directory": "adapters/backend/node"
+  },
+  "dependencies": {
+    "jose": "^6.0.0"
+  },
+  "peerDependencies": {
+    "express": ">=4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/supertest": "^6.0.0",
+    "express": "^5.0.0",
+    "supertest": "^7.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "~5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

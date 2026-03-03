@@ -36,6 +36,9 @@ node_modules/
 .next/
 web/dist/
 web/node_modules/
+adapters/**/dist/
+samples/**/node_modules/
+samples/**/dist/
 
 # Signing keys
 *.pem
