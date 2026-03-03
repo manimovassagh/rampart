@@ -1,6 +1,7 @@
 package signing
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -10,8 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-
-	"crypto/rand"
+	"path/filepath"
 )
 
 const rsaKeyBits = 2048
@@ -27,12 +27,13 @@ type KeyPair struct {
 // If the file does not exist, it generates a new 2048-bit key pair,
 // writes it to the file, and returns the key pair.
 func LoadOrGenerate(path string) (*KeyPair, error) {
-	data, err := os.ReadFile(path)
+	clean := filepath.Clean(path)
+	data, err := os.ReadFile(clean)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("reading signing key %q: %w", path, err)
+			return nil, fmt.Errorf("reading signing key %q: %w", clean, err)
 		}
-		return generate(path)
+		return generate(clean)
 	}
 	return parse(data)
 }
@@ -52,14 +53,11 @@ func generate(path string) (*KeyPair, error) {
 	pemBlock := &pem.Block{Type: "PRIVATE KEY", Bytes: derBytes}
 	pemData := pem.EncodeToMemory(pemBlock)
 
-	if err := os.WriteFile(path, pemData, 0600); err != nil {
+	if err := os.WriteFile(path, pemData, 0o600); err != nil {
 		return nil, fmt.Errorf("writing signing key to %q: %w", path, err)
 	}
 
-	kid, err := computeKID(&priv.PublicKey)
-	if err != nil {
-		return nil, err
-	}
+	kid := computeKID(&priv.PublicKey)
 
 	return &KeyPair{
 		PrivateKey: priv,
@@ -85,10 +83,7 @@ func parse(data []byte) (*KeyPair, error) {
 		return nil, fmt.Errorf("signing key is not RSA")
 	}
 
-	kid, err := computeKID(&priv.PublicKey)
-	if err != nil {
-		return nil, err
-	}
+	kid := computeKID(&priv.PublicKey)
 
 	return &KeyPair{
 		PrivateKey: priv,
@@ -99,16 +94,14 @@ func parse(data []byte) (*KeyPair, error) {
 
 // computeKID computes a JWK Thumbprint (RFC 7638) for the given RSA public key.
 // The thumbprint is the base64url-encoded SHA-256 hash of the canonical JWK representation.
-func computeKID(pub *rsa.PublicKey) (string, error) {
+func computeKID(pub *rsa.PublicKey) string {
 	// RFC 7638: canonical JSON with lexicographic member ordering for RSA: {e, kty, n}
-	canonical := fmt.Sprintf(
-		`{"e":"%s","kty":"RSA","n":"%s"}`,
-		base64URLUint(big.NewInt(int64(pub.E))),
-		base64URLUint(pub.N),
-	)
+	e := base64URLUint(big.NewInt(int64(pub.E)))
+	n := base64URLUint(pub.N)
+	canonical := `{"e":"` + e + `","kty":"RSA","n":"` + n + `"}`
 
 	hash := sha256.Sum256([]byte(canonical))
-	return base64.RawURLEncoding.EncodeToString(hash[:]), nil
+	return base64.RawURLEncoding.EncodeToString(hash[:])
 }
 
 // JWK returns the public key as a JWK (RFC 7517) map.
