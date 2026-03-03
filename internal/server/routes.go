@@ -24,7 +24,7 @@ func NewRouter(logger *slog.Logger, allowedOrigins []string) *chi.Mux {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", middleware.HeaderRequestID},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", middleware.HeaderRequestID, "X-Org-Context"},
 		ExposedHeaders:   []string{middleware.HeaderRequestID},
 		AllowCredentials: false,
 		MaxAge:           300,

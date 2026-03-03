@@ -68,7 +68,7 @@ func (h *AdminHandler) Stats(w http.ResponseWriter, r *http.Request) {
 		apierror.Unauthorized(w, "Authentication required.")
 		return
 	}
-	orgID := authUser.OrgID
+	orgID := resolveOrgID(r, authUser)
 
 	totalUsers, err := h.store.CountUsers(ctx, orgID)
 	if err != nil {
@@ -117,7 +117,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		apierror.Unauthorized(w, "Authentication required.")
 		return
 	}
-	orgID := authUser.OrgID
+	orgID := resolveOrgID(r, authUser)
 
 	search := r.URL.Query().Get("search")
 	status := r.URL.Query().Get("status")
@@ -180,7 +180,7 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		apierror.Unauthorized(w, "Authentication required.")
 		return
 	}
-	orgID := authUser.OrgID
+	orgID := resolveOrgID(r, authUser)
 
 	// Fetch per-org password policy (fall back to defaults if settings not found).
 	passwordPolicy := auth.DefaultPasswordPolicy()
@@ -457,6 +457,18 @@ func (h *AdminHandler) RevokeSessions(w http.ResponseWriter, r *http.Request) {
 }
 
 // --- Helpers ---
+
+// resolveOrgID returns the org context for this request.
+// If the X-Org-Context header is set to a valid UUID, that is used (org switching).
+// Otherwise falls back to the authenticated user's own org from the JWT.
+func resolveOrgID(r *http.Request, authUser *middleware.AuthenticatedUser) uuid.UUID {
+	if header := r.Header.Get("X-Org-Context"); header != "" {
+		if parsed, err := uuid.Parse(header); err == nil {
+			return parsed
+		}
+	}
+	return authUser.OrgID
+}
 
 func parseUUIDParam(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	raw := chi.URLParam(r, "id")
