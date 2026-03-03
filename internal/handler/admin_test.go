@@ -19,8 +19,6 @@ import (
 
 // mockAdminUserStore implements AdminUserStore for testing.
 type mockAdminUserStore struct {
-	defaultOrgID     uuid.UUID
-	defaultOrgErr    error
 	userByID         *model.User
 	userByIDErr      error
 	emailUser        *model.User
@@ -40,11 +38,12 @@ type mockAdminUserStore struct {
 	countUsersErr    error
 	countRecent      int
 	countRecentErr   error
+	countOrgs        int
+	countOrgsErr     error
+	orgSettings      *model.OrgSettings
+	orgSettingsErr   error
 }
 
-func (m *mockAdminUserStore) GetDefaultOrganizationID(_ context.Context) (uuid.UUID, error) {
-	return m.defaultOrgID, m.defaultOrgErr
-}
 func (m *mockAdminUserStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) {
 	return m.userByID, m.userByIDErr
 }
@@ -83,6 +82,12 @@ func (m *mockAdminUserStore) CountUsers(_ context.Context, _ uuid.UUID) (int, er
 }
 func (m *mockAdminUserStore) CountRecentUsers(_ context.Context, _ uuid.UUID, _ int) (int, error) {
 	return m.countRecent, m.countRecentErr
+}
+func (m *mockAdminUserStore) CountOrganizations(_ context.Context) (int, error) {
+	return m.countOrgs, m.countOrgsErr
+}
+func (m *mockAdminUserStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {
+	return m.orgSettings, m.orgSettingsErr
 }
 
 // mockAdminSessionStore implements AdminSessionStore for testing.
@@ -128,15 +133,19 @@ func newTestAdminHandler(store *mockAdminUserStore, sessions *mockAdminSessionSt
 }
 
 func TestAdminStatsSuccess(t *testing.T) {
+	orgID := uuid.New()
 	store := &mockAdminUserStore{
-		defaultOrgID: uuid.New(),
-		countUsers:   42,
-		countRecent:  5,
+		countUsers:  42,
+		countRecent: 5,
+		countOrgs:   3,
 	}
 	sessions := &mockAdminSessionStore{countActive: 10}
 	h := newTestAdminHandler(store, sessions)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	h.Stats(w, req)
@@ -158,19 +167,24 @@ func TestAdminStatsSuccess(t *testing.T) {
 	if stats.RecentUsers != 5 {
 		t.Errorf("recent_users = %d, want 5", stats.RecentUsers)
 	}
+	if stats.TotalOrganizations != 3 {
+		t.Errorf("total_organizations = %d, want 3", stats.TotalOrganizations)
+	}
 }
 
 func TestAdminListUsersSuccess(t *testing.T) {
 	user := newAdminTestUser()
 	store := &mockAdminUserStore{
-		defaultOrgID: user.OrgID,
-		listUsers:    []*model.User{user},
-		listTotal:    1,
+		listUsers: []*model.User{user},
+		listTotal: 1,
 	}
 	sessions := &mockAdminSessionStore{countByUser: 2}
 	h := newTestAdminHandler(store, sessions)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users?page=1&limit=20", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	h.ListUsers(w, req)
@@ -195,12 +209,16 @@ func TestAdminListUsersSuccess(t *testing.T) {
 }
 
 func TestAdminCreateUserSuccess(t *testing.T) {
-	store := &mockAdminUserStore{defaultOrgID: uuid.New()}
+	orgID := uuid.New()
+	store := &mockAdminUserStore{}
 	sessions := &mockAdminSessionStore{}
 	h := newTestAdminHandler(store, sessions)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
 	body := []byte(`{"username":"newuser","email":"new@test.com","password":"Str0ng!Pass","given_name":"New","family_name":"User","enabled":true}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users", bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	h.CreateUser(w, req)
@@ -213,14 +231,16 @@ func TestAdminCreateUserSuccess(t *testing.T) {
 func TestAdminCreateUserDuplicateEmail(t *testing.T) {
 	existing := newAdminTestUser()
 	store := &mockAdminUserStore{
-		defaultOrgID: existing.OrgID,
-		emailUser:    existing,
+		emailUser: existing,
 	}
 	sessions := &mockAdminSessionStore{}
 	h := newTestAdminHandler(store, sessions)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: existing.OrgID}
 	body := []byte(`{"username":"other","email":"test@rampart.local","password":"Str0ng!Pass","given_name":"A","family_name":"B","enabled":true}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users", bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	h.CreateUser(w, req)
@@ -231,12 +251,16 @@ func TestAdminCreateUserDuplicateEmail(t *testing.T) {
 }
 
 func TestAdminCreateUserValidationError(t *testing.T) {
-	store := &mockAdminUserStore{defaultOrgID: uuid.New()}
+	orgID := uuid.New()
+	store := &mockAdminUserStore{}
 	sessions := &mockAdminSessionStore{}
 	h := newTestAdminHandler(store, sessions)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
 	body := []byte(`{"username":"x","email":"bad","password":"short","given_name":"","family_name":"","enabled":true}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users", bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	h.CreateUser(w, req)

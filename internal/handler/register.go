@@ -23,9 +23,11 @@ const (
 // UserStore defines the database operations required by RegisterHandler.
 type UserStore interface {
 	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
+	GetOrganizationIDBySlug(ctx context.Context, slug string) (uuid.UUID, error)
 	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
 	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
 	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
+	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
 }
 
 // RegisterHandler handles user self-registration.
@@ -64,24 +66,55 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 	req.Username = strings.TrimSpace(req.Username)
 	req.GivenName = strings.TrimSpace(req.GivenName)
 	req.FamilyName = strings.TrimSpace(req.FamilyName)
+	req.OrgSlug = strings.ToLower(strings.TrimSpace(req.OrgSlug))
 
-	// Validate all fields.
-	if fieldErrors := auth.ValidateRegistration(req.Email, req.Password, req.Username); len(fieldErrors) > 0 {
+	ctx := r.Context()
+
+	// Resolve organization: use org_slug if provided, otherwise default.
+	var orgID uuid.UUID
+	var err error
+	if req.OrgSlug != "" {
+		orgID, err = h.store.GetOrganizationIDBySlug(ctx, req.OrgSlug)
+	} else {
+		orgID, err = h.store.GetDefaultOrganizationID(ctx)
+	}
+	if err != nil {
+		h.logger.Error("failed to resolve organization", "error", err, "org_slug", req.OrgSlug)
+		apierror.BadRequest(w, "Organization not found.")
+		return
+	}
+
+	// Fetch per-org password policy (fall back to defaults if settings not found).
+	passwordPolicy := auth.DefaultPasswordPolicy()
+	if settings, err := h.store.GetOrgSettings(ctx, orgID); err != nil {
+		h.logger.Warn("failed to fetch org settings, using defaults", "error", err)
+	} else if settings != nil {
+		passwordPolicy = auth.PasswordPolicy{
+			MinLength:        settings.PasswordMinLength,
+			RequireUppercase: settings.PasswordRequireUppercase,
+			RequireLowercase: settings.PasswordRequireLowercase,
+			RequireNumbers:   settings.PasswordRequireNumbers,
+			RequireSymbols:   settings.PasswordRequireSymbols,
+		}
+	}
+
+	// Validate fields with per-org password policy.
+	var fieldErrors []auth.FieldError
+	if fe := auth.ValidateEmail(req.Email); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidatePasswordWithPolicy(req.Password, passwordPolicy); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidateUsername(req.Username); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if len(fieldErrors) > 0 {
 		apiFieldErrors := make([]apierror.FieldError, len(fieldErrors))
 		for i, fe := range fieldErrors {
 			apiFieldErrors[i] = apierror.FieldError{Field: fe.Field, Message: fe.Message}
 		}
 		apierror.WriteValidation(w, apiFieldErrors)
-		return
-	}
-
-	ctx := r.Context()
-
-	// Look up default organization.
-	orgID, err := h.store.GetDefaultOrganizationID(ctx)
-	if err != nil {
-		h.logger.Error("failed to get default organization", "error", err)
-		apierror.InternalError(w)
 		return
 	}
 

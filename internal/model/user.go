@@ -33,6 +33,7 @@ type RegistrationRequest struct {
 	Password   string `json:"password"`
 	GivenName  string `json:"given_name"`
 	FamilyName string `json:"family_name"`
+	OrgSlug    string `json:"org_slug,omitempty"`
 }
 
 // UserResponse is the public representation of a user — never contains password_hash.
@@ -136,9 +137,10 @@ type ResetPasswordRequest struct {
 
 // DashboardStats contains summary statistics for the admin dashboard.
 type DashboardStats struct {
-	TotalUsers     int `json:"total_users"`
-	ActiveSessions int `json:"active_sessions"`
-	RecentUsers    int `json:"recent_users"`
+	TotalUsers         int `json:"total_users"`
+	ActiveSessions     int `json:"active_sessions"`
+	RecentUsers        int `json:"recent_users"`
+	TotalOrganizations int `json:"total_organizations"`
 }
 
 // SessionResponse is a session representation for the admin API.

@@ -26,16 +26,27 @@ func noopLogger() *slog.Logger {
 type mockUserStore struct {
 	defaultOrgID    uuid.UUID
 	defaultOrgErr   error
+	slugOrgID       uuid.UUID
+	slugOrgErr      error
 	emailUser       *model.User
 	emailErr        error
 	usernameUser    *model.User
 	usernameErr     error
 	createdUser     *model.User
 	createErr       error
+	orgSettings     *model.OrgSettings
+	orgSettingsErr  error
 }
 
 func (m *mockUserStore) GetDefaultOrganizationID(_ context.Context) (uuid.UUID, error) {
 	return m.defaultOrgID, m.defaultOrgErr
+}
+
+func (m *mockUserStore) GetOrganizationIDBySlug(_ context.Context, _ string) (uuid.UUID, error) {
+	if m.slugOrgID != uuid.Nil {
+		return m.slugOrgID, m.slugOrgErr
+	}
+	return m.defaultOrgID, m.slugOrgErr
 }
 
 func (m *mockUserStore) GetUserByEmail(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
@@ -53,19 +64,22 @@ func (m *mockUserStore) CreateUser(_ context.Context, user *model.User) (*model.
 	if m.createdUser != nil {
 		return m.createdUser, nil
 	}
-	// Return a plausible created user based on input.
 	now := time.Now()
 	return &model.User{
-		ID:        uuid.New(),
-		OrgID:     user.OrgID,
-		Username:  user.Username,
-		Email:     user.Email,
-		GivenName: user.GivenName,
+		ID:         uuid.New(),
+		OrgID:      user.OrgID,
+		Username:   user.Username,
+		Email:      user.Email,
+		GivenName:  user.GivenName,
 		FamilyName: user.FamilyName,
-		Enabled:   true,
-		CreatedAt: now,
-		UpdatedAt: now,
+		Enabled:    true,
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}, nil
+}
+
+func (m *mockUserStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {
+	return m.orgSettings, m.orgSettingsErr
 }
 
 func newTestRegisterHandler(store *mockUserStore) *RegisterHandler {
@@ -215,8 +229,9 @@ func TestRegisterDefaultOrgError(t *testing.T) {
 
 	h.Register(w, req)
 
-	if w.Code != http.StatusInternalServerError {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	// Org resolution failures return 400 ("Organization not found") to avoid leaking internal details.
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
 

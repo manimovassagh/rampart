@@ -119,6 +119,71 @@ export interface DashboardStats {
   total_users: number;
   active_sessions: number;
   recent_users: number;
+  total_organizations: number;
+}
+
+// Organization types
+
+export interface OrgResponse {
+  id: string;
+  name: string;
+  slug: string;
+  display_name: string;
+  enabled: boolean;
+  user_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListOrgsResponse {
+  organizations: OrgResponse[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface CreateOrgRequest {
+  name: string;
+  slug: string;
+  display_name: string;
+}
+
+export interface UpdateOrgRequest {
+  name: string;
+  display_name: string;
+  enabled: boolean;
+}
+
+export interface OrgSettingsResponse {
+  id: string;
+  org_id: string;
+  password_min_length: number;
+  password_require_uppercase: boolean;
+  password_require_lowercase: boolean;
+  password_require_numbers: boolean;
+  password_require_symbols: boolean;
+  mfa_enforcement: string;
+  access_token_ttl_seconds: number;
+  refresh_token_ttl_seconds: number;
+  logo_url?: string;
+  primary_color?: string;
+  background_color?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateOrgSettingsRequest {
+  password_min_length: number;
+  password_require_uppercase: boolean;
+  password_require_lowercase: boolean;
+  password_require_numbers: boolean;
+  password_require_symbols: boolean;
+  mfa_enforcement: string;
+  access_token_ttl_seconds: number;
+  refresh_token_ttl_seconds: number;
+  logo_url: string;
+  primary_color: string;
+  background_color: string;
 }
 
 export interface SessionResponse {
