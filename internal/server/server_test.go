@@ -14,7 +14,7 @@ import (
 
 func TestNewRouterMiddlewareChain(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	r := NewRouter(logger)
+	r := NewRouter(logger, []string{"http://localhost:3000"})
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -39,7 +39,7 @@ func TestNewRouterMiddlewareChain(t *testing.T) {
 
 func TestNewRouterNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	r := NewRouter(logger)
+	r := NewRouter(logger, []string{"http://localhost:3000"})
 
 	req := httptest.NewRequest(http.MethodGet, "/nonexistent", http.NoBody)
 	w := httptest.NewRecorder()
@@ -52,7 +52,7 @@ func TestNewRouterNotFound(t *testing.T) {
 
 func TestNewServer(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	r := NewRouter(logger)
+	r := NewRouter(logger, []string{"http://localhost:3000"})
 	s := New(":0", r, logger)
 
 	if s.httpServer.ReadTimeout != readTimeout {
@@ -68,7 +68,7 @@ func TestNewServer(t *testing.T) {
 
 func TestServerStartAndShutdown(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger)
+	r := NewRouter(logger, []string{"http://localhost:3000"})
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"status":"alive"}`))
@@ -100,7 +100,7 @@ func TestServerStartAndShutdown(t *testing.T) {
 
 func TestNewRouterCORSHeaders(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger)
+	r := NewRouter(logger, []string{"http://localhost:3000"})
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -122,7 +122,7 @@ func TestNewRouterCORSHeaders(t *testing.T) {
 
 func TestNewRouterReadyzEndpoint(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger)
+	r := NewRouter(logger, []string{"http://localhost:3000"})
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

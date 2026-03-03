@@ -13,6 +13,18 @@ type mockPinger struct {
 	err error
 }
 
+// errResponseWriter simulates a broken connection where Write fails.
+type errResponseWriter struct {
+	header http.Header
+	status int
+}
+
+func (w *errResponseWriter) Header() http.Header         { return w.header }
+func (w *errResponseWriter) WriteHeader(code int)         { w.status = code }
+func (w *errResponseWriter) Write([]byte) (int, error) {
+	return 0, fmt.Errorf("broken pipe")
+}
+
 func (m *mockPinger) Ping(_ context.Context) error {
 	return m.err
 }
@@ -55,6 +67,24 @@ func TestReadinessHealthy(t *testing.T) {
 	if body["status"] != "ready" {
 		t.Errorf("status = %q, want ready", body["status"])
 	}
+}
+
+func TestLivenessEncodeError(t *testing.T) {
+	h := NewHealthHandler(&mockPinger{})
+	req := httptest.NewRequest(http.MethodGet, "/healthz", http.NoBody)
+	w := &errResponseWriter{header: make(http.Header)}
+
+	// Should not panic — logs the error internally
+	h.Liveness(w, req)
+}
+
+func TestReadinessEncodeError(t *testing.T) {
+	h := NewHealthHandler(&mockPinger{err: nil})
+	req := httptest.NewRequest(http.MethodGet, "/readyz", http.NoBody)
+	w := &errResponseWriter{header: make(http.Header)}
+
+	// Should not panic — logs the error internally
+	h.Readiness(w, req)
 }
 
 func TestReadinessUnhealthy(t *testing.T) {

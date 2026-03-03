@@ -8,6 +8,7 @@ services:
       RAMPART_DB_URL: "postgres://${POSTGRES_USER:-rampart}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-rampart}?sslmode=disable"
       RAMPART_REDIS_URL: "${RAMPART_REDIS_URL:-redis://redis:6379/0}"
       RAMPART_LOG_LEVEL: "${RAMPART_LOG_LEVEL:-debug}"
+      RAMPART_ALLOWED_ORIGINS: "${RAMPART_ALLOWED_ORIGINS:-}"
     depends_on:
       postgres:
         condition: service_healthy

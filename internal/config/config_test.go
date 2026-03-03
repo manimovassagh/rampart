@@ -77,6 +77,39 @@ func TestLoadPortOutOfRange(t *testing.T) {
 	}
 }
 
+func TestLoadAllowedOrigins(t *testing.T) {
+	t.Setenv("RAMPART_DB_URL", "postgres://localhost:5432/rampart")
+	t.Setenv("RAMPART_ALLOWED_ORIGINS", "http://localhost:3000, https://app.example.com")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(cfg.AllowedOrigins) != 2 {
+		t.Fatalf("AllowedOrigins length = %d, want 2", len(cfg.AllowedOrigins))
+	}
+	if cfg.AllowedOrigins[0] != "http://localhost:3000" {
+		t.Errorf("AllowedOrigins[0] = %q, want http://localhost:3000", cfg.AllowedOrigins[0])
+	}
+	if cfg.AllowedOrigins[1] != "https://app.example.com" {
+		t.Errorf("AllowedOrigins[1] = %q, want https://app.example.com", cfg.AllowedOrigins[1])
+	}
+}
+
+func TestLoadAllowedOriginsDefault(t *testing.T) {
+	t.Setenv("RAMPART_DB_URL", "postgres://localhost:5432/rampart")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.AllowedOrigins != nil {
+		t.Errorf("AllowedOrigins = %v, want nil (no cross-origin by default)", cfg.AllowedOrigins)
+	}
+}
+
 func TestConfigAddr(t *testing.T) {
 	cfg := &Config{Port: 3000}
 	if got := cfg.Addr(); got != ":3000" {

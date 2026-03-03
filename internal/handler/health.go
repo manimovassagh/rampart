@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
@@ -30,7 +31,9 @@ func NewHealthHandler(db Pinger) *HealthHandler {
 // GET /healthz
 func (h *HealthHandler) Liveness(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": statusAlive})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": statusAlive}); err != nil {
+		slog.Error("failed to encode liveness response", "error", err)
+	}
 }
 
 // Readiness returns 200 OK if the server is ready to handle requests.
@@ -43,5 +46,7 @@ func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": statusReady})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": statusReady}); err != nil {
+		slog.Error("failed to encode readiness response", "error", err)
+	}
 }

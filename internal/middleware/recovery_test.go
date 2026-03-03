@@ -24,6 +24,10 @@ func TestRecoveryHandlesPanic(t *testing.T) {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
 	}
 
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+
 	logOutput := buf.String()
 	if !bytes.Contains([]byte(logOutput), []byte("panic recovered")) {
 		t.Errorf("expected panic log, got: %s", logOutput)

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/manimovassagh/rampart/internal/config"
@@ -22,11 +23,17 @@ func main() {
 	}
 }
 
-func run(logger *slog.Logger) error {
+func run(_ *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
+
+	// Reconfigure logger with the loaded log level
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: parseLogLevel(cfg.LogLevel),
+	}))
+	slog.SetDefault(logger)
 
 	ctx := context.Background()
 	db, err := database.Connect(ctx, cfg.DatabaseURL)
@@ -39,7 +46,7 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
-	router := server.NewRouter(logger)
+	router := server.NewRouter(logger, cfg.AllowedOrigins)
 	healthHandler := handler.NewHealthHandler(db)
 	server.RegisterHealthRoutes(router, healthHandler.Liveness, healthHandler.Readiness)
 
@@ -63,4 +70,17 @@ func run(logger *slog.Logger) error {
 	}
 
 	return srv.Shutdown()
+}
+
+func parseLogLevel(level string) slog.Level {
+	switch strings.ToLower(level) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }

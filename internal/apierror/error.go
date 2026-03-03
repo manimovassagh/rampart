@@ -2,6 +2,7 @@ package apierror
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/manimovassagh/rampart/internal/middleware"
@@ -37,7 +38,9 @@ func Write(w http.ResponseWriter, status int, code, description string) {
 
 	w.Header().Set("Content-Type", ContentTypeJSON)
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(apiErr)
+	if err := json.NewEncoder(w).Encode(apiErr); err != nil {
+		slog.Error("failed to encode error response", "error", err)
+	}
 }
 
 // NotFound writes a 404 error response.

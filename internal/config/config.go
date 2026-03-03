@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Config holds all server configuration loaded from environment variables.
 type Config struct {
-	Port        int
-	DatabaseURL string
-	RedisURL    string
-	LogLevel    string
+	Port           int
+	DatabaseURL    string
+	RedisURL       string
+	LogLevel       string
+	AllowedOrigins []string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -41,6 +43,14 @@ func Load() (*Config, error) {
 
 	if v := os.Getenv("RAMPART_LOG_LEVEL"); v != "" {
 		cfg.LogLevel = v
+	}
+
+	if v := os.Getenv("RAMPART_ALLOWED_ORIGINS"); v != "" {
+		origins := strings.Split(v, ",")
+		for i := range origins {
+			origins[i] = strings.TrimSpace(origins[i])
+		}
+		cfg.AllowedOrigins = origins
 	}
 
 	if cfg.DatabaseURL == "" {
