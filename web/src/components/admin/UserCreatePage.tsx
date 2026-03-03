@@ -15,6 +15,7 @@ export default function UserCreatePage({ onNavigate }: UserCreatePageProps) {
   const [givenName, setGivenName] = useState("");
   const [familyName, setFamilyName] = useState("");
   const [enabled, setEnabled] = useState(true);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,6 +29,7 @@ export default function UserCreatePage({ onNavigate }: UserCreatePageProps) {
         given_name: givenName,
         family_name: familyName,
         enabled,
+        email_verified: emailVerified,
       });
       toast("success", `User ${user.username} created`);
       onNavigate(`users/${user.id}`);
@@ -127,15 +129,29 @@ export default function UserCreatePage({ onNavigate }: UserCreatePageProps) {
               />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
-            />
-            Account enabled
-          </label>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+              />
+              Account enabled
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={emailVerified}
+                onChange={(e) => setEmailVerified(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+              />
+              Email verified
+              <span className="text-xs text-slate-400">
+                — skip email verification for this user
+              </span>
+            </label>
+          </div>
         </div>
 
         <button

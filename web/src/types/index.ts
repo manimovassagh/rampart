@@ -100,6 +100,7 @@ export interface CreateUserRequest {
   given_name: string;
   family_name: string;
   enabled: boolean;
+  email_verified: boolean;
 }
 
 export interface UpdateUserRequest {

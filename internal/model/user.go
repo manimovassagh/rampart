@@ -112,12 +112,13 @@ type ListUsersResponse struct {
 
 // CreateUserRequest is the expected JSON body for admin user creation.
 type CreateUserRequest struct {
-	Username   string `json:"username"`
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	GivenName  string `json:"given_name"`
-	FamilyName string `json:"family_name"`
-	Enabled    bool   `json:"enabled"`
+	Username      string `json:"username"`
+	Email         string `json:"email"`
+	Password      string `json:"password"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Enabled       bool   `json:"enabled"`
+	EmailVerified bool   `json:"email_verified"`
 }
 
 // UpdateUserRequest is the expected JSON body for admin user updates.

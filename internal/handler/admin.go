@@ -245,13 +245,14 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := &model.User{
-		OrgID:        orgID,
-		Username:     req.Username,
-		Email:        req.Email,
-		GivenName:    req.GivenName,
-		FamilyName:   req.FamilyName,
-		PasswordHash: []byte(hash),
-		Enabled:      req.Enabled,
+		OrgID:         orgID,
+		Username:      req.Username,
+		Email:         req.Email,
+		GivenName:     req.GivenName,
+		FamilyName:    req.FamilyName,
+		PasswordHash:  []byte(hash),
+		Enabled:       req.Enabled,
+		EmailVerified: req.EmailVerified,
 	}
 
 	created, err := h.store.CreateUser(ctx, user)
