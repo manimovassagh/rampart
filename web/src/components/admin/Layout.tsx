@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import Sidebar from "./Sidebar";
+import OrgSwitcherDropdown from "./OrgSwitcherDropdown";
 import { logout } from "../../api/auth";
-import { useCurrentOrg, clearOrgCache } from "../../hooks/useCurrentOrg";
+import { clearOrgCache } from "../../hooks/useCurrentOrg";
 
 interface LayoutProps {
   currentPage: string;
@@ -16,7 +17,6 @@ export default function Layout({
   onLogout,
   children,
 }: LayoutProps) {
-  const { org } = useCurrentOrg();
   const [collapsed, setCollapsed] = useState(false);
 
   const handleLogout = useCallback(async () => {
@@ -54,14 +54,8 @@ export default function Layout({
             <span className="text-sm font-bold tracking-tight text-slate-900">
               Rampart
             </span>
-            {org && (
-              <>
-                <span className="text-slate-300">/</span>
-                <span className="rounded bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                  {org.display_name || org.name}
-                </span>
-              </>
-            )}
+            <span className="text-slate-300">/</span>
+            <OrgSwitcherDropdown onNavigate={onNavigate} />
           </div>
 
           <button
