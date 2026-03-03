@@ -47,6 +47,9 @@ func Connect(ctx context.Context, databaseURL string) (*DB, error) {
 
 // Ping checks database connectivity.
 func (db *DB) Ping(ctx context.Context) error {
+	if db.Pool == nil {
+		return fmt.Errorf("database pool is not initialized")
+	}
 	return db.Pool.Ping(ctx)
 }
 
