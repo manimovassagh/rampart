@@ -29,6 +29,13 @@
 
 ---
 
+<p align="center">
+  <strong>ram·part</strong> <em>/ˈramˌpärt/</em> — A fortified defensive wall. The barrier that stands between your application and unauthorized access.<br>
+  Just as a castle's rampart protects everything within, <strong>Rampart</strong> guards your users, data, and services.
+</p>
+
+---
+
 <br>
 
 ## ⚡ Why Rampart?
