@@ -103,3 +103,51 @@ func (s *PGStore) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
 	}
 	return nil
 }
+
+// ListByUserID returns all active sessions for a user.
+func (s *PGStore) ListByUserID(ctx context.Context, userID uuid.UUID) ([]*Session, error) {
+	query := `
+		SELECT id, user_id, refresh_token_hash, expires_at, created_at
+		FROM sessions
+		WHERE user_id = $1 AND expires_at > now()
+		ORDER BY created_at DESC`
+
+	rows, err := s.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("listing sessions by user: %w", err)
+	}
+	defer rows.Close()
+
+	var sessions []*Session
+	for rows.Next() {
+		var sess Session
+		if err := rows.Scan(&sess.ID, &sess.UserID, &sess.RefreshTokenHash, &sess.ExpiresAt, &sess.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scanning session row: %w", err)
+		}
+		sessions = append(sessions, &sess)
+	}
+	return sessions, nil
+}
+
+// CountByUserID returns the number of active sessions for a user.
+func (s *PGStore) CountByUserID(ctx context.Context, userID uuid.UUID) (int, error) {
+	var count int
+	err := s.pool.QueryRow(ctx,
+		"SELECT COUNT(*) FROM sessions WHERE user_id = $1 AND expires_at > now()",
+		userID,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("counting sessions by user: %w", err)
+	}
+	return count, nil
+}
+
+// CountActive returns the total number of active sessions across all users.
+func (s *PGStore) CountActive(ctx context.Context) (int, error) {
+	var count int
+	err := s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM sessions WHERE expires_at > now()").Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("counting active sessions: %w", err)
+	}
+	return count, nil
+}
