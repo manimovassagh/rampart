@@ -5,15 +5,25 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
+)
+
+const (
+	defaultAccessTokenTTL  = 900     // 15 minutes
+	defaultRefreshTokenTTL = 604800  // 7 days
+	minJWTSecretLength     = 32
 )
 
 // Config holds all server configuration loaded from environment variables.
 type Config struct {
-	Port           int
-	DatabaseURL    string
-	RedisURL       string
-	LogLevel       string
-	AllowedOrigins []string
+	Port            int
+	DatabaseURL     string
+	RedisURL        string
+	LogLevel        string
+	AllowedOrigins  []string
+	JWTSecret       string
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -55,6 +65,38 @@ func Load() (*Config, error) {
 
 	if cfg.DatabaseURL == "" {
 		return nil, fmt.Errorf("RAMPART_DB_URL is required")
+	}
+
+	cfg.JWTSecret = os.Getenv("RAMPART_JWT_SECRET")
+	if cfg.JWTSecret == "" {
+		return nil, fmt.Errorf("RAMPART_JWT_SECRET is required")
+	}
+	if len(cfg.JWTSecret) < minJWTSecretLength {
+		return nil, fmt.Errorf("RAMPART_JWT_SECRET must be at least %d bytes", minJWTSecretLength)
+	}
+
+	cfg.AccessTokenTTL = time.Duration(defaultAccessTokenTTL) * time.Second
+	if v := os.Getenv("RAMPART_ACCESS_TOKEN_TTL"); v != "" {
+		secs, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid RAMPART_ACCESS_TOKEN_TTL %q: %w", v, err)
+		}
+		if secs < 1 {
+			return nil, fmt.Errorf("RAMPART_ACCESS_TOKEN_TTL must be positive")
+		}
+		cfg.AccessTokenTTL = time.Duration(secs) * time.Second
+	}
+
+	cfg.RefreshTokenTTL = time.Duration(defaultRefreshTokenTTL) * time.Second
+	if v := os.Getenv("RAMPART_REFRESH_TOKEN_TTL"); v != "" {
+		secs, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid RAMPART_REFRESH_TOKEN_TTL %q: %w", v, err)
+		}
+		if secs < 1 {
+			return nil, fmt.Errorf("RAMPART_REFRESH_TOKEN_TTL must be positive")
+		}
+		cfg.RefreshTokenTTL = time.Duration(secs) * time.Second
 	}
 
 	return cfg, nil

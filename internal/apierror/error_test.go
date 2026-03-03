@@ -110,6 +110,34 @@ func TestConflict(t *testing.T) {
 	}
 }
 
+func TestUnauthorized(t *testing.T) {
+	w := httptest.NewRecorder()
+	Unauthorized(w, "Invalid credentials.")
+
+	assertStatus(t, w.Code, http.StatusUnauthorized)
+	got := decodeError(t, w)
+	if got.Code != "unauthorized" {
+		t.Errorf("error = %q, want unauthorized", got.Code)
+	}
+	if got.Description != "Invalid credentials." {
+		t.Errorf("description = %q, want 'Invalid credentials.'", got.Description)
+	}
+}
+
+func TestForbidden(t *testing.T) {
+	w := httptest.NewRecorder()
+	Forbidden(w, "Access denied.")
+
+	assertStatus(t, w.Code, http.StatusForbidden)
+	got := decodeError(t, w)
+	if got.Code != "forbidden" {
+		t.Errorf("error = %q, want forbidden", got.Code)
+	}
+	if got.Description != "Access denied." {
+		t.Errorf("description = %q, want 'Access denied.'", got.Description)
+	}
+}
+
 func TestWriteValidation(t *testing.T) {
 	w := httptest.NewRecorder()
 	w.Header().Set("X-Request-Id", "req_val123")
