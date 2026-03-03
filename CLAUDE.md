@@ -27,6 +27,7 @@
 - Plugin system: TBD (WASM vs gRPC vs Go-only)
 - Event sourcing for audit trail
 - Multi-tenant by default (organizations/realms)
+- **Login page themes**: At least 10 built-in themes for the login/consent UI. Admins select a theme per organization via admin dashboard. Themes are CSS variable-based — no component re-rendering needed. Theme selector UI in admin dashboard shows live previews.
 
 ## Competitive Positioning
 
