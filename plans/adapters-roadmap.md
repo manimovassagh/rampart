@@ -5,12 +5,43 @@
 
 ## Vision
 
-Rampart adapters should work like **Auth0, Clerk, and Keycloak SDKs** — industry-standard, production-grade, with zero-config defaults and full TypeScript support. The adapters must support:
+Rampart is not another auth library — it's **the IAM platform companies switch to from Keycloak**.
+The adapters are what developers touch every day. They must be **better than Auth0, Clerk, and Keycloak SDKs** — not "as good", better. Better DX, better types, better docs, better samples, shinier UI components.
 
-1. **Standalone mode** — Rampart as the sole auth provider (direct API login)
-2. **Social/federated providers** — Google, GitHub, Microsoft, etc. via Authorization Code + PKCE
-3. **RBAC** — Role-based access control with typed role checking
-4. **E2E samples** — Every adapter ships with a working sample that demonstrates the full auth lifecycle
+### What "better" means concretely
+
+**vs Auth0** — simpler setup (no tenant config, no dashboard clicking), self-hosted, no vendor lock-in
+**vs Clerk** — same beautiful UX but open-source, self-hosted, no per-user pricing
+**vs Keycloak** — TypeScript-first SDKs (not Java adapters), modern React components (not FreeMarker), single binary
+
+### The bar for every adapter
+
+1. **Zero-config start** — `rampartAuth({ issuer })` and you're done. No client IDs, no secrets, no dashboard setup for basic use.
+2. **Standalone + providers** — Works with just Rampart, or with Google/GitHub/Microsoft/SAML. Same API for both.
+3. **RBAC built-in** — `requireRoles("admin")` middleware, `hasRole()` on the client, `<ProtectedRoute roles={["admin"]}>` in React.
+4. **Pre-built UI components** — Drop-in `<LoginForm>`, `<SignUpForm>`, `<UserButton>`, `<OrgSwitcher>` (like Clerk). Themeable, accessible, beautiful by default.
+5. **E2E samples** — Every adapter ships with a working sample showing the FULL lifecycle: unauth 401 → signup → login → protected API → role check → social login → logout.
+6. **Production-grade** — Rate limiting awareness, token rotation, PKCE by default, XSS-safe token storage, CSRF protection.
+7. **Perfect TypeScript** — Every response typed, every error typed, autocomplete everywhere, no `any`.
+
+### Competitive feature matrix (target state)
+
+| Feature | Auth0 | Clerk | Keycloak | **Rampart** |
+|---------|-------|-------|----------|-------------|
+| Self-hosted | No | No | Yes | **Yes** |
+| Open-source core | No | No | Yes | **Yes** |
+| TypeScript-first SDKs | Yes | Yes | No | **Yes** |
+| Pre-built UI components | Limited | Excellent | Terrible | **Excellent** |
+| Social login (Google, GitHub, etc.) | Yes | Yes | Yes | **Yes** (planned) |
+| RBAC | Yes | Yes | Yes | **Yes** (planned) |
+| MFA (TOTP, WebAuthn) | Yes | Yes | Yes | **Yes** (planned) |
+| Organization/multi-tenant | Yes | Yes | Yes | **Yes** (built-in) |
+| SAML/SCIM | Enterprise | Enterprise | Yes | **Enterprise** (planned) |
+| Per-user pricing | $$$$ | $$$$ | Free | **Free** |
+| Setup time | 30 min | 10 min | 2 hours | **5 min** (target) |
+| Single binary deploy | N/A | N/A | No (Java) | **Yes** |
+| Beautiful default theme | OK | Great | Awful | **Great** (target) |
+| Zero-config quickstart | No | Almost | No | **Yes** |
 
 ## Current State (as of PR #40)
 
