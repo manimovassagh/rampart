@@ -1,28 +1,36 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
-	"github.com/manimovassagh/rampart/internal/database"
 )
+
+const statusAlive = "alive"
+const statusReady = "ready"
+
+// Pinger checks database connectivity.
+type Pinger interface {
+	Ping(ctx context.Context) error
+}
 
 // HealthHandler provides liveness and readiness endpoints.
 type HealthHandler struct {
-	db *database.DB
+	db Pinger
 }
 
 // NewHealthHandler creates a handler with a database dependency for readiness checks.
-func NewHealthHandler(db *database.DB) *HealthHandler {
+func NewHealthHandler(db Pinger) *HealthHandler {
 	return &HealthHandler{db: db}
 }
 
 // Liveness returns 200 OK if the process is alive.
 // GET /healthz
 func (h *HealthHandler) Liveness(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "alive"})
+	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": statusAlive})
 }
 
 // Readiness returns 200 OK if the server is ready to handle requests.
@@ -34,6 +42,6 @@ func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": statusReady})
 }

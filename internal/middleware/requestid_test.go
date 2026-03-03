@@ -48,3 +48,10 @@ func TestGetRequestIDEmptyContext(t *testing.T) {
 		t.Errorf("GetRequestID(empty) = %q, want empty", id)
 	}
 }
+
+//nolint:staticcheck // SA1012: intentionally testing nil context for safety
+func TestGetRequestIDNilContext(t *testing.T) {
+	if id := GetRequestID(nil); id != "" {
+		t.Errorf("GetRequestID(nil) = %q, want empty", id)
+	}
+}

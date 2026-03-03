@@ -55,5 +55,7 @@ func (db *DB) Ping(ctx context.Context) error {
 
 // Close closes the connection pool.
 func (db *DB) Close() {
-	db.Pool.Close()
+	if db.Pool != nil {
+		db.Pool.Close()
+	}
 }

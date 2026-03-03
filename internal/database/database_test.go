@@ -23,3 +23,17 @@ func TestConnectMalformedURL(t *testing.T) {
 		t.Fatal("expected error for malformed URL")
 	}
 }
+
+func TestPingNilPool(t *testing.T) {
+	db := &DB{}
+	err := db.Ping(context.Background())
+	if err == nil {
+		t.Fatal("expected error pinging nil pool")
+	}
+}
+
+func TestCloseNilPool(t *testing.T) {
+	db := &DB{}
+	// Should not panic
+	db.Close()
+}

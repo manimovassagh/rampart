@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -41,7 +42,7 @@ func New(addr string, router *chi.Mux, logger *slog.Logger) *Server {
 func (s *Server) Start() error {
 	s.logger.Info("server starting", "addr", s.httpServer.Addr)
 	err := s.httpServer.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server listen: %w", err)
 	}
 	return nil

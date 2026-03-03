@@ -7,6 +7,9 @@ import (
 	"github.com/manimovassagh/rampart/internal/middleware"
 )
 
+// ContentTypeJSON is the standard JSON content type header value.
+const ContentTypeJSON = "application/json"
+
 // Error represents a consistent API error response.
 // Format matches docs/api/overview.md.
 type Error struct {
@@ -32,7 +35,7 @@ func Write(w http.ResponseWriter, status int, code, description string) {
 		RequestID:   reqID,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", ContentTypeJSON)
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(apiErr)
 }
