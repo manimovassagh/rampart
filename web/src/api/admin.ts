@@ -1,4 +1,5 @@
 import { getStoredTokens, refreshToken } from "./auth";
+import { getActiveOrgId } from "../hooks/useCurrentOrg";
 import type {
   DashboardStats,
   ListUsersResponse,
@@ -15,6 +16,12 @@ export async function authFetch(url: string, init?: RequestInit): Promise<Respon
     ...((init?.headers as Record<string, string>) ?? {}),
     Authorization: `Bearer ${accessToken}`,
   };
+
+  // Send active org context for org-scoped admin operations
+  const activeOrgId = getActiveOrgId();
+  if (activeOrgId) {
+    headers["X-Org-Context"] = activeOrgId;
+  }
 
   let res = await fetch(url, { ...init, headers });
 
