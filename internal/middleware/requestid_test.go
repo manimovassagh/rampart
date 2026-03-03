@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +15,7 @@ func TestRequestIDGeneratesNew(t *testing.T) {
 		}
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -32,7 +33,7 @@ func TestRequestIDPropagatesExisting(t *testing.T) {
 		}
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	req.Header.Set(HeaderRequestID, "my-custom-id")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -43,7 +44,7 @@ func TestRequestIDPropagatesExisting(t *testing.T) {
 }
 
 func TestGetRequestIDEmptyContext(t *testing.T) {
-	if id := GetRequestID(nil); id != "" {
-		t.Errorf("GetRequestID(nil) = %q, want empty", id)
+	if id := GetRequestID(context.TODO()); id != "" {
+		t.Errorf("GetRequestID(empty) = %q, want empty", id)
 	}
 }

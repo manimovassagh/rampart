@@ -1,0 +1,44 @@
+services:
+  rampart:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      RAMPART_PORT: "8080"
+      RAMPART_DB_URL: "postgres://rampart:rampart@postgres:5432/rampart?sslmode=disable"
+      RAMPART_REDIS_URL: "redis://redis:6379/0"
+      RAMPART_LOG_LEVEL: "debug"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rampart
+      POSTGRES_PASSWORD: rampart
+      POSTGRES_DB: rampart
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rampart"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

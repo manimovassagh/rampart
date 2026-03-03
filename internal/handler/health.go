@@ -20,9 +20,9 @@ func NewHealthHandler(db *database.DB) *HealthHandler {
 
 // Liveness returns 200 OK if the process is alive.
 // GET /healthz
-func (h *HealthHandler) Liveness(w http.ResponseWriter, r *http.Request) {
+func (h *HealthHandler) Liveness(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "alive"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "alive"})
 }
 
 // Readiness returns 200 OK if the server is ready to handle requests.
@@ -35,5 +35,5 @@ func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 }

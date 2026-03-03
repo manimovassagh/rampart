@@ -6,22 +6,23 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/manimovassagh/rampart/internal/middleware"
 )
 
 func TestNewRouterMiddlewareChain(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	r := NewRouter(logger)
 
-	RegisterHealthRoutes(r, func(w http.ResponseWriter, r *http.Request) {
+	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"alive"}`))
-	}, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"alive"}`))
+	}, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ready"}`))
+		_, _ = w.Write([]byte(`{"status":"ready"}`))
 	})
 
-	// Test healthz
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req := httptest.NewRequest(http.MethodGet, "/healthz", http.NoBody)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -29,8 +30,7 @@ func TestNewRouterMiddlewareChain(t *testing.T) {
 		t.Errorf("healthz status = %d, want %d", w.Code, http.StatusOK)
 	}
 
-	// Verify request ID middleware ran
-	if w.Header().Get("X-Request-Id") == "" {
+	if w.Header().Get(middleware.HeaderRequestID) == "" {
 		t.Error("expected X-Request-Id header from middleware")
 	}
 }
@@ -39,7 +39,7 @@ func TestNewRouterNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	r := NewRouter(logger)
 
-	req := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
+	req := httptest.NewRequest(http.MethodGet, "/nonexistent", http.NoBody)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

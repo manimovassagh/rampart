@@ -16,23 +16,27 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
+	if err := run(logger); err != nil {
+		logger.Error("fatal error", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run(logger *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		os.Exit(1)
+		return err
 	}
 
 	ctx := context.Background()
 	db, err := database.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
-		logger.Error("failed to connect to database", "error", err)
-		os.Exit(1)
+		return err
 	}
 	defer db.Close()
 
 	if err := database.RunMigrations(cfg.DatabaseURL, "migrations", logger); err != nil {
-		logger.Error("failed to run migrations", "error", err)
-		os.Exit(1)
+		return err
 	}
 
 	router := server.NewRouter(logger)
@@ -41,13 +45,11 @@ func main() {
 
 	srv := server.New(cfg.Addr(), router, logger)
 
-	// Start server in a goroutine
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.Start()
 	}()
 
-	// Wait for interrupt signal or server error
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
@@ -56,12 +58,9 @@ func main() {
 		logger.Info("received signal, shutting down", "signal", sig)
 	case err := <-errCh:
 		if err != nil {
-			logger.Error("server error", "error", err)
+			return err
 		}
 	}
 
-	if err := srv.Shutdown(); err != nil {
-		logger.Error("shutdown error", "error", err)
-		os.Exit(1)
-	}
+	return srv.Shutdown()
 }

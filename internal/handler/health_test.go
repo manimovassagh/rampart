@@ -11,7 +11,7 @@ import (
 
 func TestLiveness(t *testing.T) {
 	h := NewHealthHandler(&database.DB{})
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req := httptest.NewRequest(http.MethodGet, "/healthz", http.NoBody)
 	w := httptest.NewRecorder()
 
 	h.Liveness(w, req)
@@ -32,7 +32,7 @@ func TestLiveness(t *testing.T) {
 func TestReadinessNoPool(t *testing.T) {
 	// DB with nil pool simulates a disconnected database
 	h := NewHealthHandler(&database.DB{})
-	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	req := httptest.NewRequest(http.MethodGet, "/readyz", http.NoBody)
 	w := httptest.NewRecorder()
 
 	h.Readiness(w, req)

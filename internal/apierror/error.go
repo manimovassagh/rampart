@@ -34,7 +34,7 @@ func Write(w http.ResponseWriter, status int, code, description string) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(apiErr)
+	_ = json.NewEncoder(w).Encode(apiErr)
 }
 
 // NotFound writes a 404 error response.

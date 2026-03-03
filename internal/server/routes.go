@@ -34,7 +34,7 @@ func NewRouter(logger *slog.Logger) *chi.Mux {
 }
 
 // RegisterHealthRoutes mounts the health check endpoints.
-func RegisterHealthRoutes(r *chi.Mux, healthHandler http.HandlerFunc, readyHandler http.HandlerFunc) {
+func RegisterHealthRoutes(r *chi.Mux, healthHandler, readyHandler http.HandlerFunc) {
 	r.Get("/healthz", healthHandler)
 	r.Get("/readyz", readyHandler)
 }
