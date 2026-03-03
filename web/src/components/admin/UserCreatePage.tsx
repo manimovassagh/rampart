@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createUser } from "../../api/admin";
+import { useCurrentOrg } from "../../hooks/useCurrentOrg";
 import { toast } from "./Toast";
 
 interface UserCreatePageProps {
@@ -7,6 +8,7 @@ interface UserCreatePageProps {
 }
 
 export default function UserCreatePage({ onNavigate }: UserCreatePageProps) {
+  const { org } = useCurrentOrg();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,9 +48,19 @@ export default function UserCreatePage({ onNavigate }: UserCreatePageProps) {
       </button>
 
       <h1 className="text-2xl font-bold text-slate-900">Create User</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Add a new user to the system
-      </p>
+
+      {/* Org context banner — never forget which org you're creating in */}
+      {org && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5">
+          <div className="flex h-6 w-6 items-center justify-center rounded bg-indigo-100 text-xs font-bold text-indigo-700">
+            {(org.display_name || org.name).charAt(0).toUpperCase()}
+          </div>
+          <p className="text-sm text-indigo-800">
+            Creating user in{" "}
+            <span className="font-semibold">{org.display_name || org.name}</span>
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
