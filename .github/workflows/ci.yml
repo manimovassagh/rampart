@@ -50,7 +50,7 @@ jobs:
           RAMPART_DB_URL: postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable
         run: go test -race -count=1 -coverprofile=coverage.out ./...
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.out
