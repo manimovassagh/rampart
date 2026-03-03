@@ -58,3 +58,33 @@ func RegisterProtectedRoutes(r *chi.Mux, jwtSecret string, meHandler http.Handle
 		r.Get("/me", meHandler)
 	})
 }
+
+// AdminEndpoints groups the handler methods needed by RegisterAdminRoutes.
+type AdminEndpoints interface {
+	Stats(w http.ResponseWriter, r *http.Request)
+	ListUsers(w http.ResponseWriter, r *http.Request)
+	CreateUser(w http.ResponseWriter, r *http.Request)
+	GetUser(w http.ResponseWriter, r *http.Request)
+	UpdateUser(w http.ResponseWriter, r *http.Request)
+	DeleteUser(w http.ResponseWriter, r *http.Request)
+	ResetPassword(w http.ResponseWriter, r *http.Request)
+	ListSessions(w http.ResponseWriter, r *http.Request)
+	RevokeSessions(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterAdminRoutes mounts admin console endpoints under /api/v1/admin.
+func RegisterAdminRoutes(r *chi.Mux, jwtSecret string, admin AdminEndpoints) {
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(jwtSecret))
+
+		r.Get("/api/v1/admin/stats", admin.Stats)
+		r.Get("/api/v1/admin/users", admin.ListUsers)
+		r.Post("/api/v1/admin/users", admin.CreateUser)
+		r.Get("/api/v1/admin/users/{id}", admin.GetUser)
+		r.Put("/api/v1/admin/users/{id}", admin.UpdateUser)
+		r.Delete("/api/v1/admin/users/{id}", admin.DeleteUser)
+		r.Post("/api/v1/admin/users/{id}/reset-password", admin.ResetPassword)
+		r.Get("/api/v1/admin/users/{id}/sessions", admin.ListSessions)
+		r.Delete("/api/v1/admin/users/{id}/sessions", admin.RevokeSessions)
+	})
+}

@@ -60,6 +60,9 @@ func run(_ *slog.Logger) error {
 
 	server.RegisterProtectedRoutes(router, cfg.JWTSecret, handler.Me)
 
+	adminHandler := handler.NewAdminHandler(db, sessionStore, logger)
+	server.RegisterAdminRoutes(router, cfg.JWTSecret, adminHandler)
+
 	srv := server.New(cfg.Addr(), router, logger)
 
 	errCh := make(chan error, 1)
