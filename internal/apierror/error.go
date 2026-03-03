@@ -62,3 +62,42 @@ func BadRequest(w http.ResponseWriter, description string) {
 func ServiceUnavailable(w http.ResponseWriter, description string) {
 	Write(w, http.StatusServiceUnavailable, "service_unavailable", description)
 }
+
+// Conflict writes a 409 error response.
+func Conflict(w http.ResponseWriter, description string) {
+	Write(w, http.StatusConflict, "conflict", description)
+}
+
+// ValidationError is a 400 response with per-field errors.
+type ValidationError struct {
+	Code        string       `json:"error"`
+	Description string       `json:"error_description"`
+	Status      int          `json:"status"`
+	RequestID   string       `json:"request_id,omitempty"`
+	Fields      []FieldError `json:"fields"`
+}
+
+// FieldError identifies a validation problem with a specific field.
+type FieldError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+// WriteValidation sends a 400 response with field-level validation errors.
+func WriteValidation(w http.ResponseWriter, fields []FieldError) {
+	reqID := w.Header().Get(middleware.HeaderRequestID)
+
+	ve := &ValidationError{
+		Code:        "validation_error",
+		Description: "One or more fields failed validation.",
+		Status:      http.StatusBadRequest,
+		RequestID:   reqID,
+		Fields:      fields,
+	}
+
+	w.Header().Set("Content-Type", ContentTypeJSON)
+	w.WriteHeader(http.StatusBadRequest)
+	if err := json.NewEncoder(w).Encode(ve); err != nil {
+		slog.Error("failed to encode validation error response", "error", err)
+	}
+}
