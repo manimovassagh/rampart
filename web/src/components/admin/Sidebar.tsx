@@ -14,6 +14,7 @@ const navItems = [
   { id: "dashboard", label: "Dashboard", icon: ChartIcon },
   { id: "users", label: "Users", icon: UsersIcon },
   { id: "organizations", label: "Organizations", icon: OrgIcon },
+  { id: "oidc", label: "OIDC", icon: KeyIcon },
 ];
 
 export default function Sidebar({
@@ -219,6 +220,14 @@ function OrgIcon({ className }: { className?: string }) {
         d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
         clipRule="evenodd"
       />
+    </svg>
+  );
+}
+
+function KeyIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path fillRule="evenodd" d="M8 7a5 5 0 113.61 4.804l-1.903 1.903A1 1 0 019 14H8v1a1 1 0 01-1 1H6v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 01.293-.707L8.196 8.39A5.002 5.002 0 018 7zm5-3a.75.75 0 000 1.5A1.5 1.5 0 0114.5 7 .75.75 0 0016 7a3 3 0 00-3-3z" clipRule="evenodd" />
     </svg>
   );
 }
