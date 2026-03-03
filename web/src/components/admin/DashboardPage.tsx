@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getStats } from "../../api/admin";
+import { useCurrentOrg } from "../../hooks/useCurrentOrg";
 import type { DashboardStats } from "../../types";
 
 interface DashboardPageProps {
@@ -7,6 +8,7 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const { org } = useCurrentOrg();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,10 +31,12 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     <div className="mx-auto max-w-5xl">
       <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Overview of your identity server
+        {org
+          ? `Managing ${org.display_name || org.name}`
+          : "Overview of your identity server"}
       </p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total Users"
           value={stats?.total_users ?? 0}
@@ -47,6 +51,11 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           label="New Users (7d)"
           value={stats?.recent_users ?? 0}
           color="bg-purple-50 text-purple-700"
+        />
+        <StatCard
+          label="Organizations"
+          value={stats?.total_organizations ?? 0}
+          color="bg-amber-50 text-amber-700"
         />
       </div>
 
