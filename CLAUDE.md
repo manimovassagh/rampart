@@ -15,8 +15,8 @@
 | Layer | Tech | Rationale |
 |-------|------|-----------|
 | Backend | Go | Single binary, low memory, fast startup |
-| Admin UI | Next.js + Tailwind | Modern DX, SSR capable |
-| Login/Consent UI | Next.js (SSR) | Themeable per-tenant |
+| Admin UI | React + Vite + Tailwind | Modern SPA, no Vercel dependency, embeds in Go binary |
+| Login/Consent UI | Go templates + Tailwind | Server-rendered by Go, themeable per-tenant, no JS framework needed |
 | Database | PostgreSQL | Battle-tested, JSONB for flexibility |
 | Cache/Sessions | Redis/Valkey | Session mgmt, token blacklisting |
 | Config | YAML + API-first | GitOps-friendly |
@@ -60,6 +60,7 @@ Key differentiators vs competitors:
 - No code without tests for core auth flows
 - Keep the binary small — avoid unnecessary dependencies
 - API-first: every feature must be accessible via REST API before building UI
+- **Keycloak-level quality** — this is not a toy project. Every feature must be production-grade, following RFCs and security best practices at the level of Keycloak, Ory, and Zitadel.
 
 ### Small Moves, Verify, Then Proceed
 - **Always work in small incremental steps.** Do one thing, verify it works (compile, test, lint), then move to the next.
@@ -82,6 +83,7 @@ Key differentiators vs competitors:
 - Branch naming: `feat/short-description`, `fix/short-description`, `chore/short-description`.
 - Every branch merges to main via a PR — no direct commits to main, ever.
 - PRs need a clear title and description of what changed and why.
+- **All PRs must be reviewed and approved by the project owner before merging.** No self-merging. The owner needs to understand and approve every code change.
 - Delete branches after merge — keep the repo clean.
 - Keep branches short-lived — don't let them drift far from main.
 - Rebase on main before merging if the branch is behind.
@@ -133,7 +135,7 @@ Key differentiators vs competitors:
 
 ### File & Package Organization
 - **Go code lives in the project root.** `main.go` at root, packages in `internal/`.
-- **Frontend (Next.js) lives in `client/`** — added later when UI work starts.
+- **Frontend (React + Vite) lives in `client/`** — added later when UI work starts.
 - `internal/` for private packages — keeps the public API surface small.
 - One concern per package. Don't put user management and OIDC in the same package.
 - Avoid circular dependencies — if two packages need each other, extract a shared interface.
@@ -164,3 +166,18 @@ Key differentiators vs competitors:
 - Chose stack: Go backend, Next.js frontend, PostgreSQL, Redis
 - Defined open-core model (community vs enterprise split)
 - Positioning: modern Keycloak alternative, single binary, great UX
+
+### 2026-03-03 — API Contract & Architecture Docs
+- Created full `docs/` folder with API contract, architecture, flows, SDK guide
+- Defined all OAuth 2.0/OIDC endpoints following RFCs exactly
+- Defined Admin API (`/api/v1/admin/`) and Account API (`/api/v1/account/`)
+- OpenAPI 3.0 spec (`docs/api/openapi.yaml`) as machine-readable source of truth
+- Architecture: C4 diagrams (system context, components), ER diagram, deployment
+- Sequence diagrams: auth code + PKCE, client credentials, token refresh, registration, MFA, device flow
+- SDK strategy: auto-generated from OpenAPI, framework adapters as thin wrappers
+- **Frontend decision: React + Vite + TanStack Router** (not Next.js — no Vercel dependency, login pages rendered by Go templates, admin dashboard is a pure SPA)
+- **Go backend: stdlib + chi router + pgx** (no ORM, no DI framework, minimal deps)
+- **Cloud-agnostic deployment**: AWS (EC2, ECS), Azure (Container Apps, VMs), GCP (Cloud Run, GCE) with Terraform modules
+- **CLI tool** (`rampart-cli`): management commands + Device Flow auth for developers
+- **Quality bar**: Keycloak-level. Production-grade, RFC-compliant, security-first.
+- **PR review rule**: all PRs must be reviewed and approved by the project owner
