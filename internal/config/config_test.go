@@ -49,6 +49,8 @@ func TestLoadEnvOverrides(t *testing.T) {
 }
 
 func TestLoadMissingDatabaseURL(t *testing.T) {
+	t.Setenv("RAMPART_DB_URL", "")
+
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error when RAMPART_DB_URL is not set")
