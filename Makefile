@@ -18,7 +18,7 @@ help:
 ## build: compile the binary
 build:
 	@mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(APP_NAME) .
+	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/rampart
 
 ## run: build and run the server
 run: build

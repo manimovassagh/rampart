@@ -134,9 +134,9 @@ Key differentiators vs competitors:
 - README.md is for users — keep it clean, practical, and up to date.
 
 ### File & Package Organization
-- **Go code lives in the project root.** `main.go` at root, packages in `internal/`.
+- **Entry point lives in `cmd/rampart/main.go`.** Standard Go project layout.
+- **Internal packages live in `internal/`.** Keeps the public API surface small.
 - **Frontend (React + Vite) lives in `client/`** — added later when UI work starts.
-- `internal/` for private packages — keeps the public API surface small.
 - One concern per package. Don't put user management and OIDC in the same package.
 - Avoid circular dependencies — if two packages need each other, extract a shared interface.
 
