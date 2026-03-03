@@ -1,0 +1,2483 @@
+openapi: 3.0.3
+info:
+  title: Rampart API
+  description: |
+    Rampart is a lightweight, modern identity and access management server.
+
+    ## API Domains
+
+    - **OAuth 2.0 / OIDC** — Standard protocol endpoints following RFCs
+    - **Admin API** — Full resource management (requires admin scope)
+    - **Account API** — Self-service for authenticated users
+    - **System** — Health and readiness checks
+
+    ## Authentication
+
+    - Admin API: Bearer token with `rampart:admin` scope
+    - Account API: Bearer token with valid user session
+    - OAuth/OIDC: Per-spec client authentication
+  version: 1.0.0
+  contact:
+    name: Rampart
+    url: https://github.com/manimovassagh/rampart
+  license:
+    name: AGPL-3.0
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://auth.example.com
+    description: Production (example)
+
+tags:
+  - name: OAuth
+    description: OAuth 2.0 protocol endpoints (RFC 6749)
+  - name: OIDC
+    description: OpenID Connect endpoints
+  - name: Discovery
+    description: Well-known discovery endpoints
+  - name: Admin - Organizations
+    description: Organization (tenant) management
+  - name: Admin - Users
+    description: User management
+  - name: Admin - Clients
+    description: OAuth client management
+  - name: Admin - Roles
+    description: Role and permission management
+  - name: Admin - Groups
+    description: Group management
+  - name: Admin - Identity Providers
+    description: External identity provider management
+  - name: Admin - Sessions
+    description: Session management
+  - name: Admin - Events
+    description: Audit log
+  - name: Account
+    description: Self-service account management
+  - name: System
+    description: Health and readiness
+
+paths:
+  # ─── OAuth 2.0 Endpoints ───────────────────────────────────────────
+
+  /oauth/authorize:
+    get:
+      tags: [OAuth]
+      summary: Authorization endpoint
+      description: |
+        Initiates an OAuth 2.0 authorization flow. Redirects the user to the
+        login page if not already authenticated. Supports Authorization Code
+        flow with PKCE (RFC 7636).
+      operationId: authorize
+      parameters:
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [code]
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Space-delimited scopes. Include "openid" for OIDC.
+        - name: state
+          in: query
+          schema:
+            type: string
+          description: CSRF protection value
+        - name: code_challenge
+          in: query
+          schema:
+            type: string
+          description: PKCE code challenge (required for public clients)
+        - name: code_challenge_method
+          in: query
+          schema:
+            type: string
+            enum: [S256]
+        - name: nonce
+          in: query
+          schema:
+            type: string
+          description: Binds ID token to session (recommended for OIDC)
+        - name: prompt
+          in: query
+          schema:
+            type: string
+            enum: [none, login, consent, select_account]
+        - name: login_hint
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to login or back to client with authorization code
+        "400":
+          description: Invalid request (missing or invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthError"
+
+  /oauth/token:
+    post:
+      tags: [OAuth]
+      summary: Token endpoint
+      description: |
+        Exchanges an authorization code, refresh token, client credentials,
+        or device code for access and refresh tokens.
+      operationId: token
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type]
+              properties:
+                grant_type:
+                  type: string
+                  enum:
+                    - authorization_code
+                    - refresh_token
+                    - client_credentials
+                    - "urn:ietf:params:oauth:grant-type:device_code"
+                code:
+                  type: string
+                  description: Authorization code (for authorization_code grant)
+                redirect_uri:
+                  type: string
+                  format: uri
+                code_verifier:
+                  type: string
+                  description: PKCE code verifier
+                refresh_token:
+                  type: string
+                  description: Refresh token (for refresh_token grant)
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                scope:
+                  type: string
+                device_code:
+                  type: string
+                  description: Device code (for device_code grant)
+      responses:
+        "200":
+          description: Token response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthError"
+        "401":
+          description: Invalid client authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthError"
+
+  /oauth/revoke:
+    post:
+      tags: [OAuth]
+      summary: Revoke token
+      description: Revokes an access or refresh token (RFC 7009). Always returns 200.
+      operationId: revokeToken
+      security:
+        - clientBasic: []
+        - clientPost: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                token_type_hint:
+                  type: string
+                  enum: [access_token, refresh_token]
+      responses:
+        "200":
+          description: Token revoked (or was already invalid)
+
+  /oauth/introspect:
+    post:
+      tags: [OAuth]
+      summary: Introspect token
+      description: Returns metadata about a token (RFC 7662). Requires client authentication.
+      operationId: introspectToken
+      security:
+        - clientBasic: []
+        - clientPost: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        "200":
+          description: Token introspection response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntrospectionResponse"
+
+  /oauth/device:
+    post:
+      tags: [OAuth]
+      summary: Device authorization
+      description: Initiates device authorization flow (RFC 8628) for CLIs and smart TVs.
+      operationId: deviceAuthorization
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id]
+              properties:
+                client_id:
+                  type: string
+                scope:
+                  type: string
+      responses:
+        "200":
+          description: Device authorization response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceAuthorizationResponse"
+
+  # ─── OIDC Endpoints ────────────────────────────────────────────────
+
+  /oidc/userinfo:
+    get:
+      tags: [OIDC]
+      summary: UserInfo endpoint
+      description: Returns claims about the authenticated user based on token scopes.
+      operationId: getUserInfo
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User claims
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfo"
+        "401":
+          description: Invalid or expired token
+
+  /oidc/logout:
+    get:
+      tags: [OIDC]
+      summary: End session
+      description: Ends the user's session and optionally redirects to the client.
+      operationId: logout
+      parameters:
+        - name: id_token_hint
+          in: query
+          schema:
+            type: string
+        - name: post_logout_redirect_uri
+          in: query
+          schema:
+            type: string
+            format: uri
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to post-logout URI or default page
+
+  # ─── Discovery ─────────────────────────────────────────────────────
+
+  /.well-known/openid-configuration:
+    get:
+      tags: [Discovery]
+      summary: OIDC Discovery document
+      description: Returns OpenID Connect Provider metadata.
+      operationId: getDiscovery
+      responses:
+        "200":
+          description: OIDC Discovery metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryDocument"
+
+  /.well-known/jwks.json:
+    get:
+      tags: [Discovery]
+      summary: JSON Web Key Set
+      description: Returns the public keys used to verify token signatures.
+      operationId: getJWKS
+      responses:
+        "200":
+          description: JWKS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JWKS"
+
+  # ─── Admin API: Organizations ──────────────────────────────────────
+
+  /api/v1/admin/organizations:
+    get:
+      tags: [Admin - Organizations]
+      summary: List organizations
+      operationId: listOrganizations
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Paginated list of organizations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationList"
+    post:
+      tags: [Admin - Organizations]
+      summary: Create organization
+      operationId: createOrganization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganization"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+
+  /api/v1/admin/organizations/{org_id}:
+    get:
+      tags: [Admin - Organizations]
+      summary: Get organization
+      operationId: getOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrgId"
+      responses:
+        "200":
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Admin - Organizations]
+      summary: Update organization
+      operationId: updateOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganization"
+      responses:
+        "200":
+          description: Organization updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+    delete:
+      tags: [Admin - Organizations]
+      summary: Delete organization
+      operationId: deleteOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrgId"
+      responses:
+        "204":
+          description: Organization deleted
+
+  /api/v1/admin/organizations/{org_id}/settings:
+    put:
+      tags: [Admin - Organizations]
+      summary: Update organization settings
+      operationId: updateOrganizationSettings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationSettings"
+      responses:
+        "200":
+          description: Settings updated
+
+  /api/v1/admin/organizations/{org_id}/branding:
+    put:
+      tags: [Admin - Organizations]
+      summary: Update organization branding
+      operationId: updateOrganizationBranding
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationBranding"
+      responses:
+        "200":
+          description: Branding updated
+
+  # ─── Admin API: Users ──────────────────────────────────────────────
+
+  /api/v1/admin/users:
+    get:
+      tags: [Admin - Users]
+      summary: List users
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, email, or username
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+        - name: org_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+    post:
+      tags: [Admin - Users]
+      summary: Create user
+      operationId: createUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUser"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /api/v1/admin/users/{user_id}:
+    get:
+      tags: [Admin - Users]
+      summary: Get user
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Admin - Users]
+      summary: Update user
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUser"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      tags: [Admin - Users]
+      summary: Delete user
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: User deleted
+
+  /api/v1/admin/users/{user_id}/reset-password:
+    post:
+      tags: [Admin - Users]
+      summary: Reset user password
+      operationId: resetUserPassword
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  format: password
+                temporary:
+                  type: boolean
+                  default: false
+                  description: User must change password on next login
+      responses:
+        "204":
+          description: Password reset
+
+  /api/v1/admin/users/{user_id}/disable:
+    post:
+      tags: [Admin - Users]
+      summary: Disable user
+      operationId: disableUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: User disabled
+
+  /api/v1/admin/users/{user_id}/enable:
+    post:
+      tags: [Admin - Users]
+      summary: Enable user
+      operationId: enableUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: User enabled
+
+  /api/v1/admin/users/{user_id}/sessions:
+    get:
+      tags: [Admin - Users]
+      summary: List user sessions
+      operationId: listUserSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+    delete:
+      tags: [Admin - Users]
+      summary: Revoke all user sessions
+      operationId: revokeUserSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: All sessions revoked
+
+  /api/v1/admin/users/{user_id}/roles:
+    get:
+      tags: [Admin - Users]
+      summary: List user role assignments
+      operationId: listUserRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
+    post:
+      tags: [Admin - Users]
+      summary: Assign roles to user
+      operationId: assignUserRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_ids]
+              properties:
+                role_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "204":
+          description: Roles assigned
+    delete:
+      tags: [Admin - Users]
+      summary: Remove roles from user
+      operationId: removeUserRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_ids]
+              properties:
+                role_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "204":
+          description: Roles removed
+
+  # ─── Admin API: Clients ────────────────────────────────────────────
+
+  /api/v1/admin/clients:
+    get:
+      tags: [Admin - Clients]
+      summary: List clients
+      operationId: listClients
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Paginated list of clients
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientList"
+    post:
+      tags: [Admin - Clients]
+      summary: Create client
+      operationId: createClient
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClient"
+      responses:
+        "201":
+          description: Client created (includes secret for confidential clients)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientWithSecret"
+
+  /api/v1/admin/clients/{client_id}:
+    get:
+      tags: [Admin - Clients]
+      summary: Get client
+      operationId: getClient
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClientId"
+      responses:
+        "200":
+          description: Client details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Admin - Clients]
+      summary: Update client
+      operationId: updateClient
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClientId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClient"
+      responses:
+        "200":
+          description: Client updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+    delete:
+      tags: [Admin - Clients]
+      summary: Delete client
+      operationId: deleteClient
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClientId"
+      responses:
+        "204":
+          description: Client deleted
+
+  /api/v1/admin/clients/{client_id}/rotate-secret:
+    post:
+      tags: [Admin - Clients]
+      summary: Rotate client secret
+      operationId: rotateClientSecret
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClientId"
+      responses:
+        "200":
+          description: New secret (old secret valid for grace period)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client_secret:
+                    type: string
+                  previous_secret_expires_at:
+                    type: string
+                    format: date-time
+
+  # ─── Admin API: Roles ──────────────────────────────────────────────
+
+  /api/v1/admin/roles:
+    get:
+      tags: [Admin - Roles]
+      summary: List roles
+      operationId: listRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Paginated list of roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
+    post:
+      tags: [Admin - Roles]
+      summary: Create role
+      operationId: createRole
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRole"
+      responses:
+        "201":
+          description: Role created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+
+  /api/v1/admin/roles/{role_id}:
+    get:
+      tags: [Admin - Roles]
+      summary: Get role
+      operationId: getRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      responses:
+        "200":
+          description: Role details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+    put:
+      tags: [Admin - Roles]
+      summary: Update role
+      operationId: updateRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRole"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+    delete:
+      tags: [Admin - Roles]
+      summary: Delete role
+      operationId: deleteRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      responses:
+        "204":
+          description: Role deleted
+
+  /api/v1/admin/roles/{role_id}/permissions:
+    get:
+      tags: [Admin - Roles]
+      summary: List role permissions
+      operationId: listRolePermissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      responses:
+        "200":
+          description: Role permissions
+    post:
+      tags: [Admin - Roles]
+      summary: Assign permissions to role
+      operationId: assignRolePermissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permission_ids]
+              properties:
+                permission_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "204":
+          description: Permissions assigned
+    delete:
+      tags: [Admin - Roles]
+      summary: Remove permissions from role
+      operationId: removeRolePermissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permission_ids]
+              properties:
+                permission_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "204":
+          description: Permissions removed
+
+  /api/v1/admin/roles/{role_id}/users:
+    get:
+      tags: [Admin - Roles]
+      summary: List users with role
+      operationId: listRoleUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      responses:
+        "200":
+          description: Users with this role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+
+  # ─── Admin API: Groups ─────────────────────────────────────────────
+
+  /api/v1/admin/groups:
+    get:
+      tags: [Admin - Groups]
+      summary: List groups
+      operationId: listGroups
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Paginated list of groups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupList"
+    post:
+      tags: [Admin - Groups]
+      summary: Create group
+      operationId: createGroup
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGroup"
+      responses:
+        "201":
+          description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+
+  /api/v1/admin/groups/{group_id}:
+    get:
+      tags: [Admin - Groups]
+      summary: Get group
+      operationId: getGroup
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      responses:
+        "200":
+          description: Group details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+    put:
+      tags: [Admin - Groups]
+      summary: Update group
+      operationId: updateGroup
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGroup"
+      responses:
+        "200":
+          description: Group updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+    delete:
+      tags: [Admin - Groups]
+      summary: Delete group
+      operationId: deleteGroup
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      responses:
+        "204":
+          description: Group deleted
+
+  /api/v1/admin/groups/{group_id}/members:
+    get:
+      tags: [Admin - Groups]
+      summary: List group members
+      operationId: listGroupMembers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      responses:
+        "200":
+          description: Group members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+    post:
+      tags: [Admin - Groups]
+      summary: Add members to group
+      operationId: addGroupMembers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_ids]
+              properties:
+                user_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "204":
+          description: Members added
+    delete:
+      tags: [Admin - Groups]
+      summary: Remove members from group
+      operationId: removeGroupMembers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_ids]
+              properties:
+                user_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "204":
+          description: Members removed
+
+  /api/v1/admin/groups/{group_id}/roles:
+    get:
+      tags: [Admin - Groups]
+      summary: List group role assignments
+      operationId: listGroupRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      responses:
+        "200":
+          description: Group roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
+    post:
+      tags: [Admin - Groups]
+      summary: Assign roles to group
+      operationId: assignGroupRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_ids]
+              properties:
+                role_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "204":
+          description: Roles assigned
+
+  # ─── Admin API: Identity Providers ─────────────────────────────────
+
+  /api/v1/admin/identity-providers:
+    get:
+      tags: [Admin - Identity Providers]
+      summary: List identity providers
+      operationId: listIdentityProviders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: org_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Identity providers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityProviderList"
+    post:
+      tags: [Admin - Identity Providers]
+      summary: Create identity provider
+      operationId: createIdentityProvider
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIdentityProvider"
+      responses:
+        "201":
+          description: Identity provider created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityProvider"
+
+  /api/v1/admin/identity-providers/{idp_id}:
+    get:
+      tags: [Admin - Identity Providers]
+      summary: Get identity provider
+      operationId: getIdentityProvider
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdpId"
+      responses:
+        "200":
+          description: Identity provider details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityProvider"
+    put:
+      tags: [Admin - Identity Providers]
+      summary: Update identity provider
+      operationId: updateIdentityProvider
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdpId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIdentityProvider"
+      responses:
+        "200":
+          description: Identity provider updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityProvider"
+    delete:
+      tags: [Admin - Identity Providers]
+      summary: Delete identity provider
+      operationId: deleteIdentityProvider
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdpId"
+      responses:
+        "204":
+          description: Identity provider deleted
+
+  # ─── Admin API: Sessions ───────────────────────────────────────────
+
+  /api/v1/admin/sessions:
+    get:
+      tags: [Admin - Sessions]
+      summary: List active sessions
+      operationId: listSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: user_id
+          in: query
+          schema:
+            type: string
+        - name: client_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Active sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+
+  /api/v1/admin/sessions/{session_id}:
+    delete:
+      tags: [Admin - Sessions]
+      summary: Revoke session
+      operationId: revokeSession
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session revoked
+
+  /api/v1/admin/sessions/revoke-all:
+    post:
+      tags: [Admin - Sessions]
+      summary: Revoke all sessions for a user
+      operationId: revokeAllSessions
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:
+                  type: string
+      responses:
+        "204":
+          description: All sessions revoked
+
+  # ─── Admin API: Events ─────────────────────────────────────────────
+
+  /api/v1/admin/events:
+    get:
+      tags: [Admin - Events]
+      summary: List audit events
+      operationId: listEvents
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: type
+          in: query
+          schema:
+            type: string
+          description: "Event type (e.g., user.login, client.created)"
+        - name: user_id
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: org_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventList"
+
+  # ─── Account API ───────────────────────────────────────────────────
+
+  /api/v1/account/profile:
+    get:
+      tags: [Account]
+      summary: Get own profile
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    put:
+      tags: [Account]
+      summary: Update own profile
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfile"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /api/v1/account/password:
+    put:
+      tags: [Account]
+      summary: Change own password
+      operationId: changePassword
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          description: Weak password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Current password incorrect
+
+  /api/v1/account/sessions:
+    get:
+      tags: [Account]
+      summary: List own sessions
+      operationId: listOwnSessions
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Own sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+
+  /api/v1/account/sessions/{session_id}:
+    delete:
+      tags: [Account]
+      summary: Revoke own session
+      operationId: revokeOwnSession
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session revoked
+
+  /api/v1/account/mfa/enroll:
+    post:
+      tags: [Account]
+      summary: Start MFA enrollment
+      operationId: enrollMFA
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [totp, webauthn]
+      responses:
+        "200":
+          description: MFA enrollment started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MFAEnrollment"
+
+  /api/v1/account/mfa/verify:
+    post:
+      tags: [Account]
+      summary: Verify MFA setup
+      operationId: verifyMFA
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        "204":
+          description: MFA verified and active
+        "400":
+          description: Invalid code
+
+  /api/v1/account/mfa:
+    delete:
+      tags: [Account]
+      summary: Remove MFA
+      operationId: removeMFA
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password]
+              properties:
+                current_password:
+                  type: string
+                  format: password
+      responses:
+        "204":
+          description: MFA removed
+
+  # ─── System ────────────────────────────────────────────────────────
+
+  /healthz:
+    get:
+      tags: [System]
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /readyz:
+    get:
+      tags: [System]
+      summary: Readiness check
+      description: Returns 200 when the server is ready to accept traffic (DB and cache connected).
+      operationId: readinessCheck
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: ok
+                      cache:
+                        type: string
+                        example: ok
+        "503":
+          description: Not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    clientBasic:
+      type: http
+      scheme: basic
+      description: Client ID and secret via HTTP Basic
+    clientPost:
+      type: apiKey
+      in: query
+      name: client_secret
+      description: Client secret as form parameter
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    OrgId:
+      name: org_id
+      in: path
+      required: true
+      schema:
+        type: string
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+    ClientId:
+      name: client_id
+      in: path
+      required: true
+      schema:
+        type: string
+    RoleId:
+      name: role_id
+      in: path
+      required: true
+      schema:
+        type: string
+    GroupId:
+      name: group_id
+      in: path
+      required: true
+      schema:
+        type: string
+    IdpId:
+      name: idp_id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+  schemas:
+    # ─── Common ────────────────────────────────────────────────────
+
+    ApiError:
+      type: object
+      required: [error, error_description, status]
+      properties:
+        error:
+          type: string
+        error_description:
+          type: string
+        status:
+          type: integer
+        request_id:
+          type: string
+
+    OAuthError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: "RFC 6749 error code"
+        error_description:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        has_more:
+          type: boolean
+        next_cursor:
+          type: string
+          nullable: true
+
+    # ─── OAuth/OIDC ────────────────────────────────────────────────
+
+    TokenResponse:
+      type: object
+      required: [access_token, token_type]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+        id_token:
+          type: string
+        scope:
+          type: string
+
+    IntrospectionResponse:
+      type: object
+      required: [active]
+      properties:
+        active:
+          type: boolean
+        scope:
+          type: string
+        client_id:
+          type: string
+        username:
+          type: string
+        token_type:
+          type: string
+        exp:
+          type: integer
+        iat:
+          type: integer
+        sub:
+          type: string
+        iss:
+          type: string
+        aud:
+          type: string
+
+    DeviceAuthorizationResponse:
+      type: object
+      required: [device_code, user_code, verification_uri, expires_in, interval]
+      properties:
+        device_code:
+          type: string
+        user_code:
+          type: string
+        verification_uri:
+          type: string
+          format: uri
+        verification_uri_complete:
+          type: string
+          format: uri
+        expires_in:
+          type: integer
+        interval:
+          type: integer
+
+    UserInfo:
+      type: object
+      required: [sub]
+      properties:
+        sub:
+          type: string
+        name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        phone_number:
+          type: string
+        phone_number_verified:
+          type: boolean
+        picture:
+          type: string
+          format: uri
+        updated_at:
+          type: integer
+
+    DiscoveryDocument:
+      type: object
+      properties:
+        issuer:
+          type: string
+        authorization_endpoint:
+          type: string
+        token_endpoint:
+          type: string
+        userinfo_endpoint:
+          type: string
+        jwks_uri:
+          type: string
+        scopes_supported:
+          type: array
+          items:
+            type: string
+        response_types_supported:
+          type: array
+          items:
+            type: string
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+        subject_types_supported:
+          type: array
+          items:
+            type: string
+        id_token_signing_alg_values_supported:
+          type: array
+          items:
+            type: string
+        token_endpoint_auth_methods_supported:
+          type: array
+          items:
+            type: string
+        code_challenge_methods_supported:
+          type: array
+          items:
+            type: string
+        claims_supported:
+          type: array
+          items:
+            type: string
+
+    JWKS:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              kty:
+                type: string
+              use:
+                type: string
+              alg:
+                type: string
+              kid:
+                type: string
+              n:
+                type: string
+              e:
+                type: string
+              crv:
+                type: string
+              x:
+                type: string
+              "y":
+                type: string
+
+    # ─── Organizations ─────────────────────────────────────────────
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        display_name:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateOrganization:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        display_name:
+          type: string
+
+    UpdateOrganization:
+      type: object
+      properties:
+        display_name:
+          type: string
+        enabled:
+          type: boolean
+
+    OrganizationList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Organization"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    OrganizationSettings:
+      type: object
+      properties:
+        session_lifetime:
+          type: integer
+        mfa_policy:
+          type: string
+          enum: [disabled, optional, required]
+        password_policy:
+          type: object
+          properties:
+            min_length:
+              type: integer
+            require_uppercase:
+              type: boolean
+            require_number:
+              type: boolean
+            require_special:
+              type: boolean
+        allowed_redirect_domains:
+          type: array
+          items:
+            type: string
+
+    OrganizationBranding:
+      type: object
+      properties:
+        logo_url:
+          type: string
+          format: uri
+        primary_color:
+          type: string
+        background_color:
+          type: string
+        custom_css:
+          type: string
+
+    # ─── Users ─────────────────────────────────────────────────────
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        given_name:
+          type: string
+        family_name:
+          type: string
+        enabled:
+          type: boolean
+        mfa_enabled:
+          type: boolean
+        org_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    CreateUser:
+      type: object
+      required: [username, email, password, org_id]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        given_name:
+          type: string
+        family_name:
+          type: string
+        password:
+          type: string
+          format: password
+        email_verified:
+          type: boolean
+          default: false
+        enabled:
+          type: boolean
+          default: true
+        org_id:
+          type: string
+
+    UpdateUser:
+      type: object
+      properties:
+        given_name:
+          type: string
+        family_name:
+          type: string
+        enabled:
+          type: boolean
+
+    UserList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        given_name:
+          type: string
+        family_name:
+          type: string
+        picture:
+          type: string
+          format: uri
+        phone_number:
+          type: string
+        phone_number_verified:
+          type: boolean
+        mfa_enabled:
+          type: boolean
+        org_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpdateProfile:
+      type: object
+      properties:
+        given_name:
+          type: string
+        family_name:
+          type: string
+        picture:
+          type: string
+          format: uri
+        phone_number:
+          type: string
+
+    # ─── Clients ───────────────────────────────────────────────────
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+        client_id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [public, confidential]
+        grant_types:
+          type: array
+          items:
+            type: string
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+        post_logout_redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+        allowed_scopes:
+          type: array
+          items:
+            type: string
+        token_endpoint_auth_method:
+          type: string
+          enum: [none, client_secret_basic, client_secret_post, private_key_jwt]
+        enabled:
+          type: boolean
+        org_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ClientWithSecret:
+      allOf:
+        - $ref: "#/components/schemas/Client"
+        - type: object
+          properties:
+            client_secret:
+              type: string
+              description: Only returned on creation
+
+    CreateClient:
+      type: object
+      required: [client_id, name, type, grant_types, org_id]
+      properties:
+        client_id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [public, confidential]
+        grant_types:
+          type: array
+          items:
+            type: string
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+        post_logout_redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+        allowed_scopes:
+          type: array
+          items:
+            type: string
+        token_endpoint_auth_method:
+          type: string
+          enum: [none, client_secret_basic, client_secret_post, private_key_jwt]
+          default: client_secret_basic
+        org_id:
+          type: string
+
+    UpdateClient:
+      type: object
+      properties:
+        name:
+          type: string
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+        post_logout_redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+        allowed_scopes:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+
+    ClientList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Client"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ─── Roles ─────────────────────────────────────────────────────
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        display_name:
+          type: string
+        description:
+          type: string
+        org_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateRole:
+      type: object
+      required: [name, org_id]
+      properties:
+        name:
+          type: string
+        display_name:
+          type: string
+        description:
+          type: string
+        org_id:
+          type: string
+
+    UpdateRole:
+      type: object
+      properties:
+        display_name:
+          type: string
+        description:
+          type: string
+
+    RoleList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ─── Groups ────────────────────────────────────────────────────
+
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        display_name:
+          type: string
+        org_id:
+          type: string
+        member_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    CreateGroup:
+      type: object
+      required: [name, org_id]
+      properties:
+        name:
+          type: string
+        display_name:
+          type: string
+        org_id:
+          type: string
+
+    UpdateGroup:
+      type: object
+      properties:
+        display_name:
+          type: string
+
+    GroupList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Group"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ─── Identity Providers ────────────────────────────────────────
+
+    IdentityProvider:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [oidc, saml, google, github, apple, microsoft]
+        name:
+          type: string
+        enabled:
+          type: boolean
+        config:
+          type: object
+          description: Provider-specific configuration
+        attribute_mapping:
+          type: object
+          additionalProperties:
+            type: string
+        org_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateIdentityProvider:
+      type: object
+      required: [type, name, config, org_id]
+      properties:
+        type:
+          type: string
+          enum: [oidc, saml, google, github, apple, microsoft]
+        name:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        config:
+          type: object
+        attribute_mapping:
+          type: object
+          additionalProperties:
+            type: string
+        org_id:
+          type: string
+
+    UpdateIdentityProvider:
+      type: object
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        config:
+          type: object
+        attribute_mapping:
+          type: object
+          additionalProperties:
+            type: string
+
+    IdentityProviderList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/IdentityProvider"
+
+    # ─── Sessions ──────────────────────────────────────────────────
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        last_active_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: Whether this is the session making the request
+
+    SessionList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+
+    # ─── Events ────────────────────────────────────────────────────
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        user_id:
+          type: string
+          nullable: true
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+        details:
+          type: object
+        org_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    EventList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ─── MFA ───────────────────────────────────────────────────────
+
+    MFAEnrollment:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [totp, webauthn]
+        secret:
+          type: string
+          description: TOTP secret (only for totp type)
+        uri:
+          type: string
+          description: otpauth:// URI for authenticator apps
+        qr_code:
+          type: string
+          description: Base64-encoded QR code image
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          description: One-time recovery codes (shown only once)
