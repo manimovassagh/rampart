@@ -15,6 +15,7 @@ export default defineConfig({
       '/healthz': 'http://localhost:8080',
       '/readyz': 'http://localhost:8080',
       '/api': 'http://localhost:8080',
+      '/.well-known': 'http://localhost:8080',
     },
   },
 })
