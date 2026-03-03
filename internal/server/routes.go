@@ -38,3 +38,8 @@ func RegisterHealthRoutes(r *chi.Mux, healthHandler, readyHandler http.HandlerFu
 	r.Get("/healthz", healthHandler)
 	r.Get("/readyz", readyHandler)
 }
+
+// RegisterAuthRoutes mounts authentication-related endpoints.
+func RegisterAuthRoutes(r *chi.Mux, registerHandler http.HandlerFunc) {
+	r.Post("/register", registerHandler)
+}

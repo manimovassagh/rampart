@@ -95,3 +95,51 @@ func TestErrorMethod(t *testing.T) {
 		t.Errorf("Error() = %q, want 'test error'", e.Error())
 	}
 }
+
+func TestConflict(t *testing.T) {
+	w := httptest.NewRecorder()
+	Conflict(w, "email already exists")
+
+	assertStatus(t, w.Code, http.StatusConflict)
+	got := decodeError(t, w)
+	if got.Code != "conflict" {
+		t.Errorf("error = %q, want conflict", got.Code)
+	}
+	if got.Description != "email already exists" {
+		t.Errorf("description = %q, want 'email already exists'", got.Description)
+	}
+}
+
+func TestWriteValidation(t *testing.T) {
+	w := httptest.NewRecorder()
+	w.Header().Set("X-Request-Id", "req_val123")
+
+	fields := []FieldError{
+		{Field: "email", Message: "email is required"},
+		{Field: "password", Message: "password must be at least 8 characters"},
+	}
+	WriteValidation(w, fields)
+
+	assertStatus(t, w.Code, http.StatusBadRequest)
+
+	var got ValidationError
+	if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if got.Code != "validation_error" {
+		t.Errorf("error = %q, want validation_error", got.Code)
+	}
+	if got.RequestID != "req_val123" {
+		t.Errorf("request_id = %q, want req_val123", got.RequestID)
+	}
+	if len(got.Fields) != 2 {
+		t.Fatalf("fields count = %d, want 2", len(got.Fields))
+	}
+	if got.Fields[0].Field != "email" {
+		t.Errorf("fields[0].field = %q, want email", got.Fields[0].Field)
+	}
+	if got.Fields[1].Field != "password" {
+		t.Errorf("fields[1].field = %q, want password", got.Fields[1].Field)
+	}
+}

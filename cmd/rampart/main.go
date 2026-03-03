@@ -50,6 +50,9 @@ func run(_ *slog.Logger) error {
 	healthHandler := handler.NewHealthHandler(db)
 	server.RegisterHealthRoutes(router, healthHandler.Liveness, healthHandler.Readiness)
 
+	registerHandler := handler.NewRegisterHandler(db, logger)
+	server.RegisterAuthRoutes(router, registerHandler.Register)
+
 	srv := server.New(cfg.Addr(), router, logger)
 
 	errCh := make(chan error, 1)
