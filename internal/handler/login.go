@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -23,6 +24,7 @@ const invalidCredentialsMsg = "Invalid credentials."
 type LoginRequest struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
+	OrgSlug    string `json:"org_slug,omitempty"`
 }
 
 // LoginResponse is returned on successful authentication.
@@ -54,29 +56,35 @@ type LogoutRequest struct {
 // LoginStore defines the database operations required by LoginHandler.
 type LoginStore interface {
 	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
+	GetOrganizationIDBySlug(ctx context.Context, slug string) (uuid.UUID, error)
 	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
 	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
+	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
 }
 
 // LoginHandler handles authentication endpoints.
 type LoginHandler struct {
-	store        LoginStore
-	sessions     session.Store
-	logger       *slog.Logger
-	jwtSecret    string
-	accessTTL    time.Duration
-	refreshTTL   time.Duration
+	store      LoginStore
+	sessions   session.Store
+	logger     *slog.Logger
+	privateKey *rsa.PrivateKey
+	kid        string
+	issuer     string
+	accessTTL  time.Duration
+	refreshTTL time.Duration
 }
 
 // NewLoginHandler creates a handler with all authentication dependencies.
-func NewLoginHandler(store LoginStore, sessions session.Store, logger *slog.Logger, jwtSecret string, accessTTL, refreshTTL time.Duration) *LoginHandler {
+func NewLoginHandler(store LoginStore, sessions session.Store, logger *slog.Logger, privateKey *rsa.PrivateKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *LoginHandler {
 	return &LoginHandler{
 		store:      store,
 		sessions:   sessions,
 		logger:     logger,
-		jwtSecret:  jwtSecret,
+		privateKey: privateKey,
+		kid:        kid,
+		issuer:     issuer,
 		accessTTL:  accessTTL,
 		refreshTTL: refreshTTL,
 	}
@@ -101,6 +109,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Identifier = strings.TrimSpace(req.Identifier)
+	req.OrgSlug = strings.ToLower(strings.TrimSpace(req.OrgSlug))
 	if req.Identifier == "" || req.Password == "" {
 		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
@@ -108,10 +117,17 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	orgID, err := h.store.GetDefaultOrganizationID(ctx)
+	// Resolve organization: use org_slug if provided, otherwise default.
+	var orgID uuid.UUID
+	var err error
+	if req.OrgSlug != "" {
+		orgID, err = h.store.GetOrganizationIDBySlug(ctx, req.OrgSlug)
+	} else {
+		orgID, err = h.store.GetDefaultOrganizationID(ctx)
+	}
 	if err != nil {
-		h.logger.Error("failed to get default organization", "error", err)
-		apierror.InternalError(w)
+		// Don't reveal whether the org exists — return generic credentials error.
+		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
 	}
 
@@ -152,8 +168,22 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve per-org session TTLs (fall back to server defaults).
+	accessTTL := h.accessTTL
+	refreshTTL := h.refreshTTL
+	if settings, sErr := h.store.GetOrgSettings(ctx, orgID); sErr != nil {
+		h.logger.Warn("failed to fetch org settings for TTLs, using defaults", "error", sErr)
+	} else if settings != nil {
+		if settings.AccessTokenTTL > 0 {
+			accessTTL = settings.AccessTokenTTL
+		}
+		if settings.RefreshTokenTTL > 0 {
+			refreshTTL = settings.RefreshTokenTTL
+		}
+	}
+
 	accessToken, err := token.GenerateAccessToken(
-		h.jwtSecret, h.accessTTL,
+		h.privateKey, h.kid, h.issuer, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,
@@ -171,7 +201,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiresAt := time.Now().Add(h.refreshTTL)
+	expiresAt := time.Now().Add(refreshTTL)
 	if _, err := h.sessions.Create(ctx, user.ID, refreshToken, expiresAt); err != nil {
 		h.logger.Error("failed to create session", "error", err)
 		apierror.InternalError(w)
@@ -186,7 +216,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    int(h.accessTTL.Seconds()),
+		ExpiresIn:    int(accessTTL.Seconds()),
 		User:         user.ToResponse(),
 	}
 
@@ -237,7 +267,7 @@ func (h *LoginHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accessToken, err := token.GenerateAccessToken(
-		h.jwtSecret, h.accessTTL,
+		h.privateKey, h.kid, h.issuer, h.accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,

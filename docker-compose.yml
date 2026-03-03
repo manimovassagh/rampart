@@ -9,6 +9,10 @@ services:
       RAMPART_REDIS_URL: "${RAMPART_REDIS_URL:-redis://redis:6379/0}"
       RAMPART_LOG_LEVEL: "${RAMPART_LOG_LEVEL:-debug}"
       RAMPART_ALLOWED_ORIGINS: "${RAMPART_ALLOWED_ORIGINS:-}"
+      RAMPART_SIGNING_KEY_PATH: "/data/rampart-signing-key.pem"
+      RAMPART_ISSUER: "${RAMPART_ISSUER:-http://localhost:8080}"
+    volumes:
+      - signingkey:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,3 +47,4 @@ services:
 
 volumes:
   pgdata:
+  signingkey:

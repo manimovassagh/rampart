@@ -2,6 +2,7 @@ package token
 
 import (
 	"crypto/rand"
+	"crypto/rsa"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -22,11 +23,12 @@ type Claims struct {
 	FamilyName        string    `json:"family_name,omitempty"`
 }
 
-// GenerateAccessToken creates a signed HS256 JWT with user claims.
-func GenerateAccessToken(secret string, ttl time.Duration, userID, orgID uuid.UUID, username, email string, emailVerified bool, givenName, familyName string) (string, error) {
+// GenerateAccessToken creates a signed RS256 JWT with user claims.
+func GenerateAccessToken(key *rsa.PrivateKey, kid, issuer string, ttl time.Duration, userID, orgID uuid.UUID, username, email string, emailVerified bool, givenName, familyName string) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    issuer,
 			Subject:   userID.String(),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
@@ -39,19 +41,21 @@ func GenerateAccessToken(secret string, ttl time.Duration, userID, orgID uuid.UU
 		FamilyName:       familyName,
 	}
 
-	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := tok.SignedString([]byte(secret))
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = kid
+
+	signed, err := tok.SignedString(key)
 	if err != nil {
 		return "", fmt.Errorf("signing access token: %w", err)
 	}
 	return signed, nil
 }
 
-// VerifyAccessToken parses and validates a signed JWT, returning the claims.
-func VerifyAccessToken(secret, tokenString string) (*Claims, error) {
+// VerifyAccessToken parses and validates a signed RS256 JWT, returning the claims.
+func VerifyAccessToken(pubKey *rsa.PublicKey, tokenString string) (*Claims, error) {
 	tok, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(_ *jwt.Token) (any, error) {
-		return []byte(secret), nil
-	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+		return pubKey, nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
 	if err != nil {
 		return nil, fmt.Errorf("parsing access token: %w", err)
 	}
