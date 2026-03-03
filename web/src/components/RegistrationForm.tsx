@@ -3,7 +3,11 @@ import type { FormEvent } from "react";
 import { registerUser } from "../api/register";
 import type { FieldError, UserResponse } from "../types";
 
-export default function RegistrationForm() {
+interface Props {
+  onNavigateLogin: () => void;
+}
+
+export default function RegistrationForm({ onNavigateLogin }: Props) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -182,9 +186,13 @@ export default function RegistrationForm() {
 
         <p className="text-center text-xs text-slate-400">
           Already have an account?{" "}
-          <a href="#" className="font-medium text-slate-600 hover:text-slate-900">
+          <button
+            type="button"
+            onClick={onNavigateLogin}
+            className="font-medium text-slate-600 hover:text-slate-900"
+          >
             Sign in
-          </a>
+          </button>
         </p>
       </form>
     </div>

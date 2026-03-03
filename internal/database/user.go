@@ -72,6 +72,38 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID)
 	return &u, nil
 }
 
+// GetUserByID finds a user by their UUID.
+func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+	query := `
+		SELECT id, org_id, username, email, email_verified, given_name, family_name,
+		       enabled, mfa_enabled, password_hash, last_login_at, created_at, updated_at
+		FROM users
+		WHERE id = $1`
+
+	var u model.User
+	err := db.Pool.QueryRow(ctx, query, id).Scan(
+		&u.ID, &u.OrgID, &u.Username, &u.Email, &u.EmailVerified,
+		&u.GivenName, &u.FamilyName, &u.Enabled, &u.MFAEnabled,
+		&u.PasswordHash, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("querying user by id: %w", err)
+	}
+	return &u, nil
+}
+
+// UpdateLastLoginAt sets the last_login_at timestamp for a user.
+func (db *DB) UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error {
+	_, err := db.Pool.Exec(ctx, "UPDATE users SET last_login_at = now() WHERE id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("updating last_login_at: %w", err)
+	}
+	return nil
+}
+
 // GetUserByUsername finds a user by username within an organization.
 func (db *DB) GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error) {
 	query := `
