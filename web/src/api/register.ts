@@ -16,16 +16,28 @@ export async function registerUser(data: RegistrationRequest): Promise<RegisterR
     body: JSON.stringify(data),
   });
 
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return {
+      ok: false,
+      error: {
+        error: "network_error",
+        error_description: "Unable to reach the server. Please try again.",
+        status: res.status,
+      },
+    };
+  }
+
   if (res.ok) {
-    const user: UserResponse = await res.json();
-    return { ok: true, user };
+    return { ok: true, user: body as UserResponse };
   }
 
-  const body = await res.json();
-
-  if (body.fields) {
-    return { ok: false, validation: body as ValidationErrorResponse };
+  const err = body as Record<string, unknown>;
+  if (err.fields) {
+    return { ok: false, validation: err as unknown as ValidationErrorResponse };
   }
 
-  return { ok: false, error: body as ApiErrorResponse };
+  return { ok: false, error: err as unknown as ApiErrorResponse };
 }
