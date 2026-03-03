@@ -64,7 +64,7 @@ func TestLoadOrGenerateInvalidPEM(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad-key.pem")
 
-	if err := os.WriteFile(path, []byte("not a pem file"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("not a pem file"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -168,14 +168,8 @@ func TestKIDDeterministic(t *testing.T) {
 		t.Fatalf("LoadOrGenerate error: %v", err)
 	}
 
-	kid1, err := computeKID(kp.PublicKey)
-	if err != nil {
-		t.Fatalf("computeKID error: %v", err)
-	}
-	kid2, err := computeKID(kp.PublicKey)
-	if err != nil {
-		t.Fatalf("computeKID error: %v", err)
-	}
+	kid1 := computeKID(kp.PublicKey)
+	kid2 := computeKID(kp.PublicKey)
 
 	if kid1 != kid2 {
 		t.Errorf("KID not deterministic: %q vs %q", kid1, kid2)
