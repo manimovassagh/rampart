@@ -1,4 +1,7 @@
+import { useState, useEffect, useRef } from "react";
 import { useCurrentOrg } from "../../hooks/useCurrentOrg";
+import { listOrgs } from "../../api/organizations";
+import type { OrgResponse } from "../../types";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -19,7 +22,42 @@ export default function Sidebar({
   currentPage,
   onNavigate,
 }: SidebarProps) {
-  const { org } = useCurrentOrg();
+  const { org, switchOrg } = useCurrentOrg();
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const [orgs, setOrgs] = useState<OrgResponse[]>([]);
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  // Close switcher on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setShowSwitcher(false);
+      }
+    }
+    if (showSwitcher) {
+      document.addEventListener("mousedown", handleClick);
+    }
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showSwitcher]);
+
+  const handleOpenSwitcher = () => {
+    if (collapsed) return;
+    setShowSwitcher(!showSwitcher);
+    if (!showSwitcher) {
+      listOrgs(1, 50).then((data) => setOrgs(data.organizations)).catch(() => {});
+    }
+  };
+
+  const handleSwitch = async (target: OrgResponse) => {
+    if (target.id === org?.id) {
+      setShowSwitcher(false);
+      return;
+    }
+    await switchOrg(target.id);
+    setShowSwitcher(false);
+    // Navigate to dashboard to refresh data in the new org context
+    onNavigate("dashboard");
+  };
 
   return (
     <aside
@@ -80,26 +118,75 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* Current organization badge */}
+      {/* Organization switcher */}
       {org && (
-        <div className="border-t border-slate-200 p-2">
+        <div className="relative border-t border-slate-200 p-2" ref={switcherRef}>
+          {/* Switcher dropdown — opens upward */}
+          {showSwitcher && !collapsed && (
+            <div className="absolute bottom-full left-2 right-2 mb-1 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+              <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Switch organization
+              </p>
+              {orgs.length === 0 && (
+                <div className="flex justify-center py-3">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600" />
+                </div>
+              )}
+              {orgs.map((o) => (
+                <button
+                  key={o.id}
+                  onClick={() => handleSwitch(o)}
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                    o.id === org.id
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-xs font-bold ${
+                    o.id === org.id
+                      ? "bg-indigo-100 text-indigo-700"
+                      : "bg-slate-100 text-slate-600"
+                  }`}>
+                    {(o.display_name || o.name).charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium">
+                      {o.display_name || o.name}
+                    </p>
+                    <p className="truncate text-[10px] text-slate-400">{o.slug}</p>
+                  </div>
+                  {o.id === org.id && (
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="ml-auto h-4 w-4 flex-shrink-0 text-indigo-600">
+                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
           <button
-            onClick={() => onNavigate(`organizations/${org.id}`)}
+            onClick={handleOpenSwitcher}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-indigo-50"
-            title={`Managing: ${org.display_name || org.name}`}
+            title={collapsed ? (org.display_name || org.name) : `Switch organization`}
           >
             <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-indigo-100 text-xs font-bold text-indigo-700">
               {(org.display_name || org.name).charAt(0).toUpperCase()}
             </div>
             {!collapsed && (
-              <div className="min-w-0 text-left">
-                <p className="truncate text-xs font-semibold text-slate-900">
-                  {org.display_name || org.name}
-                </p>
-                <p className="truncate text-[10px] text-slate-400">
-                  {org.slug}
-                </p>
-              </div>
+              <>
+                <div className="min-w-0 text-left">
+                  <p className="truncate text-xs font-semibold text-slate-900">
+                    {org.display_name || org.name}
+                  </p>
+                  <p className="truncate text-[10px] text-slate-400">
+                    {org.slug}
+                  </p>
+                </div>
+                <svg viewBox="0 0 20 20" fill="currentColor" className="ml-auto h-3.5 w-3.5 flex-shrink-0 text-slate-400">
+                  <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clipRule="evenodd" />
+                </svg>
+              </>
             )}
           </button>
         </div>
