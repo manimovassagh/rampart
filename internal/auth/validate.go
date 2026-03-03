@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/mail"
 	"regexp"
 	"strings"
@@ -37,14 +38,47 @@ func ValidateEmail(email string) *FieldError {
 	return nil
 }
 
-// ValidatePassword enforces password policy:
-// 8-128 chars, at least one uppercase, one lowercase, one digit, one special character.
+// PasswordPolicy defines per-organization password requirements.
+type PasswordPolicy struct {
+	MinLength        int
+	RequireUppercase bool
+	RequireLowercase bool
+	RequireNumbers   bool
+	RequireSymbols   bool
+}
+
+// DefaultPasswordPolicy returns the built-in password policy.
+func DefaultPasswordPolicy() PasswordPolicy {
+	return PasswordPolicy{
+		MinLength:        minPasswordLen,
+		RequireUppercase: true,
+		RequireLowercase: true,
+		RequireNumbers:   true,
+		RequireSymbols:   true,
+	}
+}
+
+// ValidatePassword enforces the default password policy.
 func ValidatePassword(password string) *FieldError {
+	return ValidatePasswordWithPolicy(password, DefaultPasswordPolicy())
+}
+
+// ValidatePasswordWithPolicy enforces a custom password policy.
+func ValidatePasswordWithPolicy(password string, policy PasswordPolicy) *FieldError {
 	if password == "" {
 		return &FieldError{Field: "password", Message: "password is required"}
 	}
-	if len(password) < minPasswordLen {
-		return &FieldError{Field: "password", Message: "password must be at least 8 characters"}
+
+	minLen := policy.MinLength
+	if minLen < 1 {
+		minLen = minPasswordLen
+	}
+
+	if len(password) < minLen {
+		return &FieldError{
+			Field:   "password",
+			Message: fmt.Sprintf("password must be at least %d characters", minLen),
+		}
 	}
 	if len(password) > maxPasswordLen {
 		return &FieldError{Field: "password", Message: "password must be 128 characters or fewer"}
@@ -64,10 +98,24 @@ func ValidatePassword(password string) *FieldError {
 		}
 	}
 
-	if !hasUpper || !hasLower || !hasDigit || !hasSpecial {
+	var missing []string
+	if policy.RequireUppercase && !hasUpper {
+		missing = append(missing, "one uppercase letter")
+	}
+	if policy.RequireLowercase && !hasLower {
+		missing = append(missing, "one lowercase letter")
+	}
+	if policy.RequireNumbers && !hasDigit {
+		missing = append(missing, "one digit")
+	}
+	if policy.RequireSymbols && !hasSpecial {
+		missing = append(missing, "one special character")
+	}
+
+	if len(missing) > 0 {
 		return &FieldError{
 			Field:   "password",
-			Message: "password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character",
+			Message: "password must contain at least " + strings.Join(missing, ", "),
 		}
 	}
 	return nil

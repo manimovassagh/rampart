@@ -25,7 +25,6 @@ const (
 
 // AdminUserStore defines the database operations required by AdminHandler.
 type AdminUserStore interface {
-	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
 	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
 	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
@@ -36,6 +35,8 @@ type AdminUserStore interface {
 	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash []byte) error
 	CountUsers(ctx context.Context, orgID uuid.UUID) (int, error)
 	CountRecentUsers(ctx context.Context, orgID uuid.UUID, days int) (int, error)
+	CountOrganizations(ctx context.Context) (int, error)
+	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
 }
 
 // AdminSessionStore defines the session operations required by AdminHandler.
@@ -62,12 +63,12 @@ func NewAdminHandler(store AdminUserStore, sessions AdminSessionStore, logger *s
 func (h *AdminHandler) Stats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	orgID, err := h.store.GetDefaultOrganizationID(ctx)
-	if err != nil {
-		h.logger.Error("failed to get default organization", "error", err)
-		apierror.InternalError(w)
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	if authUser == nil {
+		apierror.Unauthorized(w, "Authentication required.")
 		return
 	}
+	orgID := authUser.OrgID
 
 	totalUsers, err := h.store.CountUsers(ctx, orgID)
 	if err != nil {
@@ -90,10 +91,18 @@ func (h *AdminHandler) Stats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	totalOrgs, err := h.store.CountOrganizations(ctx)
+	if err != nil {
+		h.logger.Error("failed to count organizations", "error", err)
+		apierror.InternalError(w)
+		return
+	}
+
 	stats := model.DashboardStats{
-		TotalUsers:     totalUsers,
-		ActiveSessions: activeSessions,
-		RecentUsers:    recentUsers,
+		TotalUsers:         totalUsers,
+		ActiveSessions:     activeSessions,
+		RecentUsers:        recentUsers,
+		TotalOrganizations: totalOrgs,
 	}
 
 	writeJSON(w, http.StatusOK, stats, h.logger)
@@ -103,12 +112,12 @@ func (h *AdminHandler) Stats(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	orgID, err := h.store.GetDefaultOrganizationID(ctx)
-	if err != nil {
-		h.logger.Error("failed to get default organization", "error", err)
-		apierror.InternalError(w)
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	if authUser == nil {
+		apierror.Unauthorized(w, "Authentication required.")
 		return
 	}
+	orgID := authUser.OrgID
 
 	search := r.URL.Query().Get("search")
 	status := r.URL.Query().Get("status")
@@ -164,21 +173,45 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	req.GivenName = strings.TrimSpace(req.GivenName)
 	req.FamilyName = strings.TrimSpace(req.FamilyName)
 
-	if fieldErrors := auth.ValidateRegistration(req.Email, req.Password, req.Username); len(fieldErrors) > 0 {
+	ctx := r.Context()
+
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	if authUser == nil {
+		apierror.Unauthorized(w, "Authentication required.")
+		return
+	}
+	orgID := authUser.OrgID
+
+	// Fetch per-org password policy (fall back to defaults if settings not found).
+	passwordPolicy := auth.DefaultPasswordPolicy()
+	if settings, sErr := h.store.GetOrgSettings(ctx, orgID); sErr != nil {
+		h.logger.Warn("failed to fetch org settings, using defaults", "error", sErr)
+	} else if settings != nil {
+		passwordPolicy = auth.PasswordPolicy{
+			MinLength:        settings.PasswordMinLength,
+			RequireUppercase: settings.PasswordRequireUppercase,
+			RequireLowercase: settings.PasswordRequireLowercase,
+			RequireNumbers:   settings.PasswordRequireNumbers,
+			RequireSymbols:   settings.PasswordRequireSymbols,
+		}
+	}
+
+	var fieldErrors []auth.FieldError
+	if fe := auth.ValidateEmail(req.Email); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidatePasswordWithPolicy(req.Password, passwordPolicy); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidateUsername(req.Username); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if len(fieldErrors) > 0 {
 		apiFieldErrors := make([]apierror.FieldError, len(fieldErrors))
 		for i, fe := range fieldErrors {
 			apiFieldErrors[i] = apierror.FieldError{Field: fe.Field, Message: fe.Message}
 		}
 		apierror.WriteValidation(w, apiFieldErrors)
-		return
-	}
-
-	ctx := r.Context()
-
-	orgID, err := h.store.GetDefaultOrganizationID(ctx)
-	if err != nil {
-		h.logger.Error("failed to get default organization", "error", err)
-		apierror.InternalError(w)
 		return
 	}
 

@@ -45,6 +45,14 @@ func (m *mockDB) GetDefaultOrganizationID(_ context.Context) (uuid.UUID, error) 
 	return m.defaultOrgID, m.defaultOrgErr
 }
 
+func (m *mockDB) GetOrganizationIDBySlug(_ context.Context, _ string) (uuid.UUID, error) {
+	return m.defaultOrgID, m.defaultOrgErr
+}
+
+func (m *mockDB) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
 func (m *mockDB) GetUserByEmail(_ context.Context, email string, _ uuid.UUID) (*model.User, error) {
 	return m.users[email], nil
 }

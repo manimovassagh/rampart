@@ -6,6 +6,9 @@ import DashboardPage from "./components/admin/DashboardPage";
 import UsersPage from "./components/admin/UsersPage";
 import UserDetailPage from "./components/admin/UserDetailPage";
 import UserCreatePage from "./components/admin/UserCreatePage";
+import OrganizationsPage from "./components/admin/OrganizationsPage";
+import OrganizationDetailPage from "./components/admin/OrganizationDetailPage";
+import OrganizationCreatePage from "./components/admin/OrganizationCreatePage";
 import ToastContainer from "./components/admin/Toast";
 import { getStoredTokens } from "./api/auth";
 
@@ -128,6 +131,19 @@ export default function App() {
           adminPage !== "users/new" && (
             <UserDetailPage
               userId={adminPage.slice(6)}
+              onNavigate={handleAdminNavigate}
+            />
+          )}
+        {adminPage === "organizations" && (
+          <OrganizationsPage onNavigate={handleAdminNavigate} />
+        )}
+        {adminPage === "organizations/new" && (
+          <OrganizationCreatePage onNavigate={handleAdminNavigate} />
+        )}
+        {adminPage.startsWith("organizations/") &&
+          adminPage !== "organizations/new" && (
+            <OrganizationDetailPage
+              orgId={adminPage.slice(14)}
               onNavigate={handleAdminNavigate}
             />
           )}

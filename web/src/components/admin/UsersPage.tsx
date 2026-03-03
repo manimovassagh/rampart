@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { listUsers } from "../../api/admin";
+import { useCurrentOrg } from "../../hooks/useCurrentOrg";
 import type { AdminUserResponse, ListUsersResponse } from "../../types";
 
 interface UsersPageProps {
@@ -7,6 +8,7 @@ interface UsersPageProps {
 }
 
 export default function UsersPage({ onNavigate }: UsersPageProps) {
+  const { org } = useCurrentOrg();
   const [data, setData] = useState<ListUsersResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -47,7 +49,9 @@ export default function UsersPage({ onNavigate }: UsersPageProps) {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Users</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {data ? `${data.total} total users` : "Loading..."}
+            {data
+              ? `${data.total} user${data.total !== 1 ? "s" : ""} in ${org?.display_name || org?.name || "..."}`
+              : "Loading..."}
           </p>
         </div>
         <button

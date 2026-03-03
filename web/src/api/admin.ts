@@ -9,7 +9,7 @@ import type {
   SessionResponse,
 } from "../types";
 
-async function authFetch(url: string, init?: RequestInit): Promise<Response> {
+export async function authFetch(url: string, init?: RequestInit): Promise<Response> {
   const { accessToken } = getStoredTokens();
   const headers: Record<string, string> = {
     ...((init?.headers as Record<string, string>) ?? {}),
@@ -28,7 +28,7 @@ async function authFetch(url: string, init?: RequestInit): Promise<Response> {
   return res;
 }
 
-async function authJSON<T>(url: string, init?: RequestInit): Promise<T> {
+export async function authJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await authFetch(url, init);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
