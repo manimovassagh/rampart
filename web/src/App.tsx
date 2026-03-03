@@ -9,6 +9,7 @@ import UserCreatePage from "./components/admin/UserCreatePage";
 import OrganizationsPage from "./components/admin/OrganizationsPage";
 import OrganizationDetailPage from "./components/admin/OrganizationDetailPage";
 import OrganizationCreatePage from "./components/admin/OrganizationCreatePage";
+import OidcPage from "./components/admin/OidcPage";
 import ToastContainer from "./components/admin/Toast";
 import { getStoredTokens } from "./api/auth";
 
@@ -147,6 +148,7 @@ export default function App() {
               onNavigate={handleAdminNavigate}
             />
           )}
+        {adminPage === "oidc" && <OidcPage />}
       </Layout>
       <ToastContainer />
     </>
