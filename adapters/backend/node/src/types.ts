@@ -13,6 +13,7 @@ export interface RampartClaims {
   email_verified: boolean;
   given_name?: string;
   family_name?: string;
+  roles?: string[];
 }
 
 export interface RampartError {

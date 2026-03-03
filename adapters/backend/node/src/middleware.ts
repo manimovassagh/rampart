@@ -53,6 +53,9 @@ function mapClaims(payload: JWTPayload): RampartClaims {
   if (payload.family_name) {
     claims.family_name = payload.family_name as string;
   }
+  if (Array.isArray(payload.roles)) {
+    claims.roles = payload.roles as string[];
+  }
 
   return claims;
 }

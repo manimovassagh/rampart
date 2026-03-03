@@ -50,6 +50,7 @@ export interface RampartUser {
   email_verified: boolean;
   given_name?: string;
   family_name?: string;
+  roles?: string[];
   enabled?: boolean;
   created_at?: string;
   updated_at?: string;
