@@ -16,7 +16,7 @@
 |-------|------|-----------|
 | Backend | Go | Single binary, low memory, fast startup |
 | Admin UI | React + Vite + Tailwind | Modern SPA, no Vercel dependency, embeds in Go binary |
-| Login/Consent UI | Go templates + Tailwind | Server-rendered by Go, themeable per-tenant, no JS framework needed |
+| Login/Consent UI | React + Vite + Tailwind | SPA, themeable per-tenant via props/CSS variables, embedded in Go binary |
 | Database | PostgreSQL | Battle-tested, JSONB for flexibility |
 | Cache/Sessions | Redis/Valkey | Session mgmt, token blacklisting |
 | Config | YAML + API-first | GitOps-friendly |
@@ -175,7 +175,8 @@ Key differentiators vs competitors:
 - Architecture: C4 diagrams (system context, components), ER diagram, deployment
 - Sequence diagrams: auth code + PKCE, client credentials, token refresh, registration, MFA, device flow
 - SDK strategy: auto-generated from OpenAPI, framework adapters as thin wrappers
-- **Frontend decision: React + Vite + TanStack Router** (not Next.js — no Vercel dependency, login pages rendered by Go templates, admin dashboard is a pure SPA)
+- **Frontend decision: React + Vite + TanStack Router** for everything (not Next.js — no Vercel dependency, no SSR needed)
+- **Login/Consent UI: also React + Vite** — not Go templates. Go templates was Keycloak's mistake (FreeMarker is their #1 pain point). Per-tenant theming via component props + CSS variables.
 - **Go backend: stdlib + chi router + pgx** (no ORM, no DI framework, minimal deps)
 - **Cloud-agnostic deployment**: AWS (EC2, ECS), Azure (Container Apps, VMs), GCP (Cloud Run, GCE) with Terraform modules
 - **CLI tool** (`rampart-cli`): management commands + Device Flow auth for developers
