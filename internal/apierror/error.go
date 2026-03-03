@@ -3,6 +3,8 @@ package apierror
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/manimovassagh/rampart/internal/middleware"
 )
 
 // Error represents a consistent API error response.
@@ -21,7 +23,7 @@ func (e *Error) Error() string {
 // Write sends a JSON error response with the given status code.
 // It reads X-Request-Id from the response header (set by requestid middleware).
 func Write(w http.ResponseWriter, status int, code, description string) {
-	reqID := w.Header().Get("X-Request-Id")
+	reqID := w.Header().Get(middleware.HeaderRequestID)
 
 	apiErr := &Error{
 		Code:        code,

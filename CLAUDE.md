@@ -108,6 +108,10 @@ Key differentiators vs competitors:
 
 ### Code Quality
 - Follow idiomatic Go — use `gofmt`, `go vet`, `golangci-lint`.
+- **SonarQube compliance is mandatory.** Fix all SonarQube issues before committing:
+  - S100: Function names must match `^(_|[a-zA-Z0-9]+)$` — no underscores in function/test names.
+  - S1192: No duplicated string literals (3+ times) — extract to constants.
+  - S6698: Never hardcode credentials/passwords in source code.
 - No `interface{}` / `any` unless absolutely necessary — use strong types.
 - Error handling: wrap errors with context (`fmt.Errorf("doing X: %w", err)`), never swallow errors silently.
 - Keep functions short and focused. If a function needs a comment explaining what it does, it should probably be split.

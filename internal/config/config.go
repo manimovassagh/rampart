@@ -17,10 +17,9 @@ type Config struct {
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:        8080,
-		DatabaseURL: "postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable",
-		RedisURL:    "redis://localhost:6379/0",
-		LogLevel:    "info",
+		Port:     8080,
+		RedisURL: "redis://localhost:6379/0",
+		LogLevel: "info",
 	}
 
 	if v := os.Getenv("RAMPART_PORT"); v != "" {
@@ -34,9 +33,7 @@ func Load() (*Config, error) {
 		cfg.Port = port
 	}
 
-	if v := os.Getenv("RAMPART_DB_URL"); v != "" {
-		cfg.DatabaseURL = v
-	}
+	cfg.DatabaseURL = os.Getenv("RAMPART_DB_URL")
 
 	if v := os.Getenv("RAMPART_REDIS_URL"); v != "" {
 		cfg.RedisURL = v
@@ -44,6 +41,10 @@ func Load() (*Config, error) {
 
 	if v := os.Getenv("RAMPART_LOG_LEVEL"); v != "" {
 		cfg.LogLevel = v
+	}
+
+	if cfg.DatabaseURL == "" {
+		return nil, fmt.Errorf("RAMPART_DB_URL is required")
 	}
 
 	return cfg, nil
