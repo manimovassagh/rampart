@@ -43,3 +43,18 @@ func RegisterHealthRoutes(r *chi.Mux, healthHandler, readyHandler http.HandlerFu
 func RegisterAuthRoutes(r *chi.Mux, registerHandler http.HandlerFunc) {
 	r.Post("/register", registerHandler)
 }
+
+// RegisterLoginRoutes mounts login, token refresh, and logout endpoints.
+func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler http.HandlerFunc) {
+	r.Post("/login", loginHandler)
+	r.Post("/token/refresh", refreshHandler)
+	r.Post("/logout", logoutHandler)
+}
+
+// RegisterProtectedRoutes mounts endpoints that require authentication.
+func RegisterProtectedRoutes(r *chi.Mux, jwtSecret string, meHandler http.HandlerFunc) {
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(jwtSecret))
+		r.Get("/me", meHandler)
+	})
+}

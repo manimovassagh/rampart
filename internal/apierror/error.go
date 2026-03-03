@@ -68,6 +68,16 @@ func Conflict(w http.ResponseWriter, description string) {
 	Write(w, http.StatusConflict, "conflict", description)
 }
 
+// Unauthorized writes a 401 error response.
+func Unauthorized(w http.ResponseWriter, description string) {
+	Write(w, http.StatusUnauthorized, "unauthorized", description)
+}
+
+// Forbidden writes a 403 error response.
+func Forbidden(w http.ResponseWriter, description string) {
+	Write(w, http.StatusForbidden, "forbidden", description)
+}
+
 // ValidationError is a 400 response with per-field errors.
 type ValidationError struct {
 	Code        string       `json:"error"`
