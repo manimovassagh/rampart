@@ -119,6 +119,11 @@ All tests passed against Rampart on `localhost:8080`:
 ## What's Next
 
 - [ ] Create PR to merge `feat/node-adapter` → `main`
+- [ ] **RBAC** — When Rampart adds `roles` to JWT claims, adapters already have `roles?: string[]` ready. Add `requireRoles()` middleware helper to `@rampart/node`.
+- [ ] **Authorization Code + PKCE flow** — Needed for Google/GitHub/social login. Requires:
+  1. Rampart Go server: `GET /authorize` + `POST /token` (code exchange) endpoints
+  2. `@rampart/web`: add `loginWithRedirect(provider?)` and `handleCallback()` methods
+  3. `@rampart/node` stays unchanged (just verifies JWTs regardless of grant type)
 - [ ] Consider `@rampart/react` hooks adapter (wraps `@rampart/web` with `useAuth()` context)
 - [ ] Consider `@rampart/angular` and `@rampart/vue` adapters
 - [ ] Publish to npm when ready
