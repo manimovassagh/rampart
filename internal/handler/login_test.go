@@ -3,7 +3,10 @@ package handler
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,12 +19,57 @@ import (
 	"github.com/manimovassagh/rampart/internal/session"
 )
 
-const testJWTSecret = "this-is-a-test-secret-that-is-at-least-32-bytes-long"
+// testRSAKeyPEM is a 2048-bit RSA key used only in tests.
+const testRSAKeyPEM = `-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAvN8Ex780DiM6xO5PgniD7BbnTEGx1IkX1LE0EbrGrZJHcVbX
+IiUbxBcnAMl/PqPtpS02pf0IgaGPM1DgO10eNcGxRvUcw/H0hbOEgMFIch71egvD
+d/Ag8m18vO0MaoSh7xBlJSIfgRLCpyoWwghurFuMViwMcst6Cg35W8+IOCL7KOkj
+OdFWIT7baffJ2w7LGq0i3/TlSmoUNVF+sZzM2vj4QMC6T7bUI9ISx9KP1wvxAz99
+c1PoSi1bu2e/Yz3CyXeg00Z1BVWNGEcM98iaajTMGP1QmqsavNMjO72Ub+1XpyQ/
+ve36uznlaqHhBZqrtTI+YugLtYIRq3etuI2HmwIDAQABAoIBAB9gzeKBmZxfrfvZ
+u8vpScGHbJX2tByjShpD9mqbpTZg/w2NZ+B8WciSMCCpWUKG6YxvnoylJSykMq5L
+2XUDW2mC7HjlcAn9wKoV0QWzFt4e1pmYKrlaY57jIb4hg9aOgni9OJCawrEm9L/g
+9jb2P6zS6NXIK6lGtNfGyo6+Q9tPa2nMF86xrzscKuT8hLq2B4YN3jdL5tCIsfO/
+IcnDwL6eCw+sjjeKfsEXful+9JZSAoKr1sukeW+xSE26hZwhxmwyHDPST/D5QkJo
+NvbikjKpRRWwuUTondPbpJ3d2C6vIYVXtJjdzE9RdfKDPeuTpRRbgr/bf9LLO9E6
+9k6gEYECgYEA2hHOT3Wm+WnVTILaCh4Z0/qeMrpBVcUgNNfaedXdYS4MND2TY2Wr
+cd2IUGYvjFJs2neattXYijR7dC9i3j40wYTE3ak1S8rjVdTjF9eoV73zfWjGLUoT
+xKTidmxhaWixJJxOQXoYVxwumsebCoRJLQqs8DNauaA3HzHpRSKIm5MCgYEA3bkR
+YndjBzUrWFPZnhY89DUvwTCPrbMyHSUCpRiPlcDkQwgTnqvEgutKUtEKUvWDOu0d
+4DVjK/P2LwwL8tuA82WaTOZjFTZ3yGNPC+gJeamKS4PgQviEdldLU53VKQpy7kgg
+bxwW+aY+hKpVo+9RerdMJRn2SUhiHaHWdedQuNkCgYEApU9UN5Y3wuEAyiRzx7Gz
+4Kce39OkDbIGzShIvY1raezvYXbAUVxUUFggqtob92LQk/iRN0L7CSHp6FS3vUQo
+1/6fAm3wMgmWto1QrdVVD1a2y33upYx/WdWoux9D5RVxHBDFngtBgl+h0MG5/Yn0
+swlhuiEkCI2025gJfthD+LMCgYAD6u85tC5VxES9zM19k5sEHaR4X2lKgm4SQcMo
+M6Tl2oCuBoiCNzrDrXCkwfjSum/VLLdobMkRz7+72RSk9+fxZQwy66c4irvXGJoe
+9bylH6/H4c6moEmG5cf49EL99KdPOosIK5DkXGGiangU63efGXoI9cp6RQMmzuNB
+NhMhEQKBgQDF+33l7x8rxERo1x0E/nwaPr4kISE2RbQSxXL7UARAg457+ol/bs36
+O4bU15NoXuwZ1ShWIKMWxLVcEysw7pDHs3xaiokx1SIrn9nVkaOb9iK8B8qgCQ2o
+W/xlOTOB+SaEdBMOGPE8JlFPydshVuTUj5wMzN4GejazNxtEXbbGaQ==
+-----END RSA PRIVATE KEY-----`
+
+var testPrivKey *rsa.PrivateKey
+
+func init() {
+	block, _ := pem.Decode([]byte(testRSAKeyPEM))
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		panic("failed to parse test RSA key: " + err.Error())
+	}
+	testPrivKey = key
+}
+
+const (
+	testKID    = "test-kid-123"
+	testIssuer = "http://localhost:8080"
+)
 
 // mockLoginStore implements LoginStore for testing.
 type mockLoginStore struct {
 	defaultOrgID  uuid.UUID
 	defaultOrgErr error
+	slugOrgID     uuid.UUID
+	slugOrgErr    error
 	emailUser     *model.User
 	emailErr      error
 	usernameUser  *model.User
@@ -29,10 +77,19 @@ type mockLoginStore struct {
 	userByID      *model.User
 	userByIDErr   error
 	updateErr     error
+	orgSettings   *model.OrgSettings
+	orgSettingsErr error
 }
 
 func (m *mockLoginStore) GetDefaultOrganizationID(_ context.Context) (uuid.UUID, error) {
 	return m.defaultOrgID, m.defaultOrgErr
+}
+
+func (m *mockLoginStore) GetOrganizationIDBySlug(_ context.Context, _ string) (uuid.UUID, error) {
+	if m.slugOrgID != uuid.Nil {
+		return m.slugOrgID, m.slugOrgErr
+	}
+	return m.defaultOrgID, m.slugOrgErr
 }
 
 func (m *mockLoginStore) GetUserByEmail(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
@@ -49,6 +106,10 @@ func (m *mockLoginStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.Use
 
 func (m *mockLoginStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error {
 	return m.updateErr
+}
+
+func (m *mockLoginStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {
+	return m.orgSettings, m.orgSettingsErr
 }
 
 // mockSessionStore implements session.Store for testing.
@@ -104,7 +165,7 @@ func newTestUser() *model.User {
 }
 
 func newTestLoginHandler(store *mockLoginStore, sessions *mockSessionStore) *LoginHandler {
-	return NewLoginHandler(store, sessions, noopLogger(), testJWTSecret, 15*time.Minute, 7*24*time.Hour)
+	return NewLoginHandler(store, sessions, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
 }
 
 func TestLoginSuccess(t *testing.T) {

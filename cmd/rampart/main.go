@@ -13,6 +13,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/handler"
 	"github.com/manimovassagh/rampart/internal/server"
 	"github.com/manimovassagh/rampart/internal/session"
+	"github.com/manimovassagh/rampart/internal/signing"
 )
 
 func main() {
@@ -36,6 +37,13 @@ func run(_ *slog.Logger) error {
 	}))
 	slog.SetDefault(logger)
 
+	// Load or generate RSA signing key pair
+	kp, err := signing.LoadOrGenerate(cfg.SigningKeyPath)
+	if err != nil {
+		return err
+	}
+	logger.Info("signing key loaded", "kid", kp.KID, "path", cfg.SigningKeyPath)
+
 	ctx := context.Background()
 	db, err := database.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -55,13 +63,21 @@ func run(_ *slog.Logger) error {
 	server.RegisterAuthRoutes(router, registerHandler.Register)
 
 	sessionStore := session.NewPGStore(db.Pool)
-	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout)
 
-	server.RegisterProtectedRoutes(router, cfg.JWTSecret, handler.Me)
+	server.RegisterProtectedRoutes(router, kp.PublicKey, handler.Me)
 
 	adminHandler := handler.NewAdminHandler(db, sessionStore, logger)
-	server.RegisterAdminRoutes(router, cfg.JWTSecret, adminHandler)
+	server.RegisterAdminRoutes(router, kp.PublicKey, adminHandler)
+
+	orgHandler := handler.NewOrgHandler(db, db, logger)
+	server.RegisterOrgRoutes(router, kp.PublicKey, orgHandler)
+
+	// OIDC Discovery + JWKS (public endpoints, no auth)
+	discoveryHandler := handler.DiscoveryHandler(cfg.Issuer, logger)
+	jwksHandler := handler.JWKSHandler(kp, logger)
+	server.RegisterOIDCRoutes(router, discoveryHandler, jwksHandler)
 
 	srv := server.New(cfg.Addr(), router, logger)
 

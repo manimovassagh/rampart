@@ -37,6 +37,9 @@ node_modules/
 web/dist/
 web/node_modules/
 
+# Signing keys
+*.pem
+
 # Docker
 docker-compose.override.yml
 firebase-debug.log

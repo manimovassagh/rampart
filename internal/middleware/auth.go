@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -27,8 +28,8 @@ type AuthenticatedUser struct {
 	FamilyName        string
 }
 
-// Auth returns middleware that verifies Bearer tokens and stores the user in context.
-func Auth(jwtSecret string) func(http.Handler) http.Handler {
+// Auth returns middleware that verifies RS256 Bearer tokens and stores the user in context.
+func Auth(pubKey *rsa.PublicKey) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
@@ -43,7 +44,7 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 				return
 			}
 
-			claims, err := token.VerifyAccessToken(jwtSecret, parts[1])
+			claims, err := token.VerifyAccessToken(pubKey, parts[1])
 			if err != nil {
 				writeAuthError(w, "Invalid or expired access token.")
 				return

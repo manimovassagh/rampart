@@ -11,7 +11,8 @@ import (
 const (
 	defaultAccessTokenTTL  = 900     // 15 minutes
 	defaultRefreshTokenTTL = 604800  // 7 days
-	minJWTSecretLength     = 32
+	defaultSigningKeyPath  = "rampart-signing-key.pem"
+	defaultIssuer          = "http://localhost:8080"
 )
 
 // Config holds all server configuration loaded from environment variables.
@@ -21,7 +22,8 @@ type Config struct {
 	RedisURL        string
 	LogLevel        string
 	AllowedOrigins  []string
-	JWTSecret       string
+	SigningKeyPath  string
+	Issuer          string
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
 }
@@ -29,9 +31,11 @@ type Config struct {
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:     8080,
-		RedisURL: "redis://localhost:6379/0",
-		LogLevel: "info",
+		Port:           8080,
+		RedisURL:       "redis://localhost:6379/0",
+		LogLevel:       "info",
+		SigningKeyPath: defaultSigningKeyPath,
+		Issuer:         defaultIssuer,
 	}
 
 	if v := os.Getenv("RAMPART_PORT"); v != "" {
@@ -67,12 +71,12 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("RAMPART_DB_URL is required")
 	}
 
-	cfg.JWTSecret = os.Getenv("RAMPART_JWT_SECRET")
-	if cfg.JWTSecret == "" {
-		return nil, fmt.Errorf("RAMPART_JWT_SECRET is required")
+	if v := os.Getenv("RAMPART_SIGNING_KEY_PATH"); v != "" {
+		cfg.SigningKeyPath = v
 	}
-	if len(cfg.JWTSecret) < minJWTSecretLength {
-		return nil, fmt.Errorf("RAMPART_JWT_SECRET must be at least %d bytes", minJWTSecretLength)
+
+	if v := os.Getenv("RAMPART_ISSUER"); v != "" {
+		cfg.Issuer = v
 	}
 
 	cfg.AccessTokenTTL = time.Duration(defaultAccessTokenTTL) * time.Second

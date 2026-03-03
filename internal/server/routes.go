@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/rsa"
 	"log/slog"
 	"net/http"
 
@@ -52,9 +53,9 @@ func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler
 }
 
 // RegisterProtectedRoutes mounts endpoints that require authentication.
-func RegisterProtectedRoutes(r *chi.Mux, jwtSecret string, meHandler http.HandlerFunc) {
+func RegisterProtectedRoutes(r *chi.Mux, pubKey *rsa.PublicKey, meHandler http.HandlerFunc) {
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(jwtSecret))
+		r.Use(middleware.Auth(pubKey))
 		r.Get("/me", meHandler)
 	})
 }
@@ -73,9 +74,9 @@ type AdminEndpoints interface {
 }
 
 // RegisterAdminRoutes mounts admin console endpoints under /api/v1/admin.
-func RegisterAdminRoutes(r *chi.Mux, jwtSecret string, admin AdminEndpoints) {
+func RegisterAdminRoutes(r *chi.Mux, pubKey *rsa.PublicKey, admin AdminEndpoints) {
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(jwtSecret))
+		r.Use(middleware.Auth(pubKey))
 
 		r.Get("/api/v1/admin/stats", admin.Stats)
 		r.Get("/api/v1/admin/users", admin.ListUsers)
@@ -87,4 +88,36 @@ func RegisterAdminRoutes(r *chi.Mux, jwtSecret string, admin AdminEndpoints) {
 		r.Get("/api/v1/admin/users/{id}/sessions", admin.ListSessions)
 		r.Delete("/api/v1/admin/users/{id}/sessions", admin.RevokeSessions)
 	})
+}
+
+// OrgEndpoints groups the handler methods needed by RegisterOrgRoutes.
+type OrgEndpoints interface {
+	ListOrgs(w http.ResponseWriter, r *http.Request)
+	CreateOrg(w http.ResponseWriter, r *http.Request)
+	GetOrg(w http.ResponseWriter, r *http.Request)
+	UpdateOrg(w http.ResponseWriter, r *http.Request)
+	DeleteOrg(w http.ResponseWriter, r *http.Request)
+	GetOrgSettings(w http.ResponseWriter, r *http.Request)
+	UpdateOrgSettings(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterOrgRoutes mounts organization management endpoints under /api/v1/admin/organizations.
+func RegisterOrgRoutes(r *chi.Mux, pubKey *rsa.PublicKey, org OrgEndpoints) {
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(pubKey))
+
+		r.Get("/api/v1/admin/organizations", org.ListOrgs)
+		r.Post("/api/v1/admin/organizations", org.CreateOrg)
+		r.Get("/api/v1/admin/organizations/{id}", org.GetOrg)
+		r.Put("/api/v1/admin/organizations/{id}", org.UpdateOrg)
+		r.Delete("/api/v1/admin/organizations/{id}", org.DeleteOrg)
+		r.Get("/api/v1/admin/organizations/{id}/settings", org.GetOrgSettings)
+		r.Put("/api/v1/admin/organizations/{id}/settings", org.UpdateOrgSettings)
+	})
+}
+
+// RegisterOIDCRoutes mounts OIDC Discovery and JWKS endpoints (public, no auth).
+func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
+	r.Get("/.well-known/openid-configuration", discovery)
+	r.Get("/.well-known/jwks.json", jwks)
 }
