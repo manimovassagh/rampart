@@ -1,0 +1,113 @@
+package auth
+
+import (
+	"net/mail"
+	"regexp"
+	"strings"
+	"unicode"
+)
+
+// FieldError represents a validation error on a specific field.
+type FieldError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+const (
+	minPasswordLen = 8
+	maxPasswordLen = 128
+	minUsernameLen = 3
+	maxUsernameLen = 64
+	maxEmailLen    = 254
+)
+
+var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$`)
+
+// ValidateEmail checks that the email is well-formed and within length limits.
+func ValidateEmail(email string) *FieldError {
+	if strings.TrimSpace(email) == "" {
+		return &FieldError{Field: "email", Message: "email is required"}
+	}
+	if len(email) > maxEmailLen {
+		return &FieldError{Field: "email", Message: "email must be 254 characters or fewer"}
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		return &FieldError{Field: "email", Message: "email is not a valid email address"}
+	}
+	return nil
+}
+
+// ValidatePassword enforces password policy:
+// 8-128 chars, at least one uppercase, one lowercase, one digit, one special character.
+func ValidatePassword(password string) *FieldError {
+	if password == "" {
+		return &FieldError{Field: "password", Message: "password is required"}
+	}
+	if len(password) < minPasswordLen {
+		return &FieldError{Field: "password", Message: "password must be at least 8 characters"}
+	}
+	if len(password) > maxPasswordLen {
+		return &FieldError{Field: "password", Message: "password must be 128 characters or fewer"}
+	}
+
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, ch := range password {
+		switch {
+		case unicode.IsUpper(ch):
+			hasUpper = true
+		case unicode.IsLower(ch):
+			hasLower = true
+		case unicode.IsDigit(ch):
+			hasDigit = true
+		case unicode.IsPunct(ch) || unicode.IsSymbol(ch):
+			hasSpecial = true
+		}
+	}
+
+	if !hasUpper || !hasLower || !hasDigit || !hasSpecial {
+		return &FieldError{
+			Field:   "password",
+			Message: "password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character",
+		}
+	}
+	return nil
+}
+
+// ValidateUsername checks username format: 3-64 chars, alphanumeric with dots/hyphens/underscores,
+// must start and end with alphanumeric.
+func ValidateUsername(username string) *FieldError {
+	if strings.TrimSpace(username) == "" {
+		return &FieldError{Field: "username", Message: "username is required"}
+	}
+	if len(username) < minUsernameLen {
+		return &FieldError{Field: "username", Message: "username must be at least 3 characters"}
+	}
+	if len(username) > maxUsernameLen {
+		return &FieldError{Field: "username", Message: "username must be 64 characters or fewer"}
+	}
+	if !usernameRegex.MatchString(username) {
+		return &FieldError{
+			Field:   "username",
+			Message: "username must start and end with a letter or digit and can contain dots, hyphens, or underscores",
+		}
+	}
+	return nil
+}
+
+// ValidateRegistration validates all fields of a registration request.
+// Returns a slice of field errors (empty if all valid).
+func ValidateRegistration(email, password, username string) []FieldError {
+	var errs []FieldError
+
+	if fe := ValidateEmail(email); fe != nil {
+		errs = append(errs, *fe)
+	}
+	if fe := ValidatePassword(password); fe != nil {
+		errs = append(errs, *fe)
+	}
+	if fe := ValidateUsername(username); fe != nil {
+		errs = append(errs, *fe)
+	}
+
+	return errs
+}
