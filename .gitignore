@@ -34,7 +34,8 @@ Thumbs.db
 # Node (UI)
 node_modules/
 .next/
-dist/
+web/dist/
+web/node_modules/
 
 # Docker
 docker-compose.override.yml
