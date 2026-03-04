@@ -43,6 +43,20 @@ samples/**/dist/
 # Signing keys
 *.pem
 
+# Vite cache
+.vite/
+*/.vite/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Claude Code local settings
+.claude/settings.local.json
+.mcp.json
+
+# Screenshots (dev testing artifacts)
+*.png
+
 # Docker
 docker-compose.override.yml
 firebase-debug.log
