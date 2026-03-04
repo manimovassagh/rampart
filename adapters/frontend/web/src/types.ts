@@ -2,6 +2,12 @@
 export interface RampartClientConfig {
   /** Rampart server URL (e.g. "http://localhost:8080") */
   issuer: string;
+  /** OAuth 2.0 client ID registered with the Rampart server. */
+  clientId: string;
+  /** OAuth 2.0 redirect URI — must exactly match a registered redirect URI. */
+  redirectUri: string;
+  /** OAuth 2.0 scopes (default: "openid"). */
+  scope?: string;
   /** Called when tokens change (login, refresh, logout). Use for persistence. */
   onTokenChange?: (tokens: RampartTokens | null) => void;
 }
@@ -12,32 +18,6 @@ export interface RampartTokens {
   refresh_token: string;
   token_type: string;
   expires_in: number;
-}
-
-/** Login request body. */
-export interface LoginRequest {
-  identifier: string;
-  password: string;
-  org_slug?: string;
-}
-
-/** Register request body. */
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  given_name?: string;
-  family_name?: string;
-  org_slug?: string;
-}
-
-/** Login response from Rampart. */
-export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in: number;
-  user: RampartUser;
 }
 
 /** User profile from /me or login response. */

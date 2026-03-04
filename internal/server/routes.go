@@ -116,6 +116,13 @@ func RegisterOrgRoutes(r *chi.Mux, pubKey *rsa.PublicKey, org OrgEndpoints) {
 	})
 }
 
+// RegisterOAuthRoutes mounts the OAuth 2.0 authorization and token endpoints.
+func RegisterOAuthRoutes(r *chi.Mux, authorize, token http.HandlerFunc) {
+	r.Get("/oauth/authorize", authorize)
+	r.Post("/oauth/authorize", authorize)
+	r.Post("/oauth/token", token)
+}
+
 // RegisterOIDCRoutes mounts OIDC Discovery and JWKS endpoints (public, no auth).
 func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
 	r.Get("/.well-known/openid-configuration", discovery)

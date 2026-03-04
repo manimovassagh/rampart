@@ -8,6 +8,7 @@ Working examples that show how to integrate with a Rampart IAM server using the 
 |--------|-------------|-------------|------|
 | [express-backend](./express-backend/) | Express API with protected routes | `@rampart/node` | 3001 |
 | [web-frontend](./web-frontend/) | Browser app with login/logout UI | `@rampart/web` | 3000 |
+| [react-app](./react-app/) | React SPA with routing, auth, RBAC | `@rampart/react` | 3002 |
 
 ## Quick Start
 

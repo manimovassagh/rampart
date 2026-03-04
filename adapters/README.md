@@ -19,5 +19,6 @@ Client-side libraries for login, token management, and authenticated API calls.
 | Adapter | Package | Framework | Status |
 |---------|---------|-----------|--------|
 | [Web](./frontend/web/) | `@rampart/web` | Any (vanilla JS/TS) | Ready |
+| [React](./frontend/react/) | `@rampart/react` | React >=18 | Ready |
 
-> **Coming soon:** React hooks (`@rampart/react`), Angular, Vue
+> **Coming soon:** Angular, Vue
