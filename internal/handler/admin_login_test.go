@@ -15,6 +15,12 @@ import (
 	"github.com/manimovassagh/rampart/internal/oauth"
 )
 
+const (
+	testState             = "teststate"
+	testAdminVerifier     = "testverifier1234567890abcdefghijk"
+	testAdminPKCEVerifier = "test-verifier-for-pkce-challenge-must-be-43-chars-long"
+)
+
 // mockAdminLoginStore implements AdminLoginStore for testing.
 type mockAdminLoginStore struct {
 	oauthClient    *model.OAuthClient
@@ -212,8 +218,8 @@ func TestAdminCallbackConsumeCodeError(t *testing.T) {
 	sessions := &mockSessionStore{}
 	h := newTestAdminLoginHandler(store, sessions)
 
-	state := "teststate"
-	verifier := "testverifier1234567890abcdefghijk"
+	state := testState
+	verifier := testAdminVerifier
 	req := httptest.NewRequest(http.MethodGet, "/admin/callback?code=abc&state="+state, http.NoBody)
 	req.AddCookie(&http.Cookie{
 		Name:  adminOAuthCookieName,
@@ -235,8 +241,8 @@ func TestAdminCallbackNilAuthCode(t *testing.T) {
 	sessions := &mockSessionStore{}
 	h := newTestAdminLoginHandler(store, sessions)
 
-	state := "teststate"
-	verifier := "testverifier1234567890abcdefghijk"
+	state := testState
+	verifier := testAdminVerifier
 	req := httptest.NewRequest(http.MethodGet, "/admin/callback?code=abc&state="+state, http.NoBody)
 	req.AddCookie(&http.Cookie{
 		Name:  adminOAuthCookieName,
@@ -266,8 +272,8 @@ func TestAdminCallbackClientIDMismatch(t *testing.T) {
 	sessions := &mockSessionStore{}
 	h := newTestAdminLoginHandler(store, sessions)
 
-	state := "teststate"
-	verifier := "testverifier1234567890abcdefghijk"
+	state := testState
+	verifier := testAdminVerifier
 	req := httptest.NewRequest(http.MethodGet, "/admin/callback?code=abc&state="+state, http.NoBody)
 	req.AddCookie(&http.Cookie{
 		Name:  adminOAuthCookieName,
@@ -297,8 +303,8 @@ func TestAdminCallbackRedirectURIMismatch(t *testing.T) {
 	sessions := &mockSessionStore{}
 	h := newTestAdminLoginHandler(store, sessions)
 
-	state := "teststate"
-	verifier := "testverifier1234567890abcdefghijk"
+	state := testState
+	verifier := testAdminVerifier
 	req := httptest.NewRequest(http.MethodGet, "/admin/callback?code=abc&state="+state, http.NoBody)
 	req.AddCookie(&http.Cookie{
 		Name:  adminOAuthCookieName,
@@ -332,7 +338,7 @@ func TestAdminCallbackPKCEFailure(t *testing.T) {
 	sessions := &mockSessionStore{}
 	h := newTestAdminLoginHandler(store, sessions)
 
-	state := "teststate"
+	state := testState
 	wrongVerifier := "wrong-verifier-doesnt-match-and-is-at-least-43-chars"
 	req := httptest.NewRequest(http.MethodGet, "/admin/callback?code=abc&state="+state, http.NoBody)
 	req.AddCookie(&http.Cookie{
@@ -349,7 +355,7 @@ func TestAdminCallbackPKCEFailure(t *testing.T) {
 }
 
 func TestAdminCallbackUserNotFound(t *testing.T) {
-	verifier := "test-verifier-for-pkce-challenge-must-be-43-chars-long"
+	verifier := testAdminPKCEVerifier
 	challenge := oauth.ComputeS256Challenge(verifier)
 
 	store := &mockAdminLoginStore{
@@ -367,7 +373,7 @@ func TestAdminCallbackUserNotFound(t *testing.T) {
 	sessions := &mockSessionStore{}
 	h := newTestAdminLoginHandler(store, sessions)
 
-	state := "teststate"
+	state := testState
 	req := httptest.NewRequest(http.MethodGet, "/admin/callback?code=abc&state="+state, http.NoBody)
 	req.AddCookie(&http.Cookie{
 		Name:  adminOAuthCookieName,
@@ -386,7 +392,7 @@ func TestAdminCallbackDisabledUser(t *testing.T) {
 	user := newTestUser()
 	user.Enabled = false
 
-	verifier := "test-verifier-for-pkce-challenge-must-be-43-chars-long"
+	verifier := testAdminPKCEVerifier
 	challenge := oauth.ComputeS256Challenge(verifier)
 
 	store := &mockAdminLoginStore{
@@ -404,7 +410,7 @@ func TestAdminCallbackDisabledUser(t *testing.T) {
 	sessions := &mockSessionStore{}
 	h := newTestAdminLoginHandler(store, sessions)
 
-	state := "teststate"
+	state := testState
 	req := httptest.NewRequest(http.MethodGet, "/admin/callback?code=abc&state="+state, http.NoBody)
 	req.AddCookie(&http.Cookie{
 		Name:  adminOAuthCookieName,
@@ -422,7 +428,7 @@ func TestAdminCallbackDisabledUser(t *testing.T) {
 func TestAdminCallbackSuccess(t *testing.T) {
 	user := newTestUser()
 
-	verifier := "test-verifier-for-pkce-challenge-must-be-43-chars-long"
+	verifier := testAdminPKCEVerifier
 	challenge := oauth.ComputeS256Challenge(verifier)
 
 	store := &mockAdminLoginStore{
@@ -440,7 +446,7 @@ func TestAdminCallbackSuccess(t *testing.T) {
 	sessions := &mockSessionStore{}
 	h := newTestAdminLoginHandler(store, sessions)
 
-	state := "teststate"
+	state := testState
 	req := httptest.NewRequest(http.MethodGet, "/admin/callback?code=abc&state="+state, http.NoBody)
 	req.AddCookie(&http.Cookie{
 		Name:  adminOAuthCookieName,
@@ -544,7 +550,7 @@ func TestSplitFirst(t *testing.T) {
 
 // contains checks if s contains substr (helper for test assertions).
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsSubstr(s, substr))
+	return len(s) >= len(substr) && (s == substr || s != "" && containsSubstr(s, substr))
 }
 
 func containsSubstr(s, substr string) bool {
