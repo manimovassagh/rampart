@@ -116,6 +116,16 @@ func RegisterOrgRoutes(r *chi.Mux, pubKey *rsa.PublicKey, org OrgEndpoints) {
 	})
 }
 
+// RegisterExportImportRoutes mounts organization config export/import endpoints.
+func RegisterExportImportRoutes(r *chi.Mux, pubKey *rsa.PublicKey, exportHandler, importHandler http.HandlerFunc) {
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(pubKey))
+
+		r.Get("/api/v1/admin/organizations/{id}/export", exportHandler)
+		r.Post("/api/v1/admin/organizations/{id}/import", importHandler)
+	})
+}
+
 // RegisterOAuthRoutes mounts the OAuth 2.0 authorization and token endpoints.
 func RegisterOAuthRoutes(r *chi.Mux, authorize, token http.HandlerFunc) {
 	r.Get("/oauth/authorize", authorize)
