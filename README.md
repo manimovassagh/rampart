@@ -13,12 +13,13 @@
   <a href="https://github.com/manimovassagh/rampart/releases"><img src="https://img.shields.io/github/v/release/manimovassagh/rampart?style=for-the-badge&logo=semanticrelease&label=Release&color=0ea5e9" alt="Release"></a>&nbsp;
   <a href="https://github.com/manimovassagh/rampart/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL_v3-E879F9?style=for-the-badge" alt="License"></a>&nbsp;
   <a href="https://goreportcard.com/report/github.com/manimovassagh/rampart"><img src="https://img.shields.io/badge/Go_Report-A+-22d3ee?style=for-the-badge&logo=go&logoColor=white" alt="Go Report Card"></a>&nbsp;
-  <a href="https://github.com/manimovassagh/rampart/stargazers"><img src="https://img.shields.io/github/stars/manimovassagh/rampart?style=for-the-badge&logo=github&color=f59e0b" alt="Stars"></a>
+  <a href="https://github.com/manimovassagh/rampart/stargazers"><img src="https://img.shields.io/github/stars/manimovassagh/rampart?style=for-the-badge&logo=github&color=f59e0b" alt="Stars"></a>&nbsp;
+  <a href="https://manimovassagh.github.io/rampart/"><img src="https://img.shields.io/badge/CI_Dashboard-Live-16a34a?style=for-the-badge&logo=githubpages&logoColor=white" alt="CI Dashboard"></a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Go-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Go">
-  <img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js">
+  <img src="https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/Tailwind-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind">
   <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
@@ -52,7 +53,7 @@
 <tr><td>⚡ <strong>Startup</strong></td><td align="center">~10s+</td><td align="center"><strong>< 1s</strong></td></tr>
 <tr><td>💾 <strong>Memory</strong></td><td align="center">~512MB+</td><td align="center"><strong>~30MB</strong></td></tr>
 <tr><td>📦 <strong>Deployment</strong></td><td align="center">WAR on WildFly</td><td align="center"><strong>Single binary</strong></td></tr>
-<tr><td>🎨 <strong>Theming</strong></td><td align="center">FreeMarker</td><td align="center"><strong>Next.js + Tailwind</strong></td></tr>
+<tr><td>🎨 <strong>Theming</strong></td><td align="center">FreeMarker</td><td align="center"><strong>React + Tailwind</strong></td></tr>
 <tr><td>🔌 <strong>Extensions</strong></td><td align="center">Java SPIs</td><td align="center"><strong>WASM / gRPC plugins</strong></td></tr>
 <tr><td>🖥️ <strong>Admin UI</strong></td><td align="center">Dated</td><td align="center"><strong>Modern & fast</strong></td></tr>
 </table>
@@ -136,7 +137,7 @@ make build && ./bin/rampart serve
 ```
 ┌─────────────────────────┐     ┌─────────────────────────┐
 │      Admin Dashboard    │     │    Login / Consent UI   │
-│    (Next.js + Tailwind) │     │   (Next.js SSR + Themes)│
+│   (Go SSR + Tailwind)   │     │  (React + CSS Themes)   │
 └───────────┬─────────────┘     └───────────┬─────────────┘
             │            REST API           │
             └──────────────┬────────────────┘
@@ -172,13 +173,16 @@ make build && ./bin/rampart serve
 <summary>📌 <strong>Detailed Phase 1 Checklist</strong></summary>
 
 - [x] Project setup and CI/CD pipeline
-- [ ] HTTP server with graceful shutdown
-- [ ] PostgreSQL database layer with migrations
-- [ ] User registration and secure password hashing
-- [ ] OAuth 2.0 Authorization Code flow + PKCE
-- [ ] OIDC ID token issuance and discovery
-- [ ] Basic login UI and admin dashboard
-- [ ] Docker deployment
+- [x] HTTP server with graceful shutdown
+- [x] PostgreSQL database layer with migrations
+- [x] User registration and secure password hashing
+- [x] OAuth 2.0 Authorization Code flow + PKCE
+- [x] OIDC ID token issuance and discovery
+- [x] Admin dashboard (Users, Roles, Groups, Orgs, Sessions, Events, Clients, OIDC Config)
+- [x] Docker deployment
+- [x] CLI tool (`rampart-cli`)
+- [x] E2E tests (Playwright)
+- [x] SDK adapters (Node.js, React, Web)
 
 </details>
 
