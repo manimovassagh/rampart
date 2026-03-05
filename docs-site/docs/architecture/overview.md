@@ -6,7 +6,7 @@ description: High-level architecture of the Rampart IAM server, including compon
 
 # Architecture Overview
 
-Rampart is a single-binary identity and access management (IAM) server built in Go. It bundles a PostgreSQL-backed data layer, Redis-based session/cache layer, and embedded React admin and login UIs into one deployable artifact.
+Rampart is a single-binary identity and access management (IAM) server built in Go. It bundles a PostgreSQL-backed data layer, Redis-based session/cache layer, and embedded admin and login UIs into one deployable artifact.
 
 ## High-Level Architecture
 
@@ -65,8 +65,8 @@ Rampart is a single-binary identity and access management (IAM) server built in 
 | **Account API** | Self-service profile, password change, MFA enrollment |
 | **Session Manager** | Redis-backed session creation, validation, revocation |
 | **Audit Logger** | Append-only event log for security-relevant actions |
-| **Embedded Admin UI** | React + Vite + Tailwind SPA served from `/admin` |
-| **Embedded Login UI** | React + Vite + Tailwind SPA served from `/login`, themeable per-tenant |
+| **Embedded Admin UI** | htmx + Go templates + Tailwind served from `/admin` |
+| **Embedded Login UI** | Go templates + Tailwind served from `/login`, themeable per-tenant |
 
 ## Request Flow
 
@@ -123,8 +123,8 @@ rampart/
 │   ├── store/                   # PostgreSQL data access (pgx, no ORM)
 │   ├── config/                  # YAML config loading and validation
 │   └── crypto/                  # Password hashing, token signing utilities
-├── client/                      # React + Vite admin dashboard
-├── login-ui/                    # React + Vite login/consent UI
+├── internal/templates/           # Go templates for admin dashboard (htmx + Tailwind)
+├── internal/templates/login/    # Go templates for login/consent UI (Tailwind)
 ├── migrations/                  # SQL migration files
 ├── configs/                     # Example YAML configuration
 ├── docs/                        # API specs, architecture docs
@@ -142,7 +142,7 @@ rampart/
 
 ### Single Binary Deployment
 
-Rampart compiles to a single static binary with the admin and login UIs embedded via Go's `embed` package. No external file dependencies, no runtime installations, no containers required (though Docker is supported).
+Rampart compiles to a single static binary with the admin and login UIs (built with htmx, Go templates, and Tailwind CSS) embedded via Go's `embed` package. No external file dependencies, no runtime installations, no containers required (though Docker is supported).
 
 ```bash
 # Deploy Rampart

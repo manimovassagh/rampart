@@ -19,7 +19,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Go-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Go">
-  <img src="https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React">
+  <img src="https://img.shields.io/badge/htmx-3366CC?style=flat-square&logo=htmx&logoColor=white" alt="htmx">
   <img src="https://img.shields.io/badge/Tailwind-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind">
   <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
@@ -53,7 +53,7 @@
 <tr><td>⚡ <strong>Startup</strong></td><td align="center">~10s+</td><td align="center"><strong>< 1s</strong></td></tr>
 <tr><td>💾 <strong>Memory</strong></td><td align="center">~512MB+</td><td align="center"><strong>~30MB</strong></td></tr>
 <tr><td>📦 <strong>Deployment</strong></td><td align="center">WAR on WildFly</td><td align="center"><strong>Single binary</strong></td></tr>
-<tr><td>🎨 <strong>Theming</strong></td><td align="center">FreeMarker</td><td align="center"><strong>React + Tailwind</strong></td></tr>
+<tr><td>🎨 <strong>Theming</strong></td><td align="center">FreeMarker</td><td align="center"><strong>Go Templates + Tailwind</strong></td></tr>
 <tr><td>🔌 <strong>Extensions</strong></td><td align="center">Java SPIs</td><td align="center"><strong>WASM / gRPC plugins</strong></td></tr>
 <tr><td>🖥️ <strong>Admin UI</strong></td><td align="center">Dated</td><td align="center"><strong>Modern & fast</strong></td></tr>
 </table>
@@ -137,7 +137,7 @@ make build && ./bin/rampart serve
 ```
 ┌─────────────────────────┐     ┌─────────────────────────┐
 │      Admin Dashboard    │     │    Login / Consent UI   │
-│  (React + Vite + TW)   │     │  (React + CSS Themes)   │
+│ (htmx + Go Templates + TW) │ │ (Go Templates + Tailwind) │
 └───────────┬─────────────┘     └───────────┬─────────────┘
             │            REST API           │
             └──────────────┬────────────────┘
