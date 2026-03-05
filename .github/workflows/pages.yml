@@ -101,6 +101,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            e2e/package-lock.json
+            docs-site/package-lock.json
 
       - name: Install Playwright and run e2e tests
         working-directory: e2e
@@ -126,10 +130,20 @@ jobs:
             fi
           done
 
+      # ── Build Docusaurus docs site ─────────────────────────
+      - name: Build Docusaurus site
+        working-directory: docs-site
+        run: |
+          npm ci
+          npm run build
+
       # ── Generate dashboard ────────────────────────────────
       - name: Generate CI dashboard
         run: |
-          mkdir -p _site
+          # Docusaurus build output becomes the root site
+          cp -r docs-site/build _site
+
+          mkdir -p _site/ci
 
           # ── Parse data ──
           total_tests=$(grep -c '"Test":' test-results.json || echo "0")
@@ -217,12 +231,12 @@ jobs:
             build_rows="${build_rows}<tr><td>${b_icon} ${b_os}</td><td>${b_arch}</td><td>${b_label}</td></tr>"
           done < build-matrix.jsonl
 
-          # Copy coverage report
-          cp coverage.html _site/coverage.html
+          # Copy coverage report under /ci/
+          cp coverage.html _site/ci/coverage.html
 
-          # Copy Playwright e2e report
+          # Copy Playwright e2e report under /ci/
           if [ -d "e2e/playwright-report" ]; then
-            cp -r e2e/playwright-report _site/e2e-report
+            cp -r e2e/playwright-report _site/ci/e2e-report
           fi
 
           # E2E test summary
@@ -239,8 +253,8 @@ jobs:
             e2e_label="Not run"
           fi
 
-          # ── Generate index.html ──
-          cat > _site/index.html << 'HTMLEOF'
+          # ── Generate CI dashboard page ──
+          cat > _site/ci/index.html << 'HTMLEOF'
           <!DOCTYPE html>
           <html lang="en">
           <head>
@@ -288,7 +302,7 @@ jobs:
           <body>
           HTMLEOF
 
-          cat >> _site/index.html << HTMLEOF
+          cat >> _site/ci/index.html << HTMLEOF
           <div class="topbar">
             <div>
               <h1>Rampart CI Dashboard</h1>

@@ -40,7 +40,7 @@ func main() {
 	case "help", "--help", "-h":
 		printUsage()
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", cmd)
+		_, _ = fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", cmd) //nolint:gosec // cmd is from os.Args, not external input
 		printUsage()
 		os.Exit(1)
 	}
@@ -100,7 +100,7 @@ func cmdLogin(args []string) error {
 	}
 
 	if issuer == "" || email == "" || password == "" {
-		return fmt.Errorf("usage: rampart-cli login --issuer URL --email EMAIL --password PASSWORD")
+		return fmt.Errorf("missing required flags: --issuer, --email, --password")
 	}
 
 	issuer = strings.TrimRight(issuer, "/")
@@ -174,7 +174,7 @@ func cmdStatus() error {
 	}
 
 	if cfg.Issuer == "" {
-		return fmt.Errorf("not configured. Run: rampart-cli login --issuer URL ...")
+		return fmt.Errorf("not configured, run: rampart-cli login --issuer URL")
 	}
 
 	client := cli.NewClient(cfg)
@@ -213,7 +213,7 @@ func cmdWhoami() error {
 		return err
 	}
 	if cfg.AccessToken == "" {
-		return fmt.Errorf("not logged in. Run: rampart-cli login ...")
+		return fmt.Errorf("not logged in, run: rampart-cli login")
 	}
 
 	client := cli.NewClient(cfg)
@@ -239,7 +239,7 @@ func cmdWhoami() error {
 
 func cmdUsers(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: rampart-cli users <list|create|get> [options]")
+		return fmt.Errorf("missing subcommand: users <list|create|get>")
 	}
 
 	cfg, err := cli.LoadConfig()
@@ -247,7 +247,7 @@ func cmdUsers(args []string) error {
 		return err
 	}
 	if cfg.AccessToken == "" {
-		return fmt.Errorf("not logged in. Run: rampart-cli login ...")
+		return fmt.Errorf("not logged in, run: rampart-cli login")
 	}
 
 	client := cli.NewClient(cfg)
@@ -259,7 +259,7 @@ func cmdUsers(args []string) error {
 		return cmdUsersCreate(client, args[1:])
 	case "get":
 		if len(args) < 2 {
-			return fmt.Errorf("usage: rampart-cli users get <user-id>")
+			return fmt.Errorf("missing user ID: users get <user-id>")
 		}
 		return cmdUsersGet(client, args[1])
 	default:
@@ -277,13 +277,13 @@ func cmdUsersList(client *cli.Client) error {
 	users := resp.Users
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tUSERNAME\tEMAIL\tENABLED")
+	_, _ = fmt.Fprintln(w, "ID\tUSERNAME\tEMAIL\tENABLED")
 	for _, u := range users {
 		id, _ := u["id"].(string)
 		username, _ := u["username"].(string)
 		email, _ := u["email"].(string)
 		enabled, _ := u["enabled"].(bool)
-		fmt.Fprintf(w, "%s\t%s\t%s\t%v\n", id, username, email, enabled)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%v\n", id, username, email, enabled)
 	}
 	return w.Flush()
 }
@@ -322,7 +322,7 @@ func cmdUsersCreate(client *cli.Client, args []string) error {
 	}
 
 	if email == "" || username == "" || password == "" {
-		return fmt.Errorf("usage: rampart-cli users create --email EMAIL --username USER --password PASS [--given-name NAME] [--family-name NAME]")
+		return fmt.Errorf("missing required flags: --email, --username, --password")
 	}
 
 	body := map[string]string{
@@ -361,7 +361,7 @@ func cmdToken() error {
 		return err
 	}
 	if cfg.AccessToken == "" {
-		return fmt.Errorf("not logged in. Run: rampart-cli login ...")
+		return fmt.Errorf("not logged in, run: rampart-cli login")
 	}
 
 	fmt.Println(cfg.AccessToken)

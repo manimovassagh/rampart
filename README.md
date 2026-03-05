@@ -14,7 +14,8 @@
   <a href="https://github.com/manimovassagh/rampart/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL_v3-E879F9?style=for-the-badge" alt="License"></a>&nbsp;
   <a href="https://goreportcard.com/report/github.com/manimovassagh/rampart"><img src="https://img.shields.io/badge/Go_Report-A+-22d3ee?style=for-the-badge&logo=go&logoColor=white" alt="Go Report Card"></a>&nbsp;
   <a href="https://github.com/manimovassagh/rampart/stargazers"><img src="https://img.shields.io/github/stars/manimovassagh/rampart?style=for-the-badge&logo=github&color=f59e0b" alt="Stars"></a>&nbsp;
-  <a href="https://manimovassagh.github.io/rampart/"><img src="https://img.shields.io/badge/CI_Dashboard-Live-16a34a?style=for-the-badge&logo=githubpages&logoColor=white" alt="CI Dashboard"></a>
+  <a href="https://manimovassagh.github.io/rampart/"><img src="https://img.shields.io/badge/Docs-Live-16a34a?style=for-the-badge&logo=docusaurus&logoColor=white" alt="Documentation"></a>&nbsp;
+  <a href="https://manimovassagh.github.io/rampart/ci/"><img src="https://img.shields.io/badge/CI_Dashboard-Live-16a34a?style=for-the-badge&logo=githubpages&logoColor=white" alt="CI Dashboard"></a>
 </p>
 
 <p align="center">
@@ -97,7 +98,7 @@
 ### 🛠️ Developer Experience
 - REST API for everything
 - Webhook events for real-time integrations
-- SDKs — Go, TypeScript, Python
+- SDKs — Node.js, React, Next.js, Go, Python, Spring Boot
 - CLI tool & OpenAPI spec
 
 </td>
@@ -127,8 +128,8 @@ git clone https://github.com/manimovassagh/rampart.git && cd rampart
 make build && ./bin/rampart serve
 ```
 
-> [!WARNING]
-> **Rampart is in early development.** APIs and config may change. Not yet recommended for production.
+> [!TIP]
+> **Full documentation available at [manimovassagh.github.io/rampart](https://manimovassagh.github.io/rampart/)** — Getting started, API reference, SDK guides, architecture, and more.
 
 <br>
 
@@ -137,7 +138,7 @@ make build && ./bin/rampart serve
 ```
 ┌─────────────────────────┐     ┌─────────────────────────┐
 │      Admin Dashboard    │     │    Login / Consent UI   │
-│   (Go SSR + Tailwind)   │     │  (React + CSS Themes)   │
+│  (React + Vite + TW)   │     │  (React + CSS Themes)   │
 └───────────┬─────────────┘     └───────────┬─────────────┘
             │            REST API           │
             └──────────────┬────────────────┘
@@ -165,7 +166,7 @@ make build && ./bin/rampart serve
 
 | Phase | Status | Scope |
 |-------|--------|-------|
-| ![Phase 1](https://img.shields.io/badge/Phase_1-Core_Foundation-f59e0b?style=flat-square) | 🔨 In Progress | Go server, OAuth/OIDC, user management, admin UI, Docker |
+| ![Phase 1](https://img.shields.io/badge/Phase_1-Core_Foundation-16a34a?style=flat-square) | ✅ Complete | Go server, OAuth/OIDC, user management, admin UI, Docker |
 | ![Phase 2](https://img.shields.io/badge/Phase_2-Full_Features-0ea5e9?style=flat-square) | ⏳ Planned | SAML, social login, MFA, webhooks, plugin system |
 | ![Phase 3](https://img.shields.io/badge/Phase_3-Enterprise-8B5CF6?style=flat-square) | ⏳ Planned | HA clustering, SCIM, compliance, SDKs, cloud managed |
 
