@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build reports
+  collect:
+    name: Collect CI data
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -47,7 +47,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run tests with coverage
+      # ── Tests + Coverage ──────────────────────────────────
+      - name: Run tests with coverage (JSON output)
         env:
           RAMPART_DB_URL: postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable
           RAMPART_REDIS_URL: redis://localhost:6379/0
@@ -56,98 +57,295 @@ jobs:
           go tool cover -func=coverage.out > coverage-summary.txt
           go tool cover -html=coverage.out -o coverage.html
 
-      - name: Generate reports page
+      # ── Lint ──────────────────────────────────────────────
+      - name: Run go vet
+        run: go vet ./... > govet-output.txt 2>&1 || true
+
+      - name: Run gofmt check
+        run: gofmt -l . > gofmt-output.txt 2>&1 || true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v6.5.0
+        with:
+          version: v2.10.1
+          args: --timeout=5m --out-format json
+        continue-on-error: true
+        id: golangci
+
+      # ── Security ──────────────────────────────────────────
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./... > govulncheck-output.txt 2>&1 || true
+
+      - name: Run gosec
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -fmt json -out gosec-output.json -severity high -confidence high -exclude=G117 ./... 2>/dev/null || true
+
+      # ── Build matrix check ────────────────────────────────
+      - name: Check cross-compilation
+        run: |
+          echo "[]" > build-results.json
+          for pair in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            os="${pair%/*}"
+            arch="${pair#*/}"
+            if CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags="-s -w" -o /dev/null ./cmd/rampart 2>/dev/null; then
+              echo "{\"os\":\"$os\",\"arch\":\"$arch\",\"status\":\"ok\"}" >> build-matrix.jsonl
+            else
+              echo "{\"os\":\"$os\",\"arch\":\"$arch\",\"status\":\"fail\"}" >> build-matrix.jsonl
+            fi
+          done
+
+      # ── Generate dashboard ────────────────────────────────
+      - name: Generate CI dashboard
         run: |
           mkdir -p _site
 
-          # Parse test results
+          # ── Parse data ──
           total_tests=$(grep -c '"Test":' test-results.json || echo "0")
           passed=$(grep '"Action":"pass"' test-results.json | grep '"Test":' | wc -l | tr -d ' ')
           failed=$(grep '"Action":"fail"' test-results.json | grep '"Test":' | wc -l | tr -d ' ')
+          skipped=$(grep '"Action":"skip"' test-results.json | grep '"Test":' | wc -l | tr -d ' ')
           coverage=$(grep total coverage-summary.txt | awk '{print $3}')
+          coverage_num=$(echo "$coverage" | sed 's/%//')
+
+          # Per-package breakdown
+          packages=$(grep '"Action":"pass"\|"Action":"fail"' test-results.json | grep -v '"Test":' | jq -r '.Package' 2>/dev/null | sort -u || true)
+
+          # Lint results
+          govet_issues=$(wc -l < govet-output.txt | tr -d ' ')
+          [ "$govet_issues" -eq 0 ] || govet_issues=$((govet_issues))
+          gofmt_issues=$(wc -l < gofmt-output.txt | tr -d ' ')
+
+          # Security results
+          vuln_count=$(grep -c "Vulnerability" govulncheck-output.txt 2>/dev/null || echo "0")
+          gosec_count=$(python3 -c "import json; d=json.load(open('gosec-output.json')); print(len(d.get('Issues', [])))" 2>/dev/null || echo "0")
+
+          # Build matrix
+          builds_ok=$(grep -c '"status":"ok"' build-matrix.jsonl 2>/dev/null || echo "0")
+          builds_total=$(wc -l < build-matrix.jsonl 2>/dev/null | tr -d ' ' || echo "4")
+
+          # Git info
           commit_sha=$(git rev-parse --short HEAD)
+          commit_full=$(git rev-parse HEAD)
           commit_msg=$(git log -1 --pretty=%s)
+          commit_author=$(git log -1 --pretty=%an)
           build_date=$(date -u '+%Y-%m-%d %H:%M UTC')
+          go_version=$(go version | awk '{print $3}')
+
+          # Status determination
+          if [ "$failed" -eq 0 ] && [ "$govet_issues" -eq 0 ] && [ "$gofmt_issues" -eq 0 ]; then
+            overall_status="passing"
+            status_label="All Passing"
+            status_color="#16a34a"
+            status_bg="#f0fdf4"
+          else
+            overall_status="failing"
+            status_label="Issues Found"
+            status_color="#dc2626"
+            status_bg="#fef2f2"
+          fi
+
+          # Coverage color
+          if [ "$(echo "$coverage_num >= 70" | bc -l 2>/dev/null || echo 0)" -eq 1 ]; then
+            cov_color="#16a34a"
+          elif [ "$(echo "$coverage_num >= 40" | bc -l 2>/dev/null || echo 0)" -eq 1 ]; then
+            cov_color="#ca8a04"
+          else
+            cov_color="#dc2626"
+          fi
+
+          # Per-package test table rows
+          pkg_rows=""
+          while IFS= read -r pkg; do
+            [ -z "$pkg" ] && continue
+            short_pkg=$(echo "$pkg" | sed 's|github.com/manimovassagh/rampart/||')
+            p_pass=$(grep '"Action":"pass"' test-results.json | grep "\"Package\":\"$pkg\"" | grep '"Test":' | wc -l | tr -d ' ')
+            p_fail=$(grep '"Action":"fail"' test-results.json | grep "\"Package\":\"$pkg\"" | grep '"Test":' | wc -l | tr -d ' ')
+            if [ "$p_fail" -gt 0 ]; then
+              pkg_icon="<span style=\"color:#dc2626\">&#10007;</span>"
+            else
+              pkg_icon="<span style=\"color:#16a34a\">&#10003;</span>"
+            fi
+            pkg_rows="${pkg_rows}<tr><td>${pkg_icon} ${short_pkg}</td><td style=\"color:#16a34a\">${p_pass}</td><td style=\"color:#dc2626\">${p_fail}</td></tr>"
+          done <<< "$packages"
+
+          # Build matrix rows
+          build_rows=""
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            b_os=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['os'])" 2>/dev/null)
+            b_arch=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['arch'])" 2>/dev/null)
+            b_status=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null)
+            if [ "$b_status" = "ok" ]; then
+              b_icon="<span style=\"color:#16a34a\">&#10003;</span>"
+              b_label="OK"
+            else
+              b_icon="<span style=\"color:#dc2626\">&#10007;</span>"
+              b_label="Failed"
+            fi
+            build_rows="${build_rows}<tr><td>${b_icon} ${b_os}</td><td>${b_arch}</td><td>${b_label}</td></tr>"
+          done < build-matrix.jsonl
 
           # Copy coverage report
           cp coverage.html _site/coverage.html
 
-          # Generate index page
-          if [ "$failed" -eq 0 ]; then
-            status_badge="✅ All Passing"
-            status_color="#16a34a"
-          else
-            status_badge="❌ ${failed} Failed"
-            status_color="#dc2626"
-          fi
-
-          cat > _site/index.html << HEREDOC
+          # ── Generate index.html ──
+          cat > _site/index.html << 'HTMLEOF'
           <!DOCTYPE html>
           <html lang="en">
           <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Rampart — CI Dashboard</title>
-              <style>
-                  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-                  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
-                  .container { max-width: 900px; margin: 0 auto; }
-                  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
-                  .subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 2rem; }
-                  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-                  .card { background: #fff; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; }
-                  .card-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
-                  .card-value { font-size: 1.75rem; font-weight: 700; margin-top: 0.25rem; }
-                  .card-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem; }
-                  .status { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.875rem; }
-                  .links { display: flex; gap: 1rem; margin-top: 1.5rem; }
-                  .links a { color: #2563eb; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
-                  .links a:hover { text-decoration: underline; }
-                  .meta { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; font-size: 0.8rem; color: #94a3b8; }
-                  .meta code { background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.75rem; }
-              </style>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Rampart — CI Dashboard</title>
+          <meta name="description" content="CI dashboard for the Rampart IAM server — test results, coverage, lint, security scans, and build status.">
+          <style>
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          :root { --bg: #f8fafc; --card: #fff; --border: #e2e8f0; --text: #1e293b; --muted: #64748b; --dim: #94a3b8; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+          .topbar { background: #1e293b; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+          .topbar h1 { font-size: 1.25rem; font-weight: 700; }
+          .topbar .meta { font-size: 0.75rem; color: #94a3b8; }
+          .topbar a { color: #60a5fa; text-decoration: none; font-size: 0.8rem; }
+          .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+          .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+          .card { background: var(--card); border-radius: 12px; padding: 1.25rem; border: 1px solid var(--border); }
+          .card-label { font-size: 0.7rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+          .card-value { font-size: 2rem; font-weight: 700; margin-top: 0.25rem; line-height: 1.2; }
+          .card-sub { font-size: 0.75rem; color: var(--dim); margin-top: 0.25rem; }
+          .section { margin-bottom: 2rem; }
+          .section h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text); }
+          .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+          @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+          table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+          th { text-align: left; padding: 0.625rem 1rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); background: #f8fafc; border-bottom: 1px solid var(--border); font-weight: 600; }
+          td { padding: 0.625rem 1rem; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; }
+          tr:last-child td { border-bottom: none; }
+          .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+          .badge-green { background: #f0fdf4; color: #16a34a; }
+          .badge-red { background: #fef2f2; color: #dc2626; }
+          .badge-yellow { background: #fefce8; color: #ca8a04; }
+          .badge-gray { background: #f8fafc; color: #64748b; }
+          .links { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+          .links a { color: #2563eb; text-decoration: none; font-size: 0.85rem; font-weight: 500; padding: 0.5rem 1rem; border: 1px solid #dbeafe; border-radius: 8px; background: #eff6ff; transition: background 0.15s; }
+          .links a:hover { background: #dbeafe; }
+          .footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--dim); text-align: center; }
+          code { background: #f1f5f9; padding: 0.125rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
+          .pipeline { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem; }
+          .pipe-stage { display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; border: 1px solid var(--border); background: var(--card); }
+          .pipe-arrow { color: var(--dim); font-size: 0.75rem; }
+          </style>
           </head>
           <body>
-              <div class="container">
-                  <h1>Rampart CI Dashboard</h1>
-                  <p class="subtitle">Automated test results and code coverage for the Rampart IAM server.</p>
+          HTMLEOF
 
-                  <div class="cards">
-                      <div class="card">
-                          <div class="card-label">Status</div>
-                          <div class="card-value" style="color: ${status_color}; font-size: 1.25rem;">${status_badge}</div>
-                      </div>
-                      <div class="card">
-                          <div class="card-label">Tests</div>
-                          <div class="card-value">${passed}</div>
-                          <div class="card-sub">of ${total_tests} passed</div>
-                      </div>
-                      <div class="card">
-                          <div class="card-label">Coverage</div>
-                          <div class="card-value">${coverage}</div>
-                          <div class="card-sub">line coverage</div>
-                      </div>
-                      <div class="card">
-                          <div class="card-label">Last Build</div>
-                          <div class="card-value" style="font-size: 1rem;">${build_date}</div>
-                          <div class="card-sub"><code>${commit_sha}</code> ${commit_msg}</div>
-                      </div>
-                  </div>
+          cat >> _site/index.html << HTMLEOF
+          <div class="topbar">
+            <div>
+              <h1>Rampart CI Dashboard</h1>
+              <span class="meta">Automated reports for the Rampart IAM server</span>
+            </div>
+            <div style="text-align:right">
+              <a href="https://github.com/manimovassagh/rampart">GitHub</a> &middot;
+              <a href="https://github.com/manimovassagh/rampart/actions">Actions</a>
+            </div>
+          </div>
+          <div class="container">
 
-                  <div class="links">
-                      <a href="coverage.html">📊 Full Coverage Report</a>
-                      <a href="https://github.com/manimovassagh/rampart">📁 Repository</a>
-                      <a href="https://github.com/manimovassagh/rampart/actions">⚙️ CI Runs</a>
-                  </div>
+          <!-- Pipeline stages overview -->
+          <div class="pipeline">
+            <div class="pipe-stage" style="border-color:${status_color}; color:${status_color}">&#9679; ${status_label}</div>
+            <span class="pipe-arrow">&#8594;</span>
+            <div class="pipe-stage">Lint $([ "$govet_issues" -eq 0 ] && [ "$gofmt_issues" -eq 0 ] && echo '<span style="color:#16a34a">&#10003;</span>' || echo '<span style="color:#dc2626">&#10007;</span>')</div>
+            <span class="pipe-arrow">&#8594;</span>
+            <div class="pipe-stage">Test $([ "$failed" -eq 0 ] && echo '<span style="color:#16a34a">&#10003;</span>' || echo '<span style="color:#dc2626">&#10007;</span>')</div>
+            <span class="pipe-arrow">&#8594;</span>
+            <div class="pipe-stage">Security $([ "$vuln_count" -eq 0 ] && [ "$gosec_count" -eq 0 ] && echo '<span style="color:#16a34a">&#10003;</span>' || echo '<span style="color:#ca8a04">&#9888;</span>')</div>
+            <span class="pipe-arrow">&#8594;</span>
+            <div class="pipe-stage">Build $([ "$builds_ok" -eq "$builds_total" ] && echo '<span style="color:#16a34a">&#10003;</span>' || echo '<span style="color:#dc2626">&#10007;</span>')</div>
+          </div>
 
-                  <div class="meta">
-                      Generated from commit <code>${commit_sha}</code> on ${build_date}.
-                      Powered by <strong>Rampart</strong> CI pipeline.
-                  </div>
+          <!-- Summary cards -->
+          <div class="cards">
+            <div class="card">
+              <div class="card-label">Tests Passed</div>
+              <div class="card-value" style="color:#16a34a">${passed}</div>
+              <div class="card-sub">of ${total_tests} total · ${skipped} skipped</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Tests Failed</div>
+              <div class="card-value" style="color:$([ "$failed" -eq 0 ] && echo '#16a34a' || echo '#dc2626')">${failed}</div>
+              <div class="card-sub">$([ "$failed" -eq 0 ] && echo 'no failures' || echo 'needs attention')</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Coverage</div>
+              <div class="card-value" style="color:${cov_color}">${coverage}</div>
+              <div class="card-sub">line coverage</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Security</div>
+              <div class="card-value" style="color:$([ "$vuln_count" -eq 0 ] && [ "$gosec_count" -eq 0 ] && echo '#16a34a' || echo '#ca8a04')">$([ "$vuln_count" -eq 0 ] && [ "$gosec_count" -eq 0 ] && echo 'Clean' || echo "${vuln_count}+${gosec_count}")</div>
+              <div class="card-sub">vulns: ${vuln_count} · gosec: ${gosec_count}</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Lint</div>
+              <div class="card-value" style="color:$([ "$govet_issues" -eq 0 ] && [ "$gofmt_issues" -eq 0 ] && echo '#16a34a' || echo '#ca8a04')">$([ "$govet_issues" -eq 0 ] && [ "$gofmt_issues" -eq 0 ] && echo 'Clean' || echo 'Issues')</div>
+              <div class="card-sub">vet: ${govet_issues} · fmt: ${gofmt_issues}</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Builds</div>
+              <div class="card-value" style="color:$([ "$builds_ok" -eq "$builds_total" ] && echo '#16a34a' || echo '#dc2626')">${builds_ok}/${builds_total}</div>
+              <div class="card-sub">cross-compile targets</div>
+            </div>
+          </div>
+
+          <!-- Details: Tests + Builds -->
+          <div class="section grid-2">
+            <div>
+              <h2>Test Results by Package</h2>
+              <table>
+                <thead><tr><th>Package</th><th>Passed</th><th>Failed</th></tr></thead>
+                <tbody>${pkg_rows}</tbody>
+              </table>
+            </div>
+            <div>
+              <h2>Build Matrix</h2>
+              <table>
+                <thead><tr><th>OS</th><th>Arch</th><th>Status</th></tr></thead>
+                <tbody>${build_rows}</tbody>
+              </table>
+              <div style="margin-top:1.5rem">
+                <h2>Environment</h2>
+                <table>
+                  <tbody>
+                    <tr><td style="color:var(--dim)">Go</td><td><code>${go_version}</code></td></tr>
+                    <tr><td style="color:var(--dim)">Commit</td><td><a href="https://github.com/manimovassagh/rampart/commit/${commit_full}" style="color:#2563eb;text-decoration:none"><code>${commit_sha}</code></a> ${commit_msg}</td></tr>
+                    <tr><td style="color:var(--dim)">Author</td><td>${commit_author}</td></tr>
+                    <tr><td style="color:var(--dim)">Built</td><td>${build_date}</td></tr>
+                  </tbody>
+                </table>
               </div>
+            </div>
+          </div>
+
+          <!-- Links -->
+          <div class="section">
+            <div class="links">
+              <a href="coverage.html">Full Coverage Report</a>
+              <a href="https://github.com/manimovassagh/rampart">Repository</a>
+              <a href="https://github.com/manimovassagh/rampart/actions">CI Runs</a>
+              <a href="https://github.com/manimovassagh/rampart/pulls">Pull Requests</a>
+            </div>
+          </div>
+
+          <div class="footer">
+            Generated from <code>${commit_sha}</code> on ${build_date}. Powered by <strong>Rampart</strong> CI.
+          </div>
+          </div>
           </body>
           </html>
-          HEREDOC
+          HTMLEOF
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
@@ -156,7 +354,7 @@ jobs:
 
   deploy:
     name: Deploy to Pages
-    needs: build
+    needs: collect
     runs-on: ubuntu-latest
     environment:
       name: github-pages
