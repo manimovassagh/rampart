@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -181,5 +183,147 @@ func TestGetAuthenticatedUserNilContext(t *testing.T) {
 	user := GetAuthenticatedUser(nil)
 	if user != nil {
 		t.Error("expected nil for nil context")
+	}
+}
+
+func TestGetAuthenticatedUserEmptyContext(t *testing.T) {
+	user := GetAuthenticatedUser(context.TODO())
+	if user != nil {
+		t.Error("expected nil for context without user")
+	}
+}
+
+func TestSetAuthenticatedUser(t *testing.T) {
+	expected := &AuthenticatedUser{
+		UserID:            uuid.New(),
+		OrgID:             uuid.New(),
+		PreferredUsername: "testuser",
+		Email:             "test@example.com",
+		EmailVerified:     true,
+		GivenName:         "Test",
+		FamilyName:        "User",
+	}
+
+	ctx := SetAuthenticatedUser(context.Background(), expected)
+	got := GetAuthenticatedUser(ctx)
+
+	if got == nil {
+		t.Fatal("expected user in context")
+	}
+	if got.UserID != expected.UserID {
+		t.Errorf("UserID = %v, want %v", got.UserID, expected.UserID)
+	}
+	if got.PreferredUsername != "testuser" {
+		t.Errorf("PreferredUsername = %q, want testuser", got.PreferredUsername)
+	}
+	if got.Email != "test@example.com" {
+		t.Errorf("Email = %q, want test@example.com", got.Email)
+	}
+	if !got.EmailVerified {
+		t.Error("expected EmailVerified to be true")
+	}
+	if got.GivenName != "Test" {
+		t.Errorf("GivenName = %q, want Test", got.GivenName)
+	}
+	if got.FamilyName != "User" {
+		t.Errorf("FamilyName = %q, want User", got.FamilyName)
+	}
+}
+
+func TestAuthMiddlewareBearerCaseInsensitive(t *testing.T) {
+	tok := generateTestToken(t)
+
+	handler := Auth(testPubKey)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := GetAuthenticatedUser(r.Context())
+		if user == nil {
+			t.Error("expected authenticated user in context")
+		}
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/me", http.NoBody)
+	req.Header.Set("Authorization", "bearer "+tok)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestAuthMiddlewareOnlyTokenNoBearer(t *testing.T) {
+	handler := Auth(testPubKey)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("handler should not be called")
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/me", http.NoBody)
+	req.Header.Set("Authorization", "just-a-token-no-bearer-prefix")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestWriteAuthErrorIncludesRequestID(t *testing.T) {
+	w := httptest.NewRecorder()
+	w.Header().Set(HeaderRequestID, "test-req-123")
+	writeAuthError(w, "test error")
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "test-req-123") {
+		t.Errorf("response body missing request ID, got: %s", body)
+	}
+	if !strings.Contains(body, "unauthorized") {
+		t.Errorf("response body missing error code, got: %s", body)
+	}
+	if !strings.Contains(body, "test error") {
+		t.Errorf("response body missing error description, got: %s", body)
+	}
+}
+
+func TestWriteAuthErrorContentType(t *testing.T) {
+	w := httptest.NewRecorder()
+	writeAuthError(w, "some error")
+
+	ct := w.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+}
+
+func TestAuthMiddlewareSuccessPopulatesAllFields(t *testing.T) {
+	tok := generateTestToken(t)
+
+	var gotUser *AuthenticatedUser
+	handler := Auth(testPubKey)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		gotUser = GetAuthenticatedUser(r.Context())
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/me", http.NoBody)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if gotUser == nil {
+		t.Fatal("expected authenticated user")
+	}
+	if gotUser.UserID == uuid.Nil {
+		t.Error("expected non-nil UserID")
+	}
+	if gotUser.OrgID == uuid.Nil {
+		t.Error("expected non-nil OrgID")
+	}
+	if !gotUser.EmailVerified {
+		t.Error("expected EmailVerified to be true")
+	}
+	if gotUser.GivenName != "Admin" {
+		t.Errorf("GivenName = %q, want Admin", gotUser.GivenName)
+	}
+	if gotUser.FamilyName != "User" {
+		t.Errorf("FamilyName = %q, want User", gotUser.FamilyName)
 	}
 }

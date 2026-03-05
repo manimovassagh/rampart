@@ -252,6 +252,113 @@ func TestRegisterCreateUserError(t *testing.T) {
 	}
 }
 
+func TestRegisterWithOrgSlug(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockUserStore{slugOrgID: orgID}
+	h := newTestRegisterHandler(store)
+
+	body := []byte(`{
+		"username": "johndoe",
+		"email": "john@example.com",
+		"password": "Str0ng!Pass",
+		"given_name": "John",
+		"family_name": "Doe",
+		"org_slug": "my-org"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Register(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("status = %d, want %d; body = %s", w.Code, http.StatusCreated, w.Body.String())
+	}
+}
+
+func TestRegisterOrgSlugError(t *testing.T) {
+	store := &mockUserStore{
+		slugOrgID:  uuid.New(),
+		slugOrgErr: fmt.Errorf("org not found"),
+	}
+	h := newTestRegisterHandler(store)
+
+	body := []byte(`{
+		"username": "johndoe",
+		"email": "john@example.com",
+		"password": "Str0ng!Pass",
+		"given_name": "John",
+		"family_name": "Doe",
+		"org_slug": "nonexistent"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestRegisterEmailCheckError(t *testing.T) {
+	store := &mockUserStore{
+		defaultOrgID: uuid.New(),
+		emailErr:     fmt.Errorf("db error"),
+	}
+	h := newTestRegisterHandler(store)
+
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(validRegistrationJSON()))
+	w := httptest.NewRecorder()
+
+	h.Register(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestRegisterUsernameCheckError(t *testing.T) {
+	store := &mockUserStore{
+		defaultOrgID: uuid.New(),
+		usernameErr:  fmt.Errorf("db error"),
+	}
+	h := newTestRegisterHandler(store)
+
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(validRegistrationJSON()))
+	w := httptest.NewRecorder()
+
+	h.Register(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestRegisterWithOrgSettings(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockUserStore{
+		defaultOrgID: orgID,
+		orgSettings: &model.OrgSettings{
+			PasswordMinLength:        12,
+			PasswordRequireUppercase: true,
+			PasswordRequireLowercase: true,
+			PasswordRequireNumbers:   true,
+			PasswordRequireSymbols:   true,
+		},
+	}
+	h := newTestRegisterHandler(store)
+
+	// Password "Str0ng!Pass" is only 11 chars, should fail with 12 min length
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(validRegistrationJSON()))
+	w := httptest.NewRecorder()
+
+	h.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
 func TestRegisterEmailNormalization(t *testing.T) {
 	store := &mockUserStore{defaultOrgID: uuid.New()}
 	h := newTestRegisterHandler(store)
