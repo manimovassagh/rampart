@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .LoginPageTitle}}{{.LoginPageTitle}}{{else}}Sign In{{end}}</title>
+    <style>
+        :root {
+            --primary: {{if .PrimaryColor}}{{.PrimaryColor}}{{else}}#0f172a{{end}};
+            --primary-hover: {{if .PrimaryColor}}{{.PrimaryColor}}dd{{else}}#1e293b{{end}};
+            --bg: {{if .BackgroundColor}}{{.BackgroundColor}}{{else}}#ffffff{{end}};
+            --text: #0f172a;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --input-border: #d1d5db;
+            --input-focus: var(--primary);
+            --error-text: #dc2626;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            width: 100%;
+            max-width: 340px;
+            padding: 2rem 1rem;
+        }
+        .header { margin-bottom: 2rem; }
+        .header img { max-height: 36px; margin-bottom: 1rem; }
+        .header h1 { font-size: 1.625rem; font-weight: 700; letter-spacing: -0.03em; }
+        .header p { font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem; }
+        .header strong { color: var(--text); font-weight: 600; }
+        .error-msg {
+            color: var(--error-text);
+            font-size: 0.8125rem;
+            margin-bottom: 1rem;
+            padding-left: 0.125rem;
+        }
+        .field { margin-bottom: 1rem; }
+        label { display: block; font-size: 0.8125rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.375rem; }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 0.5625rem 0;
+            border: none;
+            border-bottom: 1.5px solid var(--input-border);
+            font-size: 1rem;
+            color: var(--text);
+            background: transparent;
+            transition: border-color 0.15s;
+            outline: none;
+            border-radius: 0;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-bottom-color: var(--input-focus);
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.6875rem;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            margin-top: 1.5rem;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn:active { transform: scale(0.99); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {{if .LogoURL}}<img src="{{.LogoURL}}" alt="Logo">{{end}}
+            <h1>{{if .LoginPageTitle}}{{.LoginPageTitle}}{{else}}Sign in{{end}}</h1>
+            <p>{{if .LoginPageMessage}}{{.LoginPageMessage}}{{else}}Continue to <strong>{{.ClientName}}</strong>{{end}}</p>
+        </div>
+
+        {{if .Error}}
+        <div class="error-msg">{{.Error}}</div>
+        {{end}}
+
+        <form method="POST" action="/oauth/authorize">
+            <input type="hidden" name="client_id" value="{{.ClientID}}">
+            <input type="hidden" name="redirect_uri" value="{{.RedirectURI}}">
+            <input type="hidden" name="response_type" value="code">
+            <input type="hidden" name="scope" value="{{.Scope}}">
+            <input type="hidden" name="state" value="{{.State}}">
+            <input type="hidden" name="code_challenge" value="{{.CodeChallenge}}">
+            <input type="hidden" name="code_challenge_method" value="S256">
+
+            <div class="field">
+                <label for="identifier">Username or Email</label>
+                <input type="text" id="identifier" name="identifier" required autocomplete="username" autofocus>
+            </div>
+
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn">Continue</button>
+        </form>
+    </div>
+</body>
+</html>
