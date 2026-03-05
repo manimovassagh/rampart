@@ -268,6 +268,7 @@ type pageData struct {
 	AllRoles       []*model.Role
 	Events         []*model.AuditEvent
 	EventFilter    string
+	StatusFilter   string
 	GlobalSessions []*session.SessionWithUser
 	Groups         []*model.GroupResponse
 	GroupDetail    *model.GroupResponse
@@ -372,11 +373,12 @@ func (h *AdminConsoleHandler) ListUsersPage(w http.ResponseWriter, r *http.Reque
 	orgID := authUser.OrgID
 
 	search := r.URL.Query().Get("search")
+	status := r.URL.Query().Get("status")
 	page := queryInt(r, "page", 1)
 	limit := 20
 	offset := (page - 1) * limit
 
-	users, total, err := h.store.ListUsers(ctx, orgID, search, "", limit, offset)
+	users, total, err := h.store.ListUsers(ctx, orgID, search, status, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list users", "error", err)
 		h.render(w, r, "users_list", &pageData{Title: "Users", ActiveNav: navUsers, Error: "Failed to load users."})
@@ -389,19 +391,20 @@ func (h *AdminConsoleHandler) ListUsersPage(w http.ResponseWriter, r *http.Reque
 		adminUsers[i] = u.ToAdminResponse(count)
 	}
 
-	pg := buildPagination(page, limit, total, pathAdminUsers, search)
+	pg := buildPaginationWithExtra(page, limit, total, pathAdminUsers, search, status, "status")
 
 	if r.Header.Get(headerHXRequest) == "true" {
-		h.renderPartial(w, r, "users_list", "users_table", &pageData{Users: adminUsers, Search: search, Pagination: pg})
+		h.renderPartial(w, r, "users_list", "users_table", &pageData{Users: adminUsers, Search: search, StatusFilter: status, Pagination: pg})
 		return
 	}
 
 	h.render(w, r, "users_list", &pageData{
-		Title:      "Users",
-		ActiveNav:  "users",
-		Users:      adminUsers,
-		Search:     search,
-		Pagination: pg,
+		Title:        "Users",
+		ActiveNav:    navUsers,
+		Users:        adminUsers,
+		Search:       search,
+		StatusFilter: status,
+		Pagination:   pg,
 	})
 }
 
@@ -2030,4 +2033,13 @@ func buildPagination(page, limit, total int, baseURL, search string) *pagination
 		BaseURL:    baseURL,
 		QueryExtra: queryExtra,
 	}
+}
+
+// buildPaginationWithExtra is like buildPagination but appends an additional filter param.
+func buildPaginationWithExtra(page, limit, total int, baseURL, search, filterValue, filterKey string) *paginationData {
+	pg := buildPagination(page, limit, total, baseURL, search)
+	if filterValue != "" {
+		pg.QueryExtra += "&" + url.QueryEscape(filterKey) + "=" + url.QueryEscape(filterValue)
+	}
+	return pg
 }
