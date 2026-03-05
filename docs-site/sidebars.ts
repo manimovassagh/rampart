@@ -12,6 +12,7 @@ const sidebars: SidebarsConfig = {
         'getting-started/docker',
         'getting-started/configuration',
         'getting-started/cli',
+        'getting-started/ai-skills',
       ],
     },
     {

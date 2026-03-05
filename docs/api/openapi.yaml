@@ -70,6 +70,7 @@ paths:
         login page if not already authenticated. Supports Authorization Code
         flow with PKCE (RFC 7636).
       operationId: authorize
+      security: []
       parameters:
         - name: response_type
           in: query
@@ -141,6 +142,7 @@ paths:
         Exchanges an authorization code, refresh token, client credentials,
         or device code for access and refresh tokens.
       operationId: token
+      security: []
       requestBody:
         required: true
         content:
@@ -256,6 +258,7 @@ paths:
       summary: Device authorization
       description: Initiates device authorization flow (RFC 8628) for CLIs and smart TVs.
       operationId: deviceAuthorization
+      security: []
       requestBody:
         required: true
         content:
@@ -302,6 +305,7 @@ paths:
       summary: End session
       description: Ends the user's session and optionally redirects to the client.
       operationId: logout
+      security: []
       parameters:
         - name: id_token_hint
           in: query
@@ -328,6 +332,7 @@ paths:
       summary: OIDC Discovery document
       description: Returns OpenID Connect Provider metadata.
       operationId: getDiscovery
+      security: []
       responses:
         "200":
           description: OIDC Discovery metadata
@@ -342,6 +347,7 @@ paths:
       summary: JSON Web Key Set
       description: Returns the public keys used to verify token signatures.
       operationId: getJWKS
+      security: []
       responses:
         "200":
           description: JWKS
@@ -1612,6 +1618,7 @@ paths:
       tags: [System]
       summary: Health check
       operationId: healthCheck
+      security: []
       responses:
         "200":
           description: Healthy
@@ -1630,6 +1637,7 @@ paths:
       summary: Readiness check
       description: Returns 200 when the server is ready to accept traffic (DB and cache connected).
       operationId: readinessCheck
+      security: []
       responses:
         "200":
           description: Ready
@@ -2024,6 +2032,39 @@ components:
           maxLength: 255
         login_page_message:
           type: string
+
+    OrganizationBranding:
+      type: object
+      properties:
+        logo_url:
+          type: string
+          format: uri
+          description: URL to the organization logo
+        favicon_url:
+          type: string
+          format: uri
+          description: URL to the favicon
+        primary_color:
+          type: string
+          description: Primary brand color (hex)
+          example: "#8b5cf6"
+        accent_color:
+          type: string
+          description: Accent color (hex)
+          example: "#ec4899"
+        background_color:
+          type: string
+          description: Background color (hex)
+          example: "#ffffff"
+        login_page_title:
+          type: string
+          maxLength: 255
+        login_page_message:
+          type: string
+        theme:
+          type: string
+          description: Login page theme name
+          example: "default"
 
     OrganizationExport:
       type: object

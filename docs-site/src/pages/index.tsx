@@ -34,7 +34,7 @@ const FEATURES = [
     icon: '\uD83D\uDDA5\uFE0F',
     title: 'Admin Console',
     description:
-      'Beautiful React admin dashboard. Manage users, roles, clients, sessions, and audit logs from one place.',
+      'Beautiful admin dashboard built with htmx + Tailwind. Manage users, roles, clients, sessions, and audit logs from one place.',
   },
   {
     icon: '\uD83D\uDCDC',

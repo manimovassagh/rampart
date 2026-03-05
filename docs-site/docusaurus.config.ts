@@ -65,11 +65,6 @@ const config: Config = {
         { to: '/docs/api/overview', label: 'API', position: 'left' },
         { to: '/docs/sdks/overview', label: 'SDKs', position: 'left' },
         {
-          href: 'https://manimovassagh.github.io/rampart/ci/',
-          label: 'CI Dashboard',
-          position: 'right',
-        },
-        {
           href: 'https://github.com/manimovassagh/rampart',
           label: 'GitHub',
           position: 'right',
@@ -99,8 +94,7 @@ const config: Config = {
         {
           title: 'Resources',
           items: [
-            { label: 'CI Dashboard', href: 'https://manimovassagh.github.io/rampart/ci/' },
-            { label: 'E2E Test Report', href: 'https://manimovassagh.github.io/rampart/ci/e2e-report/' },
+            { label: 'CI (GitHub Actions)', href: 'https://github.com/manimovassagh/rampart/actions' },
             { label: 'GitHub', href: 'https://github.com/manimovassagh/rampart' },
             { label: 'Releases', href: 'https://github.com/manimovassagh/rampart/releases' },
           ],
