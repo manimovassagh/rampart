@@ -8,7 +8,7 @@ const METRICS = [
   {value: '<1s', label: 'Startup'},
   {value: '~30MB', label: 'Memory'},
   {value: '1', label: 'Binary'},
-  {value: '6', label: 'SDK Adapters'},
+  {value: '7', label: 'SDK Adapters'},
 ];
 
 const FEATURES = [
@@ -34,7 +34,7 @@ const FEATURES = [
     icon: '\uD83D\uDDA5\uFE0F',
     title: 'Admin Console',
     description:
-      'Beautiful admin dashboard built with htmx + Tailwind. Manage users, roles, clients, sessions, and audit logs from one place.',
+      'Beautiful admin dashboard built with htmx + Tailwind. Manage users, roles, clients, sessions, audit logs, and login themes from one place.',
   },
   {
     icon: '\uD83D\uDCDC',

@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+const contentTypeJSON = "application/json"
+
 func TestDiscoveryReturnsMetadata(t *testing.T) {
 	h := DiscoveryHandler("https://auth.example.com", noopLogger())
 
@@ -20,8 +22,8 @@ func TestDiscoveryReturnsMetadata(t *testing.T) {
 	}
 
 	ct := w.Header().Get("Content-Type")
-	if ct != "application/json" {
-		t.Errorf("Content-Type = %q, want application/json", ct)
+	if ct != contentTypeJSON {
+		t.Errorf("Content-Type = %q, want %s", ct, contentTypeJSON)
 	}
 
 	cc := w.Header().Get("Cache-Control")

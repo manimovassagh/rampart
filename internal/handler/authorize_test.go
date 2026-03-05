@@ -27,6 +27,8 @@ type mockAuthorizeStore struct {
 	storedCode    bool
 	storeErr      error
 	updateErr     error
+	orgSettings   *model.OrgSettings
+	orgSettErr    error
 }
 
 func (m *mockAuthorizeStore) GetOAuthClient(_ context.Context, _ string) (*model.OAuthClient, error) {
@@ -52,6 +54,10 @@ func (m *mockAuthorizeStore) StoreAuthorizationCode(_ context.Context, _, _ stri
 
 func (m *mockAuthorizeStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error {
 	return m.updateErr
+}
+
+func (m *mockAuthorizeStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {
+	return m.orgSettings, m.orgSettErr
 }
 
 func newTestOAuthClient(orgID uuid.UUID) *model.OAuthClient {

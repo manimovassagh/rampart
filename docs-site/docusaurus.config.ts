@@ -41,7 +41,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/rampart-social.png',
+    // image: 'img/rampart-social.png',  // TODO: add a real social preview image
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,

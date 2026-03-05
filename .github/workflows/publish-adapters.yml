@@ -1,0 +1,171 @@
+name: Publish npm Adapters
+
+on:
+  push:
+    tags:
+      - "adapter-*"
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect changed packages
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.changes.outputs.web }}
+      react: ${{ steps.changes.outputs.react }}
+      nextjs: ${{ steps.changes.outputs.nextjs }}
+      node: ${{ steps.changes.outputs.node }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Determine changed packages
+        id: changes
+        run: |
+          # Find the previous adapter tag to diff against
+          PREV_TAG=$(git tag --list 'adapter-*' --sort=-v:refname | sed -n '2p')
+          if [ -z "$PREV_TAG" ]; then
+            # First adapter tag — publish everything
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            echo "react=true" >> "$GITHUB_OUTPUT"
+            echo "nextjs=true" >> "$GITHUB_OUTPUT"
+            echo "node=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          DIFF=$(git diff --name-only "$PREV_TAG" HEAD)
+
+          check_path() {
+            local name="$1"
+            local path="$2"
+            if echo "$DIFF" | grep -q "^${path}"; then
+              echo "${name}=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "${name}=false" >> "$GITHUB_OUTPUT"
+            fi
+          }
+
+          check_path "web"   "adapters/frontend/web/"
+          check_path "react" "adapters/frontend/react/"
+          check_path "nextjs" "adapters/frontend/nextjs/"
+          check_path "node"  "adapters/backend/node/"
+
+  publish-web:
+    name: Publish @rampart/web
+    needs: detect-changes
+    if: needs.detect-changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adapters/frontend/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-react:
+    name: Publish @rampart/react
+    needs: detect-changes
+    if: needs.detect-changes.outputs.react == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adapters/frontend/react
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-nextjs:
+    name: Publish @rampart/nextjs
+    needs: detect-changes
+    if: needs.detect-changes.outputs.nextjs == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adapters/frontend/nextjs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-node:
+    name: Publish @rampart/node
+    needs: detect-changes
+    if: needs.detect-changes.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adapters/backend/node
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

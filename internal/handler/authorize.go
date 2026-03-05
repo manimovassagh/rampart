@@ -19,12 +19,42 @@ import (
 	"github.com/manimovassagh/rampart/internal/oauth"
 )
 
-//go:embed templates/login.html
-var loginTemplateFS embed.FS
+//go:embed templates/login/*.html
+var loginThemeFS embed.FS
 
-var loginTmpl = template.Must(template.ParseFS(loginTemplateFS, "templates/login.html"))
+const (
+	authCodeTTL       = 10 * time.Minute
+	themeDefault      = "default"
+	themeDark         = "dark"
+	themeMinimal      = "minimal"
+	themeCorporate    = "corporate"
+	themeGradient     = "gradient"
+	loginTemplatePath = "templates/login/"
+)
 
-const authCodeTTL = 10 * time.Minute
+// validThemes is the set of supported login theme names.
+var validThemes = map[string]bool{
+	themeDefault:   true,
+	themeDark:      true,
+	themeMinimal:   true,
+	themeCorporate: true,
+	themeGradient:  true,
+}
+
+// loginThemeTemplates holds the parsed template for each theme.
+var loginThemeTemplates map[string]*template.Template
+
+func init() {
+	loginThemeTemplates = make(map[string]*template.Template, len(validThemes))
+	for name := range validThemes {
+		path := loginTemplatePath + name + ".html"
+		tmpl, err := template.ParseFS(loginThemeFS, path)
+		if err != nil {
+			panic("failed to parse login theme template " + name + ": " + err.Error())
+		}
+		loginThemeTemplates[name] = tmpl
+	}
+}
 
 // AuthorizeStore defines the database operations required by AuthorizeHandler.
 type AuthorizeStore interface {
@@ -34,6 +64,7 @@ type AuthorizeStore interface {
 	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
 	StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope string, expiresAt time.Time) error
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
+	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
 }
 
 // AuthorizeHandler handles the OAuth 2.0 authorization endpoint.
@@ -49,13 +80,19 @@ func NewAuthorizeHandler(store AuthorizeStore, logger *slog.Logger, auditLogger 
 }
 
 type loginPageData struct {
-	ClientID      string
-	ClientName    string
-	RedirectURI   string
-	Scope         string
-	State         string
-	CodeChallenge string
-	Error         string
+	ClientID         string
+	ClientName       string
+	RedirectURI      string
+	Scope            string
+	State            string
+	CodeChallenge    string
+	Error            string
+	LogoURL          string
+	PrimaryColor     string
+	BackgroundColor  string
+	LoginPageTitle   string
+	LoginPageMessage string
+	Theme            string
 }
 
 // Authorize handles both GET (render login) and POST (authenticate + redirect).
@@ -121,14 +158,16 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		scope = "openid"
 	}
 
-	h.renderLoginPage(w, &loginPageData{
+	data := &loginPageData{
 		ClientID:      clientID,
 		ClientName:    client.Name,
 		RedirectURI:   redirectURI,
 		Scope:         scope,
 		State:         state,
 		CodeChallenge: codeChallenge,
-	})
+	}
+	h.applyOrgSettings(r.Context(), client.OrgID, data)
+	h.renderLoginPage(w, data)
 }
 
 func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
@@ -185,6 +224,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		State:         state,
 		CodeChallenge: codeChallenge,
 	}
+	h.applyOrgSettings(ctx, client.OrgID, &pageData)
 
 	if identifier == "" || password == "" {
 		pageData.Error = "Username/email and password are required."
@@ -264,13 +304,49 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
+// applyOrgSettings populates the login page data with org-specific branding and theme.
+func (h *AuthorizeHandler) applyOrgSettings(ctx context.Context, orgID uuid.UUID, data *loginPageData) {
+	settings, err := h.store.GetOrgSettings(ctx, orgID)
+	if err != nil {
+		h.logger.Warn("failed to fetch org settings for login theme", "error", err)
+		data.Theme = themeDefault
+		return
+	}
+	if settings == nil {
+		data.Theme = themeDefault
+		return
+	}
+
+	data.LogoURL = settings.LogoURL
+	data.PrimaryColor = settings.PrimaryColor
+	data.BackgroundColor = settings.BackgroundColor
+	data.LoginPageTitle = settings.LoginPageTitle
+	data.LoginPageMessage = settings.LoginPageMessage
+
+	theme := settings.LoginTheme
+	if !validThemes[theme] {
+		theme = themeDefault
+	}
+	data.Theme = theme
+}
+
+// resolveThemeTemplate returns the parsed template for the given theme name.
+func resolveThemeTemplate(theme string) *template.Template {
+	if tmpl, ok := loginThemeTemplates[theme]; ok {
+		return tmpl
+	}
+	return loginThemeTemplates[themeDefault]
+}
+
 func (h *AuthorizeHandler) renderLoginPage(w http.ResponseWriter, data *loginPageData) {
 	w.Header().Set("Content-Type", contentTypeHTML)
 	w.Header().Set("Cache-Control", cacheNoStore)
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.WriteHeader(http.StatusOK)
-	if err := loginTmpl.Execute(w, data); err != nil {
-		h.logger.Error("failed to render login template", "error", err)
+
+	tmpl := resolveThemeTemplate(data.Theme)
+	if err := tmpl.Execute(w, data); err != nil {
+		h.logger.Error("failed to render login template", "error", err, "theme", data.Theme)
 	}
 }
 
