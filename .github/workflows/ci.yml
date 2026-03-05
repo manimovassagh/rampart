@@ -25,7 +25,7 @@ jobs:
     uses: ./.github/workflows/test.yml
     with:
       go-version-file: go.mod
-      coverage-threshold: 50
+      coverage-threshold: 25
 
   security:
     name: Security

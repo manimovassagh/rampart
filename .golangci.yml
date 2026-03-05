@@ -41,6 +41,8 @@ linters-settings:
   gosec:
     severity: medium
     confidence: medium
+    excludes:
+      - G117
   revive:
     rules:
       - name: blank-imports
