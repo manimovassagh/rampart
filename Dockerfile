@@ -11,14 +11,16 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /rampart ./cmd/rampart
 
-# Runtime stage — distroless nonroot (~15MB)
-FROM gcr.io/distroless/static-debian12:nonroot
+# Runtime stage — alpine (~8MB, supports shell for permission setup)
+FROM alpine:3.21
+
+RUN adduser -D -u 10001 rampart && mkdir -p /data && chown rampart:rampart /data
 
 COPY --from=builder /rampart /rampart
 COPY --from=builder /app/migrations /migrations
 
 EXPOSE 8080
 
-USER nonroot:nonroot
+USER rampart
 
 ENTRYPOINT ["/rampart"]
