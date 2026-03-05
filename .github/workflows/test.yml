@@ -1,0 +1,107 @@
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: "Path to go.mod for Go version"
+        required: false
+        type: string
+        default: "go.mod"
+      coverage-threshold:
+        description: "Minimum coverage percentage (0-100)"
+        required: false
+        type: number
+        default: 50
+
+permissions:
+  contents: read
+
+jobs:
+  unit-test:
+    name: unit tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rampart
+          POSTGRES_PASSWORD: rampart
+          POSTGRES_DB: rampart
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rampart"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+
+      - name: Run tests with coverage
+        env:
+          RAMPART_DB_URL: postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable
+          RAMPART_REDIS_URL: redis://localhost:6379/0
+        run: go test -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Check coverage threshold
+        run: |
+          total=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${total}%"
+          threshold=${{ inputs.coverage-threshold }}
+          if [ "$(echo "$total < $threshold" | bc -l)" -eq 1 ]; then
+            echo "Coverage ${total}% is below threshold ${threshold}%"
+            exit 1
+          fi
+          echo "Coverage ${total}% meets threshold ${threshold}%"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@ea165f8d65b6db9a6b7c67862cd61e8cbc4d760b # v4.6.2
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 14
+
+  build:
+    name: build binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          output="bin/rampart-${{ matrix.goos }}-${{ matrix.goarch }}"
+          go build -trimpath -ldflags="-s -w" -o "$output" ./cmd/rampart
+          echo "Built: $output"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6db9a6b7c67862cd61e8cbc4d760b # v4.6.2
+        with:
+          name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: bin/rampart-*
+          retention-days: 7
