@@ -23,6 +23,7 @@ type TokenStore interface {
 	ConsumeAuthorizationCode(ctx context.Context, code string) (*model.AuthorizationCode, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
+	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 }
 
 // TokenHandler handles the OAuth 2.0 token endpoint.
@@ -158,12 +159,23 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Fetch user roles (excluding internal admin role for external clients)
+	roles, rErr := h.store.GetEffectiveUserRoles(ctx, user.ID)
+	if rErr != nil {
+		h.logger.Warn("failed to fetch user roles for token", "error", rErr)
+		roles = nil
+	}
+	if authCode.ClientID != adminClientID {
+		roles = filterInternalRoles(roles)
+	}
+
 	// Generate access token
 	accessToken, err := token.GenerateAccessToken(
 		h.privateKey, h.kid, h.issuer, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,
+		roles...,
 	)
 	if err != nil {
 		h.logger.Error("failed to generate access token", "error", err)
@@ -216,4 +228,20 @@ func (h *TokenHandler) writeOAuthError(w http.ResponseWriter, status int, code, 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Error("failed to encode oauth error response", "error", err)
 	}
+}
+
+// internalRoles are roles that should not be exposed to external OAuth clients.
+var internalRoles = map[string]bool{"admin": true}
+
+// filterInternalRoles removes internal-only roles (like admin) from the role list.
+// External OAuth clients should not receive admin privileges — admin access is only
+// available through the Rampart admin console itself, similar to Keycloak's approach.
+func filterInternalRoles(roles []string) []string {
+	filtered := make([]string, 0, len(roles))
+	for _, r := range roles {
+		if !internalRoles[r] {
+			filtered = append(filtered, r)
+		}
+	}
+	return filtered
 }

@@ -4,6 +4,8 @@ import { useAuth } from "@rampart/react";
 interface Endpoint {
   label: string;
   url: string;
+  badge?: string;
+  badgeColor?: string;
 }
 
 const RAMPART_URL = "http://localhost:8080";
@@ -12,6 +14,18 @@ const ENDPOINTS: Endpoint[] = [
   { label: "GET /api/profile", url: "/api/profile" },
   { label: "GET /api/claims", url: "/api/claims" },
   { label: "GET /me", url: `${RAMPART_URL}/me` },
+  {
+    label: "GET /api/editor/dashboard",
+    url: "/api/editor/dashboard",
+    badge: "editor",
+    badgeColor: "bg-purple-100 text-purple-700",
+  },
+  {
+    label: "GET /api/manager/reports",
+    url: "/api/manager/reports",
+    badge: "manager",
+    badgeColor: "bg-orange-100 text-orange-700",
+  },
 ];
 
 export function ApiTester() {
@@ -36,7 +50,10 @@ export function ApiTester() {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">API Tester</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-1">API Tester</h3>
+      <p className="text-xs text-gray-500 mb-4">
+        Test protected endpoints. Role-protected routes return 403 if you lack the required role.
+      </p>
 
       <div className="flex flex-wrap gap-2 mb-4">
         {ENDPOINTS.map((ep) => (
@@ -44,9 +61,14 @@ export function ApiTester() {
             key={ep.url}
             onClick={() => testEndpoint(ep)}
             disabled={loading}
-            className="px-3 py-1.5 text-sm rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 transition-colors font-mono"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 transition-colors font-mono"
           >
             {ep.label}
+            {ep.badge && (
+              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${ep.badgeColor}`}>
+                {ep.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -59,10 +81,13 @@ export function ApiTester() {
               className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                 response.status >= 200 && response.status < 300
                   ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
+                  : response.status === 403
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-red-100 text-red-800"
               }`}
             >
               {response.status}
+              {response.status === 403 && " Forbidden"}
             </span>
           </div>
           <pre className="bg-gray-900 text-gray-100 p-4 rounded-md text-xs overflow-auto max-h-64">

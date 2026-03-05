@@ -60,6 +60,34 @@ function mapClaims(payload: JWTPayload): RampartClaims {
   return claims;
 }
 
+/**
+ * Express middleware that enforces role-based access control.
+ * Must be used AFTER rampartAuth — requires req.auth to be set.
+ * Returns 403 Forbidden if the user lacks any of the required roles.
+ */
+export function requireRoles(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.auth) {
+      sendUnauthorized(res, "Authentication required.");
+      return;
+    }
+
+    const userRoles = req.auth.roles ?? [];
+    const missing = roles.filter((r) => !userRoles.includes(r));
+
+    if (missing.length > 0) {
+      res.status(403).json({
+        error: "forbidden",
+        error_description: `Missing required role(s): ${missing.join(", ")}`,
+        status: 403,
+      });
+      return;
+    }
+
+    next();
+  };
+}
+
 function sendUnauthorized(res: Response, description: string): void {
   res.status(401).json({
     error: "unauthorized",

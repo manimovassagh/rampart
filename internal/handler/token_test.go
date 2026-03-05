@@ -42,6 +42,10 @@ func (m *mockTokenStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.
 	return m.orgSettings, m.orgSettingsErr
 }
 
+func (m *mockTokenStore) GetEffectiveUserRoles(_ context.Context, _ uuid.UUID) ([]string, error) {
+	return nil, nil
+}
+
 func TestTokenMissingGrantType(t *testing.T) {
 	store := &mockTokenStore{}
 	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
