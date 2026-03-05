@@ -40,7 +40,7 @@ Go's compiled nature, lightweight goroutine concurrency model, and efficient mem
 | P99 latency (token endpoint) | < 5 ms | 20–50 ms |
 | CPU efficiency | Compiled, no interpreter overhead | Interpreted, GIL limits true parallelism |
 
-These numbers are approximate and depend on hardware, configuration, and workload. The order-of-magnitude difference is consistent across benchmarks of Go vs Python web frameworks.
+These numbers are estimated based on typical Go vs Python web framework benchmarks and have not been measured against production Rampart builds. The order-of-magnitude difference is consistent across independent benchmarks of Go vs Python web frameworks.
 
 ### Why This Matters
 
