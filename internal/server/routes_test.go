@@ -340,7 +340,7 @@ func TestAPICORSPreflight(t *testing.T) {
 	req.Header.Set("Access-Control-Request-Method", "POST")
 	req.Header.Set("Access-Control-Request-Headers", "Content-Type")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) //nolint:gosec // test code with test server URL
 	if err != nil {
 		t.Fatalf("OPTIONS /register error: %v", err)
 	}

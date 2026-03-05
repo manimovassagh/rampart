@@ -121,7 +121,7 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		scope = "openid"
 	}
 
-	h.renderLoginPage(w, http.StatusOK, loginPageData{
+	h.renderLoginPage(w, http.StatusOK, &loginPageData{
 		ClientID:      clientID,
 		ClientName:    client.Name,
 		RedirectURI:   redirectURI,
@@ -188,7 +188,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	if identifier == "" || password == "" {
 		pageData.Error = "Username/email and password are required."
-		h.renderLoginPage(w, http.StatusOK, pageData)
+		h.renderLoginPage(w, http.StatusOK, &pageData)
 		return
 	}
 
@@ -214,14 +214,14 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	if user == nil {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, nil, identifier, "user", "", identifier, map[string]any{"reason": "user_not_found", "client_id": clientID})
 		pageData.Error = msgInvalidLogin
-		h.renderLoginPage(w, http.StatusOK, pageData)
+		h.renderLoginPage(w, http.StatusOK, &pageData)
 		return
 	}
 
 	if !user.Enabled {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_disabled", "client_id": clientID})
 		pageData.Error = msgInvalidLogin
-		h.renderLoginPage(w, http.StatusOK, pageData)
+		h.renderLoginPage(w, http.StatusOK, &pageData)
 		return
 	}
 
@@ -234,7 +234,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_password", "client_id": clientID})
 		pageData.Error = msgInvalidLogin
-		h.renderLoginPage(w, http.StatusOK, pageData)
+		h.renderLoginPage(w, http.StatusOK, &pageData)
 		return
 	}
 
@@ -264,7 +264,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
-func (h *AuthorizeHandler) renderLoginPage(w http.ResponseWriter, status int, data loginPageData) {
+func (h *AuthorizeHandler) renderLoginPage(w http.ResponseWriter, status int, data *loginPageData) {
 	w.Header().Set("Content-Type", contentTypeHTML)
 	w.Header().Set("Cache-Control", cacheNoStore)
 	w.Header().Set("X-Frame-Options", "DENY")

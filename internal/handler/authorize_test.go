@@ -45,7 +45,7 @@ func (m *mockAuthorizeStore) GetUserByUsername(_ context.Context, _ string, _ uu
 	return m.usernameUser, m.usernameErr
 }
 
-func (m *mockAuthorizeStore) StoreAuthorizationCode(_ context.Context, _ string, _ string, _, _ uuid.UUID, _, _, _ string, _ time.Time) error {
+func (m *mockAuthorizeStore) StoreAuthorizationCode(_ context.Context, _, _ string, _, _ uuid.UUID, _, _, _ string, _ time.Time) error {
 	m.storedCode = true
 	return m.storeErr
 }

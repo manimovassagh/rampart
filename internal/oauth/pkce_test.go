@@ -3,6 +3,7 @@ package oauth
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"strings"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func TestGenerateAuthorizationCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(code) == 0 {
+	if code == "" {
 		t.Fatal("expected non-empty code")
 	}
 
@@ -29,32 +30,11 @@ func TestValidateCodeVerifier(t *testing.T) {
 		want     bool
 	}{
 		{"valid 43 chars", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr", true},
-		{"valid 128 chars", string(make([]byte, 128)), false}, // null bytes aren't valid but length is ok
+		{"valid 128 chars", strings.Repeat("a", 128), true},
 		{"too short 42 chars", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop", false},
 		{"empty", "", false},
+		{"too long 129 chars", strings.Repeat("a", 129), false},
 	}
-
-	// Fix: use a proper 128-char verifier
-	longVerifier := ""
-	for i := 0; i < 128; i++ {
-		longVerifier += "a"
-	}
-	tests[1] = struct {
-		name     string
-		verifier string
-		want     bool
-	}{"valid 128 chars", longVerifier, true}
-
-	// Add too-long case
-	tooLong := ""
-	for i := 0; i < 129; i++ {
-		tooLong += "a"
-	}
-	tests = append(tests, struct {
-		name     string
-		verifier string
-		want     bool
-	}{"too long 129 chars", tooLong, false})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

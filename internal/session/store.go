@@ -21,8 +21,8 @@ type Session struct {
 	CreatedAt        time.Time
 }
 
-// SessionWithUser enriches a Session with user information for global views.
-type SessionWithUser struct {
+// WithUser enriches a Session with user information for global views.
+type WithUser struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
 	Username  string
@@ -163,7 +163,7 @@ func (s *PGStore) CountActive(ctx context.Context) (int, error) {
 }
 
 // ListAll returns all active sessions with user info, paginated and searchable.
-func (s *PGStore) ListAll(ctx context.Context, search string, limit, offset int) ([]*SessionWithUser, int, error) {
+func (s *PGStore) ListAll(ctx context.Context, search string, limit, offset int) ([]*WithUser, int, error) {
 	baseWhere := "s.expires_at > now()"
 	args := []any{}
 	paramIdx := 1
@@ -195,9 +195,9 @@ func (s *PGStore) ListAll(ctx context.Context, search string, limit, offset int)
 	}
 	defer rows.Close()
 
-	var sessions []*SessionWithUser
+	var sessions []*WithUser
 	for rows.Next() {
-		var sess SessionWithUser
+		var sess WithUser
 		if err := rows.Scan(&sess.ID, &sess.UserID, &sess.Username, &sess.Email, &sess.ExpiresAt, &sess.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scanning session with user row: %w", err)
 		}

@@ -171,7 +171,7 @@ type AdminConsoleSessionStore interface {
 	CountActive(ctx context.Context) (int, error)
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
 	Delete(ctx context.Context, sessionID uuid.UUID) error
-	ListAll(ctx context.Context, search string, limit, offset int) ([]*session.SessionWithUser, int, error)
+	ListAll(ctx context.Context, search string, limit, offset int) ([]*session.WithUser, int, error)
 	DeleteAll(ctx context.Context) error
 }
 
@@ -273,7 +273,7 @@ type pageData struct {
 	Events         []*model.AuditEvent
 	EventFilter    string
 	StatusFilter   string
-	GlobalSessions []*session.SessionWithUser
+	GlobalSessions []*session.WithUser
 	Groups         []*model.GroupResponse
 	GroupDetail    *model.GroupResponse
 	GroupMembers   []*model.GroupMember
