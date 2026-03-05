@@ -65,7 +65,7 @@ func (h *AdminHandler) Stats(w http.ResponseWriter, r *http.Request) {
 
 	authUser := middleware.GetAuthenticatedUser(ctx)
 	if authUser == nil {
-		apierror.Unauthorized(w, "Authentication required.")
+		apierror.Unauthorized(w, msgAuthRequired)
 		return
 	}
 	orgID := resolveOrgID(r, authUser)
@@ -114,7 +114,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	authUser := middleware.GetAuthenticatedUser(ctx)
 	if authUser == nil {
-		apierror.Unauthorized(w, "Authentication required.")
+		apierror.Unauthorized(w, msgAuthRequired)
 		return
 	}
 	orgID := resolveOrgID(r, authUser)
@@ -164,7 +164,7 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	var req model.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	authUser := middleware.GetAuthenticatedUser(ctx)
 	if authUser == nil {
-		apierror.Unauthorized(w, "Authentication required.")
+		apierror.Unauthorized(w, msgAuthRequired)
 		return
 	}
 	orgID := resolveOrgID(r, authUser)
@@ -304,7 +304,7 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -377,7 +377,7 @@ func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	var req model.ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 

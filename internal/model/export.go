@@ -2,11 +2,11 @@ package model
 
 // OrgExport is the JSON structure for organization export/import.
 type OrgExport struct {
-	Organization OrgExportData        `json:"organization"`
-	Settings     *OrgSettingsExport   `json:"settings,omitempty"`
-	Roles        []RoleExport         `json:"roles,omitempty"`
-	Groups       []GroupExport        `json:"groups,omitempty"`
-	Clients      []ClientExport       `json:"clients,omitempty"`
+	Organization OrgExportData      `json:"organization"`
+	Settings     *OrgSettingsExport `json:"settings,omitempty"`
+	Roles        []RoleExport       `json:"roles,omitempty"`
+	Groups       []GroupExport      `json:"groups,omitempty"`
+	Clients      []ClientExport     `json:"clients,omitempty"`
 }
 
 // OrgExportData is the organization info in an export.
@@ -18,20 +18,20 @@ type OrgExportData struct {
 
 // OrgSettingsExport captures all settings for export.
 type OrgSettingsExport struct {
-	PasswordMinLength          int    `json:"password_min_length"`
-	PasswordRequireUppercase   bool   `json:"password_require_uppercase"`
-	PasswordRequireLowercase   bool   `json:"password_require_lowercase"`
-	PasswordRequireNumbers     bool   `json:"password_require_numbers"`
-	PasswordRequireSymbols     bool   `json:"password_require_symbols"`
-	MFAEnforcement             string `json:"mfa_enforcement"`
-	AccessTokenTTLSeconds      int    `json:"access_token_ttl_seconds"`
-	RefreshTokenTTLSeconds     int    `json:"refresh_token_ttl_seconds"`
-	SelfRegistrationEnabled    bool   `json:"self_registration_enabled"`
-	EmailVerificationRequired  bool   `json:"email_verification_required"`
-	ForgotPasswordEnabled      bool   `json:"forgot_password_enabled"`
-	RememberMeEnabled          bool   `json:"remember_me_enabled"`
-	LoginPageTitle             string `json:"login_page_title"`
-	LoginPageMessage           string `json:"login_page_message"`
+	PasswordMinLength         int    `json:"password_min_length"`
+	PasswordRequireUppercase  bool   `json:"password_require_uppercase"`
+	PasswordRequireLowercase  bool   `json:"password_require_lowercase"`
+	PasswordRequireNumbers    bool   `json:"password_require_numbers"`
+	PasswordRequireSymbols    bool   `json:"password_require_symbols"`
+	MFAEnforcement            string `json:"mfa_enforcement"`
+	AccessTokenTTLSeconds     int    `json:"access_token_ttl_seconds"`
+	RefreshTokenTTLSeconds    int    `json:"refresh_token_ttl_seconds"`
+	SelfRegistrationEnabled   bool   `json:"self_registration_enabled"`
+	EmailVerificationRequired bool   `json:"email_verification_required"`
+	ForgotPasswordEnabled     bool   `json:"forgot_password_enabled"`
+	RememberMeEnabled         bool   `json:"remember_me_enabled"`
+	LoginPageTitle            string `json:"login_page_title"`
+	LoginPageMessage          string `json:"login_page_message"`
 }
 
 // RoleExport captures a role for export.

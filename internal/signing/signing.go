@@ -20,7 +20,7 @@ const rsaKeyBits = 2048
 type KeyPair struct {
 	PrivateKey *rsa.PrivateKey
 	PublicKey  *rsa.PublicKey
-	KID       string
+	KID        string
 }
 
 // LoadOrGenerate loads an RSA private key from the given PEM file path.
@@ -62,7 +62,7 @@ func generate(path string) (*KeyPair, error) {
 	return &KeyPair{
 		PrivateKey: priv,
 		PublicKey:  &priv.PublicKey,
-		KID:       kid,
+		KID:        kid,
 	}, nil
 }
 
@@ -88,7 +88,7 @@ func parse(data []byte) (*KeyPair, error) {
 	return &KeyPair{
 		PrivateKey: priv,
 		PublicKey:  &priv.PublicKey,
-		KID:       kid,
+		KID:        kid,
 	}, nil
 }
 

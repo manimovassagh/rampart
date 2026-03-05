@@ -9,9 +9,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 	"strings"
-	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/token"
 )
@@ -21,6 +21,11 @@ const (
 	csrfCookieName    = "rampart_csrf"
 	csrfFieldName     = "csrf_token"
 	flashCookieName   = "rampart_flash"
+
+	// AdminLoginPath is the redirect target for unauthenticated admin requests.
+	AdminLoginPath = "/admin/login"
+	// AdminCookiePath is the cookie path for admin session cookies.
+	AdminCookiePath = "/admin/"
 )
 
 // AdminSession returns middleware that validates admin session cookies.
@@ -30,39 +35,39 @@ func AdminSession(pubKey *rsa.PublicKey, hmacKey []byte) func(http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(sessionCookieName)
 			if err != nil || cookie.Value == "" {
-				http.Redirect(w, r, "/admin/login", http.StatusFound)
+				http.Redirect(w, r, AdminLoginPath, http.StatusFound)
 				return
 			}
 
 			accessToken, ok := verifySignedCookie(cookie.Value, hmacKey)
 			if !ok {
 				ClearAdminSession(w)
-				http.Redirect(w, r, "/admin/login", http.StatusFound)
+				http.Redirect(w, r, AdminLoginPath, http.StatusFound)
 				return
 			}
 
 			claims, err := token.VerifyAccessToken(pubKey, accessToken)
 			if err != nil {
 				ClearAdminSession(w)
-				http.Redirect(w, r, "/admin/login", http.StatusFound)
+				http.Redirect(w, r, AdminLoginPath, http.StatusFound)
 				return
 			}
 
 			userID, err := uuid.Parse(claims.Subject)
 			if err != nil {
 				ClearAdminSession(w)
-				http.Redirect(w, r, "/admin/login", http.StatusFound)
+				http.Redirect(w, r, AdminLoginPath, http.StatusFound)
 				return
 			}
 
 			authUser := &AuthenticatedUser{
-				UserID:           userID,
-				OrgID:            claims.OrgID,
+				UserID:            userID,
+				OrgID:             claims.OrgID,
 				PreferredUsername: claims.PreferredUsername,
-				Email:            claims.Email,
-				EmailVerified:    claims.EmailVerified,
-				GivenName:        claims.GivenName,
-				FamilyName:       claims.FamilyName,
+				Email:             claims.Email,
+				EmailVerified:     claims.EmailVerified,
+				GivenName:         claims.GivenName,
+				FamilyName:        claims.FamilyName,
 			}
 
 			ctx := context.WithValue(r.Context(), authenticatedUserKey, authUser)
@@ -116,7 +121,7 @@ func SetAdminSession(w http.ResponseWriter, accessToken string, hmacKey []byte, 
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    signed,
-		Path:     "/admin/",
+		Path:     AdminCookiePath,
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -129,7 +134,7 @@ func ClearAdminSession(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",
-		Path:     "/admin/",
+		Path:     AdminCookiePath,
 		MaxAge:   -1,
 		HttpOnly: true,
 	})
@@ -140,7 +145,7 @@ func SetFlash(w http.ResponseWriter, message string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     flashCookieName,
 		Value:    base64.URLEncoding.EncodeToString([]byte(message)),
-		Path:     "/admin/",
+		Path:     AdminCookiePath,
 		MaxAge:   10,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -158,7 +163,7 @@ func GetFlash(w http.ResponseWriter, r *http.Request) string {
 	http.SetCookie(w, &http.Cookie{
 		Name:     flashCookieName,
 		Value:    "",
-		Path:     "/admin/",
+		Path:     AdminCookiePath,
 		MaxAge:   -1,
 		HttpOnly: true,
 	})
@@ -200,7 +205,7 @@ func ensureCSRFCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     csrfCookieName,
 		Value:    tok,
-		Path:     "/admin/",
+		Path:     AdminCookiePath,
 		MaxAge:   3600,
 		HttpOnly: false, // Must be readable by forms via template
 		SameSite: http.SameSiteLaxMode,

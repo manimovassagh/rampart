@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	maxRequestBodySize   = 1 << 20 // 1 MB
-	minResponseDuration  = 250 * time.Millisecond
+	maxRequestBodySize  = 1 << 20 // 1 MB
+	minResponseDuration = 250 * time.Millisecond
 )
 
 // UserStore defines the database operations required by RegisterHandler.
@@ -57,7 +57,7 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	var req model.RegistrationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 

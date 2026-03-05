@@ -87,7 +87,7 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	client, err := h.store.GetOAuthClient(r.Context(), clientID)
 	if err != nil {
 		h.logger.Error("failed to fetch oauth client", "error", err)
-		h.renderError(w, http.StatusInternalServerError, "An unexpected error occurred.")
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
 		return
 	}
 	if client == nil {
@@ -162,7 +162,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	client, err := h.store.GetOAuthClient(ctx, clientID)
 	if err != nil {
 		h.logger.Error("failed to fetch oauth client", "error", err)
-		h.renderError(w, http.StatusInternalServerError, "An unexpected error occurred.")
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
 		return
 	}
 	if client == nil {
@@ -197,26 +197,26 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.GetUserByEmail(ctx, strings.ToLower(identifier), orgID)
 	if err != nil {
 		h.logger.Error("failed to lookup user by email", "error", err)
-		h.renderError(w, http.StatusInternalServerError, "An unexpected error occurred.")
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
 		return
 	}
 	if user == nil {
 		user, err = h.store.GetUserByUsername(ctx, identifier, orgID)
 		if err != nil {
 			h.logger.Error("failed to lookup user by username", "error", err)
-			h.renderError(w, http.StatusInternalServerError, "An unexpected error occurred.")
+			h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
 			return
 		}
 	}
 
 	if user == nil {
-		pageData.Error = "Invalid username/email or password."
+		pageData.Error = msgInvalidLogin
 		h.renderLoginPage(w, http.StatusOK, pageData)
 		return
 	}
 
 	if !user.Enabled {
-		pageData.Error = "Invalid username/email or password."
+		pageData.Error = msgInvalidLogin
 		h.renderLoginPage(w, http.StatusOK, pageData)
 		return
 	}
@@ -224,11 +224,11 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	ok, err := auth.VerifyPassword(password, string(user.PasswordHash))
 	if err != nil {
 		h.logger.Error("failed to verify password", "error", err)
-		h.renderError(w, http.StatusInternalServerError, "An unexpected error occurred.")
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
 		return
 	}
 	if !ok {
-		pageData.Error = "Invalid username/email or password."
+		pageData.Error = msgInvalidLogin
 		h.renderLoginPage(w, http.StatusOK, pageData)
 		return
 	}
@@ -237,14 +237,14 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	code, err := oauth.GenerateAuthorizationCode()
 	if err != nil {
 		h.logger.Error("failed to generate authorization code", "error", err)
-		h.renderError(w, http.StatusInternalServerError, "An unexpected error occurred.")
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
 		return
 	}
 
 	expiresAt := time.Now().Add(authCodeTTL)
 	if err := h.store.StoreAuthorizationCode(ctx, code, clientID, user.ID, orgID, redirectURI, codeChallenge, scope, expiresAt); err != nil {
 		h.logger.Error("failed to store authorization code", "error", err)
-		h.renderError(w, http.StatusInternalServerError, "An unexpected error occurred.")
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
 		return
 	}
 
@@ -258,8 +258,8 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthorizeHandler) renderLoginPage(w http.ResponseWriter, status int, data loginPageData) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", contentTypeHTML)
+	w.Header().Set("Cache-Control", cacheNoStore)
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.WriteHeader(status)
 	if err := loginTmpl.Execute(w, data); err != nil {
@@ -268,8 +268,8 @@ func (h *AuthorizeHandler) renderLoginPage(w http.ResponseWriter, status int, da
 }
 
 func (h *AuthorizeHandler) renderError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", contentTypeHTML)
+	w.Header().Set("Cache-Control", cacheNoStore)
 	w.WriteHeader(status)
 	data := struct{ Error string }{Error: message}
 	tmpl := template.Must(template.New("error").Parse(`<!DOCTYPE html>

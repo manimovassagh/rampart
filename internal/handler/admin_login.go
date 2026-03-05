@@ -20,7 +20,10 @@ import (
 	"github.com/manimovassagh/rampart/internal/token"
 )
 
-const adminClientID = "rampart-admin"
+const (
+	adminClientID        = "rampart-admin"
+	adminOAuthCookieName = "rampart_admin_oauth"
+)
 
 // AdminLoginStore defines database operations for admin login flow.
 type AdminLoginStore interface {
@@ -75,7 +78,7 @@ func (h *AdminLoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	verifier, err := generateCodeVerifier()
 	if err != nil {
 		h.logger.Error("failed to generate code verifier", "error", err)
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		http.Error(w, msgInternalServer, http.StatusInternalServerError)
 		return
 	}
 	challenge := oauth.ComputeS256Challenge(verifier)
@@ -84,7 +87,7 @@ func (h *AdminLoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	stateBytes := make([]byte, 16)
 	if _, err := rand.Read(stateBytes); err != nil {
 		h.logger.Error("failed to generate state", "error", err)
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		http.Error(w, msgInternalServer, http.StatusInternalServerError)
 		return
 	}
 	state := hex.EncodeToString(stateBytes)
@@ -92,9 +95,9 @@ func (h *AdminLoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Store verifier+state in a short-lived cookie so callback can use them
 	cookieVal := state + "." + verifier
 	http.SetCookie(w, &http.Cookie{
-		Name:     "rampart_admin_oauth",
+		Name:     adminOAuthCookieName,
 		Value:    cookieVal,
-		Path:     "/admin/",
+		Path:     middleware.AdminCookiePath,
 		MaxAge:   600, // 10 minutes
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -116,23 +119,23 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 	if code == "" || state == "" {
 		h.logger.Warn("admin callback missing code or state")
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
 	// Retrieve stored state+verifier from cookie
-	oauthCookie, err := r.Cookie("rampart_admin_oauth")
+	oauthCookie, err := r.Cookie(adminOAuthCookieName)
 	if err != nil || oauthCookie.Value == "" {
 		h.logger.Warn("admin callback missing oauth cookie")
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
 	// Clear the oauth cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:     "rampart_admin_oauth",
+		Name:     adminOAuthCookieName,
 		Value:    "",
-		Path:     "/admin/",
+		Path:     middleware.AdminCookiePath,
 		MaxAge:   -1,
 		HttpOnly: true,
 	})
@@ -141,7 +144,7 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	parts := splitFirst(oauthCookie.Value, '.')
 	if len(parts) != 2 {
 		h.logger.Warn("admin callback invalid oauth cookie format")
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
@@ -150,7 +153,7 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 	if state != storedState {
 		h.logger.Warn("admin callback state mismatch")
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
@@ -161,19 +164,19 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	authCode, err := h.store.ConsumeAuthorizationCode(ctx, code)
 	if err != nil {
 		h.logger.Error("failed to consume authorization code", "error", err)
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 	if authCode == nil {
 		h.logger.Warn("admin callback invalid or expired authorization code")
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
 	// Verify client_id matches
 	if authCode.ClientID != adminClientID {
 		h.logger.Warn("admin callback client_id mismatch")
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
@@ -181,14 +184,14 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	expectedRedirect := h.issuer + "/admin/callback"
 	if authCode.RedirectURI != expectedRedirect {
 		h.logger.Warn("admin callback redirect_uri mismatch")
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
 	// Validate PKCE
 	if !oauth.ValidatePKCE(codeVerifier, authCode.CodeChallenge) {
 		h.logger.Warn("admin callback PKCE validation failed")
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
@@ -196,7 +199,7 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.GetUserByID(ctx, authCode.UserID)
 	if err != nil || user == nil || !user.Enabled {
 		h.logger.Error("failed to fetch user for admin login", "error", err)
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return
 	}
 
@@ -223,7 +226,7 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		h.logger.Error("failed to generate access token", "error", err)
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		http.Error(w, msgInternalServer, http.StatusInternalServerError)
 		return
 	}
 
@@ -231,14 +234,14 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := token.GenerateRefreshToken()
 	if err != nil {
 		h.logger.Error("failed to generate refresh token", "error", err)
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		http.Error(w, msgInternalServer, http.StatusInternalServerError)
 		return
 	}
 
 	expiresAt := time.Now().Add(refreshTTL)
 	if _, err := h.sessions.Create(ctx, user.ID, refreshToken, expiresAt); err != nil {
 		h.logger.Error("failed to create session", "error", err)
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		http.Error(w, msgInternalServer, http.StatusInternalServerError)
 		return
 	}
 
@@ -251,7 +254,7 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 // Logout clears the admin session and redirects to login.
 func (h *AdminLoginHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	middleware.ClearAdminSession(w)
-	http.Redirect(w, r, "/admin/login", http.StatusFound)
+	http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 }
 
 func generateCodeVerifier() (string, error) {
@@ -270,4 +273,3 @@ func splitFirst(s string, sep byte) []string {
 	}
 	return []string{s}
 }
-

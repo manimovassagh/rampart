@@ -28,7 +28,7 @@ func NewLogger(store EventStore, logger *slog.Logger) *Logger {
 }
 
 // Log records an audit event asynchronously (fire-and-forget).
-func (l *Logger) Log(ctx context.Context, r *http.Request, orgID uuid.UUID, eventType string, actorID *uuid.UUID, actorName, targetType, targetID, targetName string, details map[string]interface{}) {
+func (l *Logger) Log(ctx context.Context, r *http.Request, orgID uuid.UUID, eventType string, actorID *uuid.UUID, actorName, targetType, targetID, targetName string, details map[string]any) {
 	event := &model.AuditEvent{
 		OrgID:      orgID,
 		EventType:  eventType,
@@ -72,12 +72,12 @@ func extractIP(r *http.Request) string {
 }
 
 // MarshalDetails converts a struct to a map for the details field.
-func MarshalDetails(v interface{}) map[string]interface{} {
+func MarshalDetails(v any) map[string]any {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return nil
 	}
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil
 	}

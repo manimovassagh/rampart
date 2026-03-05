@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -26,7 +27,7 @@ func (db *DB) GetOAuthClient(ctx context.Context, clientID string) (*model.OAuth
 	err := row.Scan(&c.ID, &c.OrgID, &c.Name, &c.ClientType, &c.RedirectURIs,
 		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("querying oauth client %q: %w", clientID, err)
@@ -143,7 +144,7 @@ func (db *DB) UpdateOAuthClient(ctx context.Context, clientID string, req *model
 		&c.ID, &c.OrgID, &c.Name, &c.ClientType, &c.RedirectURIs,
 		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("updating oauth client: %w", err)

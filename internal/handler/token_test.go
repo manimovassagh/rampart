@@ -16,13 +16,13 @@ import (
 )
 
 type mockTokenStore struct {
-	oauthClient   *model.OAuthClient
-	oauthErr      error
-	authCode      *model.AuthorizationCode
-	consumeErr    error
-	userByID      *model.User
-	userByIDErr   error
-	orgSettings   *model.OrgSettings
+	oauthClient    *model.OAuthClient
+	oauthErr       error
+	authCode       *model.AuthorizationCode
+	consumeErr     error
+	userByID       *model.User
+	userByIDErr    error
+	orgSettings    *model.OrgSettings
 	orgSettingsErr error
 }
 

@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/middleware"
@@ -26,6 +28,70 @@ import (
 
 //go:embed templates/admin/*.html templates/admin/partials/*.html
 var adminTemplateFS embed.FS
+
+// Admin console string constants (SonarQube S1192 compliance).
+const (
+	// Flash / error messages
+	msgInvalidForm    = "Invalid form data."
+	msgInternalErr    = "Internal error."
+	msgInvalidRole    = "Invalid role."
+	msgRegenFailed    = "Failed to regenerate secret."
+	msgDuplicateKey   = "duplicate key"
+	msgInvalidJSON    = "Invalid or malformed JSON request body."
+	msgAuthRequired   = "Authentication required."
+	msgInternalServer = "Internal server error."
+	msgUnexpectedErr  = "An unexpected error occurred."
+	msgInvalidLogin   = "Invalid username/email or password."
+
+	// OAuth constants
+	oauthServerError = "server_error"
+	tokenTypeBearer  = "Bearer"
+
+	// ActiveNav values
+	navUsers         = "users"
+	navRoles         = "roles"
+	navGroups        = "groups"
+	navOrganizations = "organizations"
+	navClients       = "clients"
+	navSessions      = "sessions"
+	navEvents        = "events"
+
+	// Redirect paths
+	pathAdminUsers     = "/admin/users"
+	pathAdminUserFmt   = "/admin/users/%s"
+	pathAdminOrgs      = "/admin/organizations"
+	pathAdminOrgFmt    = "/admin/organizations/%s"
+	pathAdminClients   = "/admin/clients"
+	pathAdminClientFmt = "/admin/clients/%s"
+	pathAdminRoles     = "/admin/roles"
+	pathAdminRoleFmt   = "/admin/roles/%s"
+	pathAdminGroups    = "/admin/groups"
+	pathAdminGroupFmt  = "/admin/groups/%s"
+	pathAdminSessions  = "/admin/sessions"
+
+	// Page titles
+	titleCreateUser   = "Create User"
+	titleCreateClient = "Create Client"
+	titleCreateOrg    = "Create Organization"
+	titleCreateRole   = "Create Role"
+	titleCreateGroup  = "Create Group"
+	titleImportOrg    = "Import Organization"
+
+	// Template names
+	tmplUserCreate   = "user_create"
+	tmplClientCreate = "client_create"
+	tmplOrgCreate    = "org_create"
+	tmplRoleCreate   = "role_create"
+	tmplGroupCreate  = "group_create"
+	tmplOrgImport    = "org_import"
+
+	// HTMX header
+	headerHXRequest = "HX-Request"
+
+	// Content types
+	contentTypeHTML = "text/html; charset=utf-8"
+	cacheNoStore    = "no-store"
+)
 
 // AdminConsoleStore defines the database operations required by AdminConsoleHandler.
 type AdminConsoleStore interface {
@@ -155,13 +221,13 @@ func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessio
 		"roles_list":    parseAdminPage("roles_list.html"),
 		"role_create":   parseAdminPage("role_create.html"),
 		"role_detail":   parseAdminPage("role_detail.html"),
-		"events_list":    parseAdminPage("events_list.html"),
-		"sessions_list":  parseAdminPage("sessions_list.html"),
-		"groups_list":    parseAdminPage("groups_list.html"),
-		"group_create":   parseAdminPage("group_create.html"),
-		"group_detail":   parseAdminPage("group_detail.html"),
-		"org_import":     parseAdminPage("org_import.html"),
-		"oidc":           parseAdminPage("oidc.html"),
+		"events_list":   parseAdminPage("events_list.html"),
+		"sessions_list": parseAdminPage("sessions_list.html"),
+		"groups_list":   parseAdminPage("groups_list.html"),
+		"group_create":  parseAdminPage("group_create.html"),
+		"group_detail":  parseAdminPage("group_detail.html"),
+		"org_import":    parseAdminPage("org_import.html"),
+		"oidc":          parseAdminPage("oidc.html"),
 	}
 
 	return &AdminConsoleHandler{
@@ -184,21 +250,21 @@ type pageData struct {
 	Error     string
 
 	// Page-specific data
-	Stats        *model.DashboardStats
-	Users        []*model.AdminUserResponse
-	UserDetail   *model.AdminUserResponse
-	Sessions     []*session.Session
-	Orgs         []*model.OrgResponse
-	OrgDetail    *model.Organization
-	OrgSettings  *model.OrgSettingsResponse
-	Clients      []*model.AdminClientResponse
-	ClientDetail *model.AdminClientResponse
-	ClientSecret string
-	Roles        []*model.RoleResponse
-	RoleDetail   *model.RoleResponse
-	RoleUsers    []*model.UserRoleAssignment
-	UserRoles    []*model.Role
-	AllRoles     []*model.Role
+	Stats          *model.DashboardStats
+	Users          []*model.AdminUserResponse
+	UserDetail     *model.AdminUserResponse
+	Sessions       []*session.Session
+	Orgs           []*model.OrgResponse
+	OrgDetail      *model.Organization
+	OrgSettings    *model.OrgSettingsResponse
+	Clients        []*model.AdminClientResponse
+	ClientDetail   *model.AdminClientResponse
+	ClientSecret   string
+	Roles          []*model.RoleResponse
+	RoleDetail     *model.RoleResponse
+	RoleUsers      []*model.UserRoleAssignment
+	UserRoles      []*model.Role
+	AllRoles       []*model.Role
 	Events         []*model.AuditEvent
 	EventFilter    string
 	GlobalSessions []*session.SessionWithUser
@@ -208,8 +274,8 @@ type pageData struct {
 	GroupRoles     []*model.GroupRoleAssignment
 	UserGroups     []*model.Group
 	OIDC           *DiscoveryResponse
-	Search       string
-	Pagination   *paginationData
+	Search         string
+	Pagination     *paginationData
 }
 
 type paginationData struct {
@@ -232,14 +298,14 @@ func (h *AdminConsoleHandler) render(w http.ResponseWriter, r *http.Request, pag
 		data.Flash = flash
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", contentTypeHTML)
+	w.Header().Set("Cache-Control", cacheNoStore)
 	w.Header().Set("X-Frame-Options", "DENY")
 
 	tmpl, ok := h.pages[pageName]
 	if !ok {
 		h.logger.Error("unknown page template", "page", pageName)
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		http.Error(w, msgInternalErr, http.StatusInternalServerError)
 		return
 	}
 
@@ -253,8 +319,8 @@ func (h *AdminConsoleHandler) renderPartial(w http.ResponseWriter, r *http.Reque
 	data.User = middleware.GetAuthenticatedUser(r.Context())
 	data.CSRFToken = middleware.GetCSRFToken(r)
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", contentTypeHTML)
+	w.Header().Set("Cache-Control", cacheNoStore)
 
 	tmpl, ok := h.pages[pageName]
 	if !ok {
@@ -312,7 +378,7 @@ func (h *AdminConsoleHandler) ListUsersPage(w http.ResponseWriter, r *http.Reque
 	users, total, err := h.store.ListUsers(ctx, orgID, search, "", limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list users", "error", err)
-		h.render(w, r, "users_list", &pageData{Title: "Users", ActiveNav: "users", Error: "Failed to load users."})
+		h.render(w, r, "users_list", &pageData{Title: "Users", ActiveNav: navUsers, Error: "Failed to load users."})
 		return
 	}
 
@@ -322,9 +388,9 @@ func (h *AdminConsoleHandler) ListUsersPage(w http.ResponseWriter, r *http.Reque
 		adminUsers[i] = u.ToAdminResponse(count)
 	}
 
-	pg := buildPagination(page, limit, total, "/admin/users", search)
+	pg := buildPagination(page, limit, total, pathAdminUsers, search)
 
-	if r.Header.Get("HX-Request") == "true" {
+	if r.Header.Get(headerHXRequest) == "true" {
 		h.renderPartial(w, r, "users_list", "users_table", &pageData{Users: adminUsers, Search: search, Pagination: pg})
 		return
 	}
@@ -340,13 +406,13 @@ func (h *AdminConsoleHandler) ListUsersPage(w http.ResponseWriter, r *http.Reque
 
 // CreateUserPage handles GET /admin/users/new
 func (h *AdminConsoleHandler) CreateUserPage(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, "user_create", &pageData{Title: "Create User", ActiveNav: "users"})
+	h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers})
 }
 
 // CreateUserAction handles POST /admin/users
 func (h *AdminConsoleHandler) CreateUserAction(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.render(w, r, "user_create", &pageData{Title: "Create User", ActiveNav: "users", Error: "Invalid form data."})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInvalidForm})
 		return
 	}
 
@@ -374,24 +440,24 @@ func (h *AdminConsoleHandler) CreateUserAction(w http.ResponseWriter, r *http.Re
 		errors = append(errors, fe.Message)
 	}
 	if len(errors) > 0 {
-		h.render(w, r, "user_create", &pageData{Title: "Create User", ActiveNav: "users", Error: strings.Join(errors, " ")})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: strings.Join(errors, " ")})
 		return
 	}
 
 	// Check duplicates
 	if existing, _ := h.store.GetUserByEmail(ctx, email, orgID); existing != nil {
-		h.render(w, r, "user_create", &pageData{Title: "Create User", ActiveNav: "users", Error: "A user with this email already exists."})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "A user with this email already exists."})
 		return
 	}
 	if existing, _ := h.store.GetUserByUsername(ctx, username, orgID); existing != nil {
-		h.render(w, r, "user_create", &pageData{Title: "Create User", ActiveNav: "users", Error: "A user with this username already exists."})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "A user with this username already exists."})
 		return
 	}
 
 	hash, err := auth.HashPassword(password)
 	if err != nil {
 		h.logger.Error("failed to hash password", "error", err)
-		h.render(w, r, "user_create", &pageData{Title: "Create User", ActiveNav: "users", Error: "Internal error."})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr})
 		return
 	}
 
@@ -409,20 +475,20 @@ func (h *AdminConsoleHandler) CreateUserAction(w http.ResponseWriter, r *http.Re
 	created, err := h.store.CreateUser(ctx, user)
 	if err != nil {
 		h.logger.Error("failed to create user", "error", err)
-		h.render(w, r, "user_create", &pageData{Title: "Create User", ActiveNav: "users", Error: "Failed to create user."})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "Failed to create user."})
 		return
 	}
 
 	h.auditLog(r, orgID, model.EventUserCreated, "user", created.ID.String(), username)
 	middleware.SetFlash(w, "User created successfully.")
-	http.Redirect(w, r, "/admin/users", http.StatusFound)
+	http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 }
 
 // UserDetailPage handles GET /admin/users/{id}
 func (h *AdminConsoleHandler) UserDetailPage(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/users", http.StatusFound)
+		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
 	}
 
@@ -431,7 +497,7 @@ func (h *AdminConsoleHandler) UserDetailPage(w http.ResponseWriter, r *http.Requ
 	user, err := h.store.GetUserByID(ctx, userID)
 	if err != nil || user == nil {
 		middleware.SetFlash(w, "User not found.")
-		http.Redirect(w, r, "/admin/users", http.StatusFound)
+		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
 	}
 
@@ -458,13 +524,13 @@ func (h *AdminConsoleHandler) UserDetailPage(w http.ResponseWriter, r *http.Requ
 func (h *AdminConsoleHandler) UpdateUserAction(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/users", http.StatusFound)
+		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
@@ -480,28 +546,28 @@ func (h *AdminConsoleHandler) UpdateUserAction(w http.ResponseWriter, r *http.Re
 	if _, err := h.store.UpdateUser(r.Context(), userID, req); err != nil {
 		h.logger.Error("failed to update user", "error", err)
 		middleware.SetFlash(w, "Failed to update user.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	authUser := middleware.GetAuthenticatedUser(r.Context())
 	h.auditLog(r, authUser.OrgID, model.EventUserUpdated, "user", userID.String(), req.Username)
 	middleware.SetFlash(w, "User updated successfully.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 }
 
 // DeleteUserAction handles POST /admin/users/{id}/delete
 func (h *AdminConsoleHandler) DeleteUserAction(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/users", http.StatusFound)
+		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
 	}
 
 	authUser := middleware.GetAuthenticatedUser(r.Context())
 	if authUser != nil && authUser.UserID == userID {
 		middleware.SetFlash(w, "You cannot delete your own account.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
@@ -513,33 +579,33 @@ func (h *AdminConsoleHandler) DeleteUserAction(w http.ResponseWriter, r *http.Re
 	if err := h.store.DeleteUser(ctx, userID); err != nil {
 		h.logger.Error("failed to delete user", "error", err)
 		middleware.SetFlash(w, "Failed to delete user.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	h.auditLog(r, authUser.OrgID, model.EventUserDeleted, "user", userID.String(), "")
 	middleware.SetFlash(w, "User deleted.")
-	http.Redirect(w, r, "/admin/users", http.StatusFound)
+	http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 }
 
 // ResetPasswordAction handles POST /admin/users/{id}/reset-password
 func (h *AdminConsoleHandler) ResetPasswordAction(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/users", http.StatusFound)
+		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	password := r.FormValue("password")
 	if fe := auth.ValidatePassword(password); fe != nil {
 		middleware.SetFlash(w, fe.Message)
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
@@ -547,28 +613,28 @@ func (h *AdminConsoleHandler) ResetPasswordAction(w http.ResponseWriter, r *http
 	if err != nil {
 		h.logger.Error("failed to hash password", "error", err)
 		middleware.SetFlash(w, "Internal error.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	if err := h.store.UpdatePassword(r.Context(), userID, []byte(hash)); err != nil {
 		h.logger.Error("failed to update password", "error", err)
 		middleware.SetFlash(w, "Failed to reset password.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	pwAuthUser := middleware.GetAuthenticatedUser(r.Context())
 	h.auditLog(r, pwAuthUser.OrgID, model.EventUserPasswordReset, "user", userID.String(), "")
 	middleware.SetFlash(w, "Password reset successfully.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 }
 
 // RevokeSessionsAction handles POST /admin/users/{id}/revoke-sessions
 func (h *AdminConsoleHandler) RevokeSessionsAction(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/users", http.StatusFound)
+		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
 	}
 
@@ -581,7 +647,7 @@ func (h *AdminConsoleHandler) RevokeSessionsAction(w http.ResponseWriter, r *htt
 		middleware.SetFlash(w, "All sessions revoked.")
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 }
 
 // ListOrgsPage handles GET /admin/organizations
@@ -595,7 +661,7 @@ func (h *AdminConsoleHandler) ListOrgsPage(w http.ResponseWriter, r *http.Reques
 	orgs, total, err := h.store.ListOrganizations(ctx, search, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list organizations", "error", err)
-		h.render(w, r, "orgs_list", &pageData{Title: "Organizations", ActiveNav: "organizations", Error: "Failed to load organizations."})
+		h.render(w, r, "orgs_list", &pageData{Title: "Organizations", ActiveNav: navOrganizations, Error: "Failed to load organizations."})
 		return
 	}
 
@@ -605,9 +671,9 @@ func (h *AdminConsoleHandler) ListOrgsPage(w http.ResponseWriter, r *http.Reques
 		orgResponses[i] = o.ToOrgResponse(count)
 	}
 
-	pg := buildPagination(page, limit, total, "/admin/organizations", search)
+	pg := buildPagination(page, limit, total, pathAdminOrgs, search)
 
-	if r.Header.Get("HX-Request") == "true" {
+	if r.Header.Get(headerHXRequest) == "true" {
 		h.renderPartial(w, r, "orgs_list", "orgs_table", &pageData{Orgs: orgResponses, Search: search, Pagination: pg})
 		return
 	}
@@ -623,13 +689,13 @@ func (h *AdminConsoleHandler) ListOrgsPage(w http.ResponseWriter, r *http.Reques
 
 // CreateOrgPage handles GET /admin/organizations/new
 func (h *AdminConsoleHandler) CreateOrgPage(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, "org_create", &pageData{Title: "Create Organization", ActiveNav: "organizations"})
+	h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations})
 }
 
 // CreateOrgAction handles POST /admin/organizations
 func (h *AdminConsoleHandler) CreateOrgAction(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.render(w, r, "org_create", &pageData{Title: "Create Organization", ActiveNav: "organizations", Error: "Invalid form data."})
+		h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, Error: msgInvalidForm})
 		return
 	}
 
@@ -640,32 +706,32 @@ func (h *AdminConsoleHandler) CreateOrgAction(w http.ResponseWriter, r *http.Req
 	}
 
 	if req.Name == "" || req.Slug == "" {
-		h.render(w, r, "org_create", &pageData{Title: "Create Organization", ActiveNav: "organizations", Error: "Name and slug are required."})
+		h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, Error: "Name and slug are required."})
 		return
 	}
 
 	newOrg, err := h.store.CreateOrganization(r.Context(), req)
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique") {
-			h.render(w, r, "org_create", &pageData{Title: "Create Organization", ActiveNav: "organizations", Error: "An organization with this slug already exists."})
+		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
+			h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, Error: "An organization with this slug already exists."})
 			return
 		}
 		h.logger.Error("failed to create organization", "error", err)
-		h.render(w, r, "org_create", &pageData{Title: "Create Organization", ActiveNav: "organizations", Error: "Failed to create organization."})
+		h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, Error: "Failed to create organization."})
 		return
 	}
 
 	orgAuthUser := middleware.GetAuthenticatedUser(r.Context())
 	h.auditLog(r, orgAuthUser.OrgID, model.EventOrgCreated, "organization", newOrg.ID.String(), req.Name)
 	middleware.SetFlash(w, "Organization created successfully.")
-	http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+	http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 }
 
 // OrgDetailPage handles GET /admin/organizations/{id}
 func (h *AdminConsoleHandler) OrgDetailPage(w http.ResponseWriter, r *http.Request) {
 	orgID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
 
@@ -674,7 +740,7 @@ func (h *AdminConsoleHandler) OrgDetailPage(w http.ResponseWriter, r *http.Reque
 	org, err := h.store.GetOrganizationByID(ctx, orgID)
 	if err != nil || org == nil {
 		middleware.SetFlash(w, "Organization not found.")
-		http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
 
@@ -695,13 +761,13 @@ func (h *AdminConsoleHandler) OrgDetailPage(w http.ResponseWriter, r *http.Reque
 func (h *AdminConsoleHandler) UpdateOrgAction(w http.ResponseWriter, r *http.Request) {
 	orgID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", orgID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
 		return
 	}
 
@@ -714,25 +780,25 @@ func (h *AdminConsoleHandler) UpdateOrgAction(w http.ResponseWriter, r *http.Req
 	if _, err := h.store.UpdateOrganization(r.Context(), orgID, req); err != nil {
 		h.logger.Error("failed to update organization", "error", err)
 		middleware.SetFlash(w, "Failed to update organization.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", orgID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Organization updated successfully.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", orgID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
 }
 
 // UpdateOrgSettingsAction handles POST /admin/organizations/{id}/settings
 func (h *AdminConsoleHandler) UpdateOrgSettingsAction(w http.ResponseWriter, r *http.Request) {
 	orgID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", orgID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
 		return
 	}
 
@@ -756,38 +822,38 @@ func (h *AdminConsoleHandler) UpdateOrgSettingsAction(w http.ResponseWriter, r *
 	}
 
 	req := &model.UpdateOrgSettingsRequest{
-		PasswordMinLength:          minLen,
-		PasswordRequireUppercase:   r.FormValue("password_require_uppercase") == "true",
-		PasswordRequireLowercase:   r.FormValue("password_require_lowercase") == "true",
-		PasswordRequireNumbers:     r.FormValue("password_require_numbers") == "true",
-		PasswordRequireSymbols:     r.FormValue("password_require_symbols") == "true",
-		MFAEnforcement:             mfa,
-		AccessTokenTTLSeconds:      accessTTL,
-		RefreshTokenTTLSeconds:     refreshTTL,
-		SelfRegistrationEnabled:    r.FormValue("self_registration_enabled") == "true",
-		EmailVerificationRequired:  r.FormValue("email_verification_required") == "true",
-		ForgotPasswordEnabled:      r.FormValue("forgot_password_enabled") == "true",
-		RememberMeEnabled:          r.FormValue("remember_me_enabled") == "true",
-		LoginPageTitle:             strings.TrimSpace(r.FormValue("login_page_title")),
-		LoginPageMessage:           strings.TrimSpace(r.FormValue("login_page_message")),
+		PasswordMinLength:         minLen,
+		PasswordRequireUppercase:  r.FormValue("password_require_uppercase") == "true",
+		PasswordRequireLowercase:  r.FormValue("password_require_lowercase") == "true",
+		PasswordRequireNumbers:    r.FormValue("password_require_numbers") == "true",
+		PasswordRequireSymbols:    r.FormValue("password_require_symbols") == "true",
+		MFAEnforcement:            mfa,
+		AccessTokenTTLSeconds:     accessTTL,
+		RefreshTokenTTLSeconds:    refreshTTL,
+		SelfRegistrationEnabled:   r.FormValue("self_registration_enabled") == "true",
+		EmailVerificationRequired: r.FormValue("email_verification_required") == "true",
+		ForgotPasswordEnabled:     r.FormValue("forgot_password_enabled") == "true",
+		RememberMeEnabled:         r.FormValue("remember_me_enabled") == "true",
+		LoginPageTitle:            strings.TrimSpace(r.FormValue("login_page_title")),
+		LoginPageMessage:          strings.TrimSpace(r.FormValue("login_page_message")),
 	}
 
 	if _, err := h.store.UpdateOrgSettings(r.Context(), orgID, req); err != nil {
 		h.logger.Error("failed to update org settings", "error", err)
 		middleware.SetFlash(w, "Failed to update settings.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", orgID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Settings updated successfully.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", orgID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
 }
 
 // DeleteOrgAction handles POST /admin/organizations/{id}/delete
 func (h *AdminConsoleHandler) DeleteOrgAction(w http.ResponseWriter, r *http.Request) {
 	orgID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
 
@@ -798,12 +864,12 @@ func (h *AdminConsoleHandler) DeleteOrgAction(w http.ResponseWriter, r *http.Req
 			h.logger.Error("failed to delete organization", "error", err)
 			middleware.SetFlash(w, "Failed to delete organization.")
 		}
-		http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", orgID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Organization deleted.")
-	http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+	http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 }
 
 // OIDCPage handles GET /admin/oidc
@@ -848,7 +914,7 @@ func (h *AdminConsoleHandler) ListClientsPage(w http.ResponseWriter, r *http.Req
 	clients, total, err := h.store.ListOAuthClients(ctx, orgID, search, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list clients", "error", err)
-		h.render(w, r, "clients_list", &pageData{Title: "OAuth Clients", ActiveNav: "clients", Error: "Failed to load clients."})
+		h.render(w, r, "clients_list", &pageData{Title: "OAuth Clients", ActiveNav: navClients, Error: "Failed to load clients."})
 		return
 	}
 
@@ -857,9 +923,9 @@ func (h *AdminConsoleHandler) ListClientsPage(w http.ResponseWriter, r *http.Req
 		adminClients[i] = c.ToAdminResponse()
 	}
 
-	pg := buildPagination(page, limit, total, "/admin/clients", search)
+	pg := buildPagination(page, limit, total, pathAdminClients, search)
 
-	if r.Header.Get("HX-Request") == "true" {
+	if r.Header.Get(headerHXRequest) == "true" {
 		h.renderPartial(w, r, "clients_list", "clients_table", &pageData{Clients: adminClients, Search: search, Pagination: pg})
 		return
 	}
@@ -875,13 +941,13 @@ func (h *AdminConsoleHandler) ListClientsPage(w http.ResponseWriter, r *http.Req
 
 // CreateClientPage handles GET /admin/clients/new
 func (h *AdminConsoleHandler) CreateClientPage(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, "client_create", &pageData{Title: "Create Client", ActiveNav: "clients"})
+	h.render(w, r, tmplClientCreate, &pageData{Title: titleCreateClient, ActiveNav: navClients})
 }
 
 // CreateClientAction handles POST /admin/clients
 func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.render(w, r, "client_create", &pageData{Title: "Create Client", ActiveNav: "clients", Error: "Invalid form data."})
+		h.render(w, r, tmplClientCreate, &pageData{Title: titleCreateClient, ActiveNav: navClients, Error: msgInvalidForm})
 		return
 	}
 
@@ -895,7 +961,7 @@ func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.
 	redirectURIsRaw := strings.TrimSpace(r.FormValue("redirect_uris"))
 
 	if name == "" {
-		h.render(w, r, "client_create", &pageData{Title: "Create Client", ActiveNav: "clients", Error: "Client name is required."})
+		h.render(w, r, tmplClientCreate, &pageData{Title: titleCreateClient, ActiveNav: navClients, Error: "Client name is required."})
 		return
 	}
 
@@ -925,14 +991,14 @@ func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.
 		secret, err := generateRandomSecret()
 		if err != nil {
 			h.logger.Error("failed to generate client secret", "error", err)
-			h.render(w, r, "client_create", &pageData{Title: "Create Client", ActiveNav: "clients", Error: "Internal error."})
+			h.render(w, r, tmplClientCreate, &pageData{Title: titleCreateClient, ActiveNav: navClients, Error: msgInternalErr})
 			return
 		}
 		clientSecret = secret
 		hash, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
 		if err != nil {
 			h.logger.Error("failed to hash client secret", "error", err)
-			h.render(w, r, "client_create", &pageData{Title: "Create Client", ActiveNav: "clients", Error: "Internal error."})
+			h.render(w, r, tmplClientCreate, &pageData{Title: titleCreateClient, ActiveNav: navClients, Error: msgInternalErr})
 			return
 		}
 		client.ClientSecretHash = hash
@@ -941,7 +1007,7 @@ func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.
 	created, err := h.store.CreateOAuthClient(ctx, client)
 	if err != nil {
 		h.logger.Error("failed to create client", "error", err)
-		h.render(w, r, "client_create", &pageData{Title: "Create Client", ActiveNav: "clients", Error: "Failed to create client."})
+		h.render(w, r, tmplClientCreate, &pageData{Title: titleCreateClient, ActiveNav: navClients, Error: "Failed to create client."})
 		return
 	}
 
@@ -959,14 +1025,14 @@ func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.
 	}
 
 	middleware.SetFlash(w, "Client created successfully.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", created.ID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, created.ID), http.StatusFound)
 }
 
 // ClientDetailPage handles GET /admin/clients/{id}
 func (h *AdminConsoleHandler) ClientDetailPage(w http.ResponseWriter, r *http.Request) {
 	clientID := chi.URLParam(r, "id")
 	if clientID == "" {
-		http.Redirect(w, r, "/admin/clients", http.StatusFound)
+		http.Redirect(w, r, pathAdminClients, http.StatusFound)
 		return
 	}
 
@@ -974,7 +1040,7 @@ func (h *AdminConsoleHandler) ClientDetailPage(w http.ResponseWriter, r *http.Re
 	client, err := h.store.GetOAuthClient(ctx, clientID)
 	if err != nil || client == nil {
 		middleware.SetFlash(w, "Client not found.")
-		http.Redirect(w, r, "/admin/clients", http.StatusFound)
+		http.Redirect(w, r, pathAdminClients, http.StatusFound)
 		return
 	}
 
@@ -989,13 +1055,13 @@ func (h *AdminConsoleHandler) ClientDetailPage(w http.ResponseWriter, r *http.Re
 func (h *AdminConsoleHandler) UpdateClientAction(w http.ResponseWriter, r *http.Request) {
 	clientID := chi.URLParam(r, "id")
 	if clientID == "" {
-		http.Redirect(w, r, "/admin/clients", http.StatusFound)
+		http.Redirect(w, r, pathAdminClients, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", clientID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 		return
 	}
 
@@ -1009,38 +1075,38 @@ func (h *AdminConsoleHandler) UpdateClientAction(w http.ResponseWriter, r *http.
 	if _, err := h.store.UpdateOAuthClient(r.Context(), clientID, req); err != nil {
 		h.logger.Error("failed to update client", "error", err)
 		middleware.SetFlash(w, "Failed to update client.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", clientID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Client updated successfully.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", clientID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 }
 
 // DeleteClientAction handles POST /admin/clients/{id}/delete
 func (h *AdminConsoleHandler) DeleteClientAction(w http.ResponseWriter, r *http.Request) {
 	clientID := chi.URLParam(r, "id")
 	if clientID == "" {
-		http.Redirect(w, r, "/admin/clients", http.StatusFound)
+		http.Redirect(w, r, pathAdminClients, http.StatusFound)
 		return
 	}
 
 	if err := h.store.DeleteOAuthClient(r.Context(), clientID); err != nil {
 		h.logger.Error("failed to delete client", "error", err)
 		middleware.SetFlash(w, "Failed to delete client.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", clientID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Client deleted.")
-	http.Redirect(w, r, "/admin/clients", http.StatusFound)
+	http.Redirect(w, r, pathAdminClients, http.StatusFound)
 }
 
 // RegenerateSecretAction handles POST /admin/clients/{id}/regenerate-secret
 func (h *AdminConsoleHandler) RegenerateSecretAction(w http.ResponseWriter, r *http.Request) {
 	clientID := chi.URLParam(r, "id")
 	if clientID == "" {
-		http.Redirect(w, r, "/admin/clients", http.StatusFound)
+		http.Redirect(w, r, pathAdminClients, http.StatusFound)
 		return
 	}
 
@@ -1048,36 +1114,36 @@ func (h *AdminConsoleHandler) RegenerateSecretAction(w http.ResponseWriter, r *h
 	client, err := h.store.GetOAuthClient(ctx, clientID)
 	if err != nil || client == nil {
 		middleware.SetFlash(w, "Client not found.")
-		http.Redirect(w, r, "/admin/clients", http.StatusFound)
+		http.Redirect(w, r, pathAdminClients, http.StatusFound)
 		return
 	}
 
 	if client.ClientType != "confidential" {
 		middleware.SetFlash(w, "Only confidential clients have secrets.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", clientID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 		return
 	}
 
 	secret, err := generateRandomSecret()
 	if err != nil {
 		h.logger.Error("failed to generate secret", "error", err)
-		middleware.SetFlash(w, "Failed to regenerate secret.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", clientID), http.StatusFound)
+		middleware.SetFlash(w, msgRegenFailed)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 		return
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
 	if err != nil {
 		h.logger.Error("failed to hash secret", "error", err)
-		middleware.SetFlash(w, "Failed to regenerate secret.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", clientID), http.StatusFound)
+		middleware.SetFlash(w, msgRegenFailed)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 		return
 	}
 
 	if err := h.store.UpdateClientSecret(ctx, clientID, hash); err != nil {
 		h.logger.Error("failed to update client secret", "error", err)
-		middleware.SetFlash(w, "Failed to regenerate secret.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/clients/%s", clientID), http.StatusFound)
+		middleware.SetFlash(w, msgRegenFailed)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 		return
 	}
 
@@ -1112,7 +1178,7 @@ func (h *AdminConsoleHandler) ListRolesPage(w http.ResponseWriter, r *http.Reque
 	roles, total, err := h.store.ListRoles(ctx, orgID, search, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list roles", "error", err)
-		h.render(w, r, "roles_list", &pageData{Title: "Roles", ActiveNav: "roles", Error: "Failed to load roles."})
+		h.render(w, r, "roles_list", &pageData{Title: "Roles", ActiveNav: navRoles, Error: "Failed to load roles."})
 		return
 	}
 
@@ -1122,9 +1188,9 @@ func (h *AdminConsoleHandler) ListRolesPage(w http.ResponseWriter, r *http.Reque
 		roleResponses[i] = role.ToRoleResponse(count)
 	}
 
-	pg := buildPagination(page, limit, total, "/admin/roles", search)
+	pg := buildPagination(page, limit, total, pathAdminRoles, search)
 
-	if r.Header.Get("HX-Request") == "true" {
+	if r.Header.Get(headerHXRequest) == "true" {
 		h.renderPartial(w, r, "roles_list", "roles_table", &pageData{Roles: roleResponses, Search: search, Pagination: pg})
 		return
 	}
@@ -1140,13 +1206,13 @@ func (h *AdminConsoleHandler) ListRolesPage(w http.ResponseWriter, r *http.Reque
 
 // CreateRolePage handles GET /admin/roles/new
 func (h *AdminConsoleHandler) CreateRolePage(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, "role_create", &pageData{Title: "Create Role", ActiveNav: "roles"})
+	h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles})
 }
 
 // CreateRoleAction handles POST /admin/roles
 func (h *AdminConsoleHandler) CreateRoleAction(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.render(w, r, "role_create", &pageData{Title: "Create Role", ActiveNav: "roles", Error: "Invalid form data."})
+		h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, Error: msgInvalidForm})
 		return
 	}
 
@@ -1158,7 +1224,7 @@ func (h *AdminConsoleHandler) CreateRoleAction(w http.ResponseWriter, r *http.Re
 	description := strings.TrimSpace(r.FormValue("description"))
 
 	if name == "" {
-		h.render(w, r, "role_create", &pageData{Title: "Create Role", ActiveNav: "roles", Error: "Role name is required."})
+		h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, Error: "Role name is required."})
 		return
 	}
 
@@ -1169,24 +1235,24 @@ func (h *AdminConsoleHandler) CreateRoleAction(w http.ResponseWriter, r *http.Re
 	}
 
 	if _, err := h.store.CreateRole(ctx, role); err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique") {
-			h.render(w, r, "role_create", &pageData{Title: "Create Role", ActiveNav: "roles", Error: "A role with this name already exists."})
+		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
+			h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, Error: "A role with this name already exists."})
 			return
 		}
 		h.logger.Error("failed to create role", "error", err)
-		h.render(w, r, "role_create", &pageData{Title: "Create Role", ActiveNav: "roles", Error: "Failed to create role."})
+		h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, Error: "Failed to create role."})
 		return
 	}
 
 	middleware.SetFlash(w, "Role created successfully.")
-	http.Redirect(w, r, "/admin/roles", http.StatusFound)
+	http.Redirect(w, r, pathAdminRoles, http.StatusFound)
 }
 
 // RoleDetailPage handles GET /admin/roles/{id}
 func (h *AdminConsoleHandler) RoleDetailPage(w http.ResponseWriter, r *http.Request) {
 	roleID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/roles", http.StatusFound)
+		http.Redirect(w, r, pathAdminRoles, http.StatusFound)
 		return
 	}
 
@@ -1194,7 +1260,7 @@ func (h *AdminConsoleHandler) RoleDetailPage(w http.ResponseWriter, r *http.Requ
 	role, err := h.store.GetRoleByID(ctx, roleID)
 	if err != nil || role == nil {
 		middleware.SetFlash(w, "Role not found.")
-		http.Redirect(w, r, "/admin/roles", http.StatusFound)
+		http.Redirect(w, r, pathAdminRoles, http.StatusFound)
 		return
 	}
 
@@ -1213,13 +1279,13 @@ func (h *AdminConsoleHandler) RoleDetailPage(w http.ResponseWriter, r *http.Requ
 func (h *AdminConsoleHandler) UpdateRoleAction(w http.ResponseWriter, r *http.Request) {
 	roleID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/roles", http.StatusFound)
+		http.Redirect(w, r, pathAdminRoles, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/roles/%s", roleID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminRoleFmt, roleID), http.StatusFound)
 		return
 	}
 
@@ -1231,19 +1297,19 @@ func (h *AdminConsoleHandler) UpdateRoleAction(w http.ResponseWriter, r *http.Re
 	if _, err := h.store.UpdateRole(r.Context(), roleID, req); err != nil {
 		h.logger.Error("failed to update role", "error", err)
 		middleware.SetFlash(w, "Failed to update role.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/roles/%s", roleID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminRoleFmt, roleID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Role updated successfully.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/roles/%s", roleID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminRoleFmt, roleID), http.StatusFound)
 }
 
 // DeleteRoleAction handles POST /admin/roles/{id}/delete
 func (h *AdminConsoleHandler) DeleteRoleAction(w http.ResponseWriter, r *http.Request) {
 	roleID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/roles", http.StatusFound)
+		http.Redirect(w, r, pathAdminRoles, http.StatusFound)
 		return
 	}
 
@@ -1254,70 +1320,70 @@ func (h *AdminConsoleHandler) DeleteRoleAction(w http.ResponseWriter, r *http.Re
 			h.logger.Error("failed to delete role", "error", err)
 			middleware.SetFlash(w, "Failed to delete role.")
 		}
-		http.Redirect(w, r, fmt.Sprintf("/admin/roles/%s", roleID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminRoleFmt, roleID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Role deleted.")
-	http.Redirect(w, r, "/admin/roles", http.StatusFound)
+	http.Redirect(w, r, pathAdminRoles, http.StatusFound)
 }
 
 // AssignRoleAction handles POST /admin/users/{id}/roles
 func (h *AdminConsoleHandler) AssignRoleAction(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/users", http.StatusFound)
+		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	roleID, err := uuid.Parse(r.FormValue("role_id"))
 	if err != nil {
-		middleware.SetFlash(w, "Invalid role.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		middleware.SetFlash(w, msgInvalidRole)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	if err := h.store.AssignRole(r.Context(), userID, roleID); err != nil {
 		h.logger.Error("failed to assign role", "error", err)
 		middleware.SetFlash(w, "Failed to assign role.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Role assigned.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 }
 
 // UnassignRoleAction handles POST /admin/users/{id}/roles/{roleId}/delete
 func (h *AdminConsoleHandler) UnassignRoleAction(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/users", http.StatusFound)
+		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
 	}
 
 	roleID, err := uuid.Parse(chi.URLParam(r, "roleId"))
 	if err != nil {
-		middleware.SetFlash(w, "Invalid role.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		middleware.SetFlash(w, msgInvalidRole)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	if err := h.store.UnassignRole(r.Context(), userID, roleID); err != nil {
 		h.logger.Error("failed to unassign role", "error", err)
 		middleware.SetFlash(w, "Failed to remove role.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Role removed.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/users/%s", userID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 }
 
 // ListEventsPage handles GET /admin/events
@@ -1335,16 +1401,16 @@ func (h *AdminConsoleHandler) ListEventsPage(w http.ResponseWriter, r *http.Requ
 	events, total, err := h.store.ListAuditEvents(ctx, orgID, eventFilter, search, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list events", "error", err)
-		h.render(w, r, "events_list", &pageData{Title: "Audit Events", ActiveNav: "events", Error: "Failed to load events."})
+		h.render(w, r, "events_list", &pageData{Title: "Audit Events", ActiveNav: navEvents, Error: "Failed to load events."})
 		return
 	}
 
 	pg := buildPagination(page, limit, total, "/admin/events", search)
 	if eventFilter != "" {
-		pg.QueryExtra += "&event_type=" + eventFilter
+		pg.QueryExtra += "&event_type=" + url.QueryEscape(eventFilter)
 	}
 
-	if r.Header.Get("HX-Request") == "true" {
+	if r.Header.Get(headerHXRequest) == "true" {
 		h.renderPartial(w, r, "events_list", "events_table", &pageData{Events: events, EventFilter: eventFilter, Search: search, Pagination: pg})
 		return
 	}
@@ -1369,13 +1435,13 @@ func (h *AdminConsoleHandler) ListSessionsPage(w http.ResponseWriter, r *http.Re
 	sessions, total, err := h.sessions.ListAll(r.Context(), search, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list sessions", "error", err)
-		h.render(w, r, "sessions_list", &pageData{Title: "Sessions", ActiveNav: "sessions", Error: "Failed to load sessions."})
+		h.render(w, r, "sessions_list", &pageData{Title: "Sessions", ActiveNav: navSessions, Error: "Failed to load sessions."})
 		return
 	}
 
-	pg := buildPagination(page, limit, total, "/admin/sessions", search)
+	pg := buildPagination(page, limit, total, pathAdminSessions, search)
 
-	if r.Header.Get("HX-Request") == "true" {
+	if r.Header.Get(headerHXRequest) == "true" {
 		h.renderPartial(w, r, "sessions_list", "sessions_table", &pageData{GlobalSessions: sessions, Search: search, Pagination: pg})
 		return
 	}
@@ -1393,7 +1459,7 @@ func (h *AdminConsoleHandler) ListSessionsPage(w http.ResponseWriter, r *http.Re
 func (h *AdminConsoleHandler) RevokeSessionAction(w http.ResponseWriter, r *http.Request) {
 	sessionID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/sessions", http.StatusFound)
+		http.Redirect(w, r, pathAdminSessions, http.StatusFound)
 		return
 	}
 
@@ -1406,7 +1472,7 @@ func (h *AdminConsoleHandler) RevokeSessionAction(w http.ResponseWriter, r *http
 		middleware.SetFlash(w, "Session revoked.")
 	}
 
-	http.Redirect(w, r, "/admin/sessions", http.StatusFound)
+	http.Redirect(w, r, pathAdminSessions, http.StatusFound)
 }
 
 // RevokeAllSessionsAction handles POST /admin/sessions/revoke-all
@@ -1420,7 +1486,7 @@ func (h *AdminConsoleHandler) RevokeAllSessionsAction(w http.ResponseWriter, r *
 		middleware.SetFlash(w, "All sessions revoked.")
 	}
 
-	http.Redirect(w, r, "/admin/sessions", http.StatusFound)
+	http.Redirect(w, r, pathAdminSessions, http.StatusFound)
 }
 
 // ListGroupsPage handles GET /admin/groups
@@ -1437,7 +1503,7 @@ func (h *AdminConsoleHandler) ListGroupsPage(w http.ResponseWriter, r *http.Requ
 	groups, total, err := h.store.ListGroups(ctx, orgID, search, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list groups", "error", err)
-		h.render(w, r, "groups_list", &pageData{Title: "Groups", ActiveNav: "groups", Error: "Failed to load groups."})
+		h.render(w, r, "groups_list", &pageData{Title: "Groups", ActiveNav: navGroups, Error: "Failed to load groups."})
 		return
 	}
 
@@ -1448,9 +1514,9 @@ func (h *AdminConsoleHandler) ListGroupsPage(w http.ResponseWriter, r *http.Requ
 		groupResponses[i] = g.ToGroupResponse(memberCount, roleCount)
 	}
 
-	pg := buildPagination(page, limit, total, "/admin/groups", search)
+	pg := buildPagination(page, limit, total, pathAdminGroups, search)
 
-	if r.Header.Get("HX-Request") == "true" {
+	if r.Header.Get(headerHXRequest) == "true" {
 		h.renderPartial(w, r, "groups_list", "groups_table", &pageData{Groups: groupResponses, Search: search, Pagination: pg})
 		return
 	}
@@ -1466,13 +1532,13 @@ func (h *AdminConsoleHandler) ListGroupsPage(w http.ResponseWriter, r *http.Requ
 
 // CreateGroupPage handles GET /admin/groups/new
 func (h *AdminConsoleHandler) CreateGroupPage(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups"})
+	h.render(w, r, tmplGroupCreate, &pageData{Title: titleCreateGroup, ActiveNav: navGroups})
 }
 
 // CreateGroupAction handles POST /admin/groups
 func (h *AdminConsoleHandler) CreateGroupAction(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups", Error: "Invalid form data."})
+		h.render(w, r, tmplGroupCreate, &pageData{Title: titleCreateGroup, ActiveNav: navGroups, Error: msgInvalidForm})
 		return
 	}
 
@@ -1484,7 +1550,7 @@ func (h *AdminConsoleHandler) CreateGroupAction(w http.ResponseWriter, r *http.R
 	description := strings.TrimSpace(r.FormValue("description"))
 
 	if name == "" {
-		h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups", Error: "Group name is required."})
+		h.render(w, r, tmplGroupCreate, &pageData{Title: titleCreateGroup, ActiveNav: navGroups, Error: "Group name is required."})
 		return
 	}
 
@@ -1495,24 +1561,24 @@ func (h *AdminConsoleHandler) CreateGroupAction(w http.ResponseWriter, r *http.R
 	}
 
 	if _, err := h.store.CreateGroup(ctx, group); err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique") {
-			h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups", Error: "A group with this name already exists."})
+		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
+			h.render(w, r, tmplGroupCreate, &pageData{Title: titleCreateGroup, ActiveNav: navGroups, Error: "A group with this name already exists."})
 			return
 		}
 		h.logger.Error("failed to create group", "error", err)
-		h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups", Error: "Failed to create group."})
+		h.render(w, r, tmplGroupCreate, &pageData{Title: titleCreateGroup, ActiveNav: navGroups, Error: "Failed to create group."})
 		return
 	}
 
 	middleware.SetFlash(w, "Group created successfully.")
-	http.Redirect(w, r, "/admin/groups", http.StatusFound)
+	http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 }
 
 // GroupDetailPage handles GET /admin/groups/{id}
 func (h *AdminConsoleHandler) GroupDetailPage(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
 
@@ -1520,7 +1586,7 @@ func (h *AdminConsoleHandler) GroupDetailPage(w http.ResponseWriter, r *http.Req
 	group, err := h.store.GetGroupByID(ctx, groupID)
 	if err != nil || group == nil {
 		middleware.SetFlash(w, "Group not found.")
-		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
 
@@ -1547,13 +1613,13 @@ func (h *AdminConsoleHandler) GroupDetailPage(w http.ResponseWriter, r *http.Req
 func (h *AdminConsoleHandler) UpdateGroupAction(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
@@ -1565,51 +1631,51 @@ func (h *AdminConsoleHandler) UpdateGroupAction(w http.ResponseWriter, r *http.R
 	if _, err := h.store.UpdateGroup(r.Context(), groupID, req); err != nil {
 		h.logger.Error("failed to update group", "error", err)
 		middleware.SetFlash(w, "Failed to update group.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Group updated successfully.")
-	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 }
 
 // DeleteGroupAction handles POST /admin/groups/{id}/delete
 func (h *AdminConsoleHandler) DeleteGroupAction(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
 
 	if err := h.store.DeleteGroup(r.Context(), groupID); err != nil {
 		h.logger.Error("failed to delete group", "error", err)
 		middleware.SetFlash(w, "Failed to delete group.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
 	middleware.SetFlash(w, "Group deleted.")
-	http.Redirect(w, r, "/admin/groups", http.StatusFound)
+	http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 }
 
 // AddGroupMemberAction handles POST /admin/groups/{id}/members
 func (h *AdminConsoleHandler) AddGroupMemberAction(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
 	userID, err := uuid.Parse(r.FormValue("user_id"))
 	if err != nil {
 		middleware.SetFlash(w, "Invalid user.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
@@ -1620,20 +1686,20 @@ func (h *AdminConsoleHandler) AddGroupMemberAction(w http.ResponseWriter, r *htt
 		middleware.SetFlash(w, "Member added.")
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 }
 
 // RemoveGroupMemberAction handles POST /admin/groups/{id}/members/{userId}/delete
 func (h *AdminConsoleHandler) RemoveGroupMemberAction(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
 
 	userID, err := uuid.Parse(chi.URLParam(r, "userId"))
 	if err != nil {
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
@@ -1644,27 +1710,27 @@ func (h *AdminConsoleHandler) RemoveGroupMemberAction(w http.ResponseWriter, r *
 		middleware.SetFlash(w, "Member removed.")
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 }
 
 // AssignGroupRoleAction handles POST /admin/groups/{id}/roles
 func (h *AdminConsoleHandler) AssignGroupRoleAction(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
 	roleID, err := uuid.Parse(r.FormValue("role_id"))
 	if err != nil {
-		middleware.SetFlash(w, "Invalid role.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		middleware.SetFlash(w, msgInvalidRole)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
@@ -1675,20 +1741,20 @@ func (h *AdminConsoleHandler) AssignGroupRoleAction(w http.ResponseWriter, r *ht
 		middleware.SetFlash(w, "Role assigned to group.")
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 }
 
 // UnassignGroupRoleAction handles POST /admin/groups/{id}/roles/{roleId}/delete
 func (h *AdminConsoleHandler) UnassignGroupRoleAction(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
 
 	roleID, err := uuid.Parse(chi.URLParam(r, "roleId"))
 	if err != nil {
-		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
@@ -1699,14 +1765,14 @@ func (h *AdminConsoleHandler) UnassignGroupRoleAction(w http.ResponseWriter, r *
 		middleware.SetFlash(w, "Role unassigned from group.")
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 }
 
 // ExportOrgAction handles GET /admin/organizations/{id}/export — downloads org config as JSON.
 func (h *AdminConsoleHandler) ExportOrgAction(w http.ResponseWriter, r *http.Request) {
 	orgID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
 
@@ -1714,7 +1780,7 @@ func (h *AdminConsoleHandler) ExportOrgAction(w http.ResponseWriter, r *http.Req
 	org, err := h.store.GetOrganizationByID(ctx, orgID)
 	if err != nil || org == nil {
 		middleware.SetFlash(w, "Organization not found.")
-		http.Redirect(w, r, "/admin/organizations", http.StatusFound)
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
 
@@ -1728,20 +1794,20 @@ func (h *AdminConsoleHandler) ExportOrgAction(w http.ResponseWriter, r *http.Req
 
 	if settings, err := h.store.GetOrgSettings(ctx, orgID); err == nil && settings != nil {
 		export.Settings = &model.OrgSettingsExport{
-			PasswordMinLength:          settings.PasswordMinLength,
-			PasswordRequireUppercase:   settings.PasswordRequireUppercase,
-			PasswordRequireLowercase:   settings.PasswordRequireLowercase,
-			PasswordRequireNumbers:     settings.PasswordRequireNumbers,
-			PasswordRequireSymbols:     settings.PasswordRequireSymbols,
-			MFAEnforcement:             settings.MFAEnforcement,
-			AccessTokenTTLSeconds:      int(settings.AccessTokenTTL.Seconds()),
-			RefreshTokenTTLSeconds:     int(settings.RefreshTokenTTL.Seconds()),
-			SelfRegistrationEnabled:    settings.SelfRegistrationEnabled,
-			EmailVerificationRequired:  settings.EmailVerificationRequired,
-			ForgotPasswordEnabled:      settings.ForgotPasswordEnabled,
-			RememberMeEnabled:          settings.RememberMeEnabled,
-			LoginPageTitle:             settings.LoginPageTitle,
-			LoginPageMessage:           settings.LoginPageMessage,
+			PasswordMinLength:         settings.PasswordMinLength,
+			PasswordRequireUppercase:  settings.PasswordRequireUppercase,
+			PasswordRequireLowercase:  settings.PasswordRequireLowercase,
+			PasswordRequireNumbers:    settings.PasswordRequireNumbers,
+			PasswordRequireSymbols:    settings.PasswordRequireSymbols,
+			MFAEnforcement:            settings.MFAEnforcement,
+			AccessTokenTTLSeconds:     int(settings.AccessTokenTTL.Seconds()),
+			RefreshTokenTTLSeconds:    int(settings.RefreshTokenTTL.Seconds()),
+			SelfRegistrationEnabled:   settings.SelfRegistrationEnabled,
+			EmailVerificationRequired: settings.EmailVerificationRequired,
+			ForgotPasswordEnabled:     settings.ForgotPasswordEnabled,
+			RememberMeEnabled:         settings.RememberMeEnabled,
+			LoginPageTitle:            settings.LoginPageTitle,
+			LoginPageMessage:          settings.LoginPageMessage,
 		}
 	}
 
@@ -1783,25 +1849,27 @@ func (h *AdminConsoleHandler) ExportOrgAction(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		h.logger.Error("failed to marshal export", "error", err)
 		middleware.SetFlash(w, "Failed to export organization.")
-		http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", orgID), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="org-%s.json"`, org.Slug))
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		h.logger.Error("failed to write export response", "error", err)
+	}
 }
 
 // ImportOrgPage handles GET /admin/organizations/import
 func (h *AdminConsoleHandler) ImportOrgPage(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, "org_import", &pageData{Title: "Import Organization", ActiveNav: "organizations"})
+	h.render(w, r, tmplOrgImport, &pageData{Title: titleImportOrg, ActiveNav: navOrganizations})
 }
 
 // ImportOrgAction handles POST /admin/organizations/import
 func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		h.render(w, r, "org_import", &pageData{
-			Title: "Import Organization", ActiveNav: "organizations",
+		h.render(w, r, tmplOrgImport, &pageData{
+			Title: titleImportOrg, ActiveNav: navOrganizations,
 			Error: "Invalid form data. Max file size is 10MB.",
 		})
 		return
@@ -1809,8 +1877,8 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		h.render(w, r, "org_import", &pageData{
-			Title: "Import Organization", ActiveNav: "organizations",
+		h.render(w, r, tmplOrgImport, &pageData{
+			Title: titleImportOrg, ActiveNav: navOrganizations,
 			Error: "Please select a JSON file to import.",
 		})
 		return
@@ -1819,9 +1887,19 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 
 	var export model.OrgExport
 	if err := json.NewDecoder(file).Decode(&export); err != nil {
-		h.render(w, r, "org_import", &pageData{
-			Title: "Import Organization", ActiveNav: "organizations",
+		h.render(w, r, tmplOrgImport, &pageData{
+			Title: titleImportOrg, ActiveNav: navOrganizations,
 			Error: "Invalid JSON file format.",
+		})
+		return
+	}
+
+	// Validate import size limits to prevent DoS
+	const maxImportItems = 100
+	if len(export.Roles) > maxImportItems || len(export.Groups) > maxImportItems || len(export.Clients) > maxImportItems {
+		h.render(w, r, tmplOrgImport, &pageData{
+			Title: titleImportOrg, ActiveNav: navOrganizations,
+			Error: fmt.Sprintf("Import exceeds maximum of %d items per category.", maxImportItems),
 		})
 		return
 	}
@@ -1835,9 +1913,14 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 		DisplayName: export.Organization.DisplayName,
 	})
 	if err != nil {
-		h.render(w, r, "org_import", &pageData{
-			Title: "Import Organization", ActiveNav: "organizations",
-			Error: fmt.Sprintf("Failed to create organization: %s", err.Error()),
+		h.logger.Error("failed to import organization", "error", err)
+		msg := "Failed to create organization."
+		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
+			msg = "An organization with this slug already exists."
+		}
+		h.render(w, r, tmplOrgImport, &pageData{
+			Title: titleImportOrg, ActiveNav: navOrganizations,
+			Error: msg,
 		})
 		return
 	}
@@ -1845,20 +1928,20 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 	// Import settings
 	if export.Settings != nil {
 		h.store.UpdateOrgSettings(ctx, org.ID, &model.UpdateOrgSettingsRequest{
-			PasswordMinLength:          export.Settings.PasswordMinLength,
-			PasswordRequireUppercase:   export.Settings.PasswordRequireUppercase,
-			PasswordRequireLowercase:   export.Settings.PasswordRequireLowercase,
-			PasswordRequireNumbers:     export.Settings.PasswordRequireNumbers,
-			PasswordRequireSymbols:     export.Settings.PasswordRequireSymbols,
-			MFAEnforcement:             export.Settings.MFAEnforcement,
-			AccessTokenTTLSeconds:      export.Settings.AccessTokenTTLSeconds,
-			RefreshTokenTTLSeconds:     export.Settings.RefreshTokenTTLSeconds,
-			SelfRegistrationEnabled:    export.Settings.SelfRegistrationEnabled,
-			EmailVerificationRequired:  export.Settings.EmailVerificationRequired,
-			ForgotPasswordEnabled:      export.Settings.ForgotPasswordEnabled,
-			RememberMeEnabled:          export.Settings.RememberMeEnabled,
-			LoginPageTitle:             export.Settings.LoginPageTitle,
-			LoginPageMessage:           export.Settings.LoginPageMessage,
+			PasswordMinLength:         export.Settings.PasswordMinLength,
+			PasswordRequireUppercase:  export.Settings.PasswordRequireUppercase,
+			PasswordRequireLowercase:  export.Settings.PasswordRequireLowercase,
+			PasswordRequireNumbers:    export.Settings.PasswordRequireNumbers,
+			PasswordRequireSymbols:    export.Settings.PasswordRequireSymbols,
+			MFAEnforcement:            export.Settings.MFAEnforcement,
+			AccessTokenTTLSeconds:     export.Settings.AccessTokenTTLSeconds,
+			RefreshTokenTTLSeconds:    export.Settings.RefreshTokenTTLSeconds,
+			SelfRegistrationEnabled:   export.Settings.SelfRegistrationEnabled,
+			EmailVerificationRequired: export.Settings.EmailVerificationRequired,
+			ForgotPasswordEnabled:     export.Settings.ForgotPasswordEnabled,
+			RememberMeEnabled:         export.Settings.RememberMeEnabled,
+			LoginPageTitle:            export.Settings.LoginPageTitle,
+			LoginPageMessage:          export.Settings.LoginPageMessage,
 		})
 	}
 
@@ -1893,7 +1976,7 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 	}
 
 	middleware.SetFlash(w, fmt.Sprintf("Organization '%s' imported successfully.", org.Name))
-	http.Redirect(w, r, fmt.Sprintf("/admin/organizations/%s", org.ID), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, org.ID), http.StatusFound)
 }
 
 // auditLog is a helper that extracts actor info from the request context and logs an audit event.
@@ -1933,7 +2016,7 @@ func buildPagination(page, limit, total int, baseURL, search string) *pagination
 
 	queryExtra := ""
 	if search != "" {
-		queryExtra = "&search=" + search
+		queryExtra = "&search=" + url.QueryEscape(search)
 	}
 
 	return &paginationData{

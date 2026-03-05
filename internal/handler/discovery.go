@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/manimovassagh/rampart/internal/apierror"
 )
 
 // DiscoveryResponse is the OIDC Discovery metadata (RFC 8414).
@@ -49,7 +51,7 @@ func DiscoveryHandler(issuer string, logger *slog.Logger) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(data); err != nil {

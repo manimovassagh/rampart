@@ -19,29 +19,29 @@ import (
 
 // mockAdminUserStore implements AdminUserStore for testing.
 type mockAdminUserStore struct {
-	userByID         *model.User
-	userByIDErr      error
-	emailUser        *model.User
-	emailErr         error
-	usernameUser     *model.User
-	usernameErr      error
-	createdUser      *model.User
-	createErr        error
-	listUsers        []*model.User
-	listTotal        int
-	listErr          error
-	updatedUser      *model.User
-	updateErr        error
-	deleteErr        error
-	updatePwErr      error
-	countUsers       int
-	countUsersErr    error
-	countRecent      int
-	countRecentErr   error
-	countOrgs        int
-	countOrgsErr     error
-	orgSettings      *model.OrgSettings
-	orgSettingsErr   error
+	userByID       *model.User
+	userByIDErr    error
+	emailUser      *model.User
+	emailErr       error
+	usernameUser   *model.User
+	usernameErr    error
+	createdUser    *model.User
+	createErr      error
+	listUsers      []*model.User
+	listTotal      int
+	listErr        error
+	updatedUser    *model.User
+	updateErr      error
+	deleteErr      error
+	updatePwErr    error
+	countUsers     int
+	countUsersErr  error
+	countRecent    int
+	countRecentErr error
+	countOrgs      int
+	countOrgsErr   error
+	orgSettings    *model.OrgSettings
+	orgSettingsErr error
 }
 
 func (m *mockAdminUserStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) {
@@ -116,15 +116,15 @@ func (m *mockAdminSessionStore) DeleteByUserID(_ context.Context, _ uuid.UUID) e
 
 func newAdminTestUser() *model.User {
 	return &model.User{
-		ID:        uuid.New(),
-		OrgID:     uuid.New(),
-		Username:  "testuser",
-		Email:     "test@rampart.local",
-		Enabled:   true,
-		GivenName: "Test",
+		ID:         uuid.New(),
+		OrgID:      uuid.New(),
+		Username:   "testuser",
+		Email:      "test@rampart.local",
+		Enabled:    true,
+		GivenName:  "Test",
 		FamilyName: "User",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 }
 

@@ -177,14 +177,14 @@ func TestAuthorizePostBadCredentials(t *testing.T) {
 
 	form := url.Values{
 		"client_id":             {"test-client"},
-		"redirect_uri":         {"http://localhost:3002/callback"},
-		"response_type":        {"code"},
-		"scope":                {"openid"},
-		"state":                {"abc"},
-		"code_challenge":       {"xyz"},
+		"redirect_uri":          {"http://localhost:3002/callback"},
+		"response_type":         {"code"},
+		"scope":                 {"openid"},
+		"state":                 {"abc"},
+		"code_challenge":        {"xyz"},
 		"code_challenge_method": {"S256"},
-		"identifier":           {"baduser"},
-		"password":             {"badpass"},
+		"identifier":            {"baduser"},
+		"password":              {"badpass"},
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", strings.NewReader(form.Encode()))
@@ -221,14 +221,14 @@ func TestAuthorizePostValidCredentialsRedirects(t *testing.T) {
 
 	form := url.Values{
 		"client_id":             {"test-client"},
-		"redirect_uri":         {"http://localhost:3002/callback"},
-		"response_type":        {"code"},
-		"scope":                {"openid"},
-		"state":                {"mystate123"},
-		"code_challenge":       {"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"},
+		"redirect_uri":          {"http://localhost:3002/callback"},
+		"response_type":         {"code"},
+		"scope":                 {"openid"},
+		"state":                 {"mystate123"},
+		"code_challenge":        {"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"},
 		"code_challenge_method": {"S256"},
-		"identifier":           {"admin@test.com"},
-		"password":             {"Str0ng!Pass"},
+		"identifier":            {"admin@test.com"},
+		"password":              {"Str0ng!Pass"},
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", strings.NewReader(form.Encode()))

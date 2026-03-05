@@ -19,27 +19,27 @@ type Organization struct {
 
 // OrgSettings represents a row in the organization_settings table.
 type OrgSettings struct {
-	ID                      uuid.UUID     `json:"id"`
-	OrgID                   uuid.UUID     `json:"org_id"`
-	PasswordMinLength       int           `json:"password_min_length"`
-	PasswordRequireUppercase bool         `json:"password_require_uppercase"`
-	PasswordRequireLowercase bool         `json:"password_require_lowercase"`
-	PasswordRequireNumbers  bool          `json:"password_require_numbers"`
-	PasswordRequireSymbols  bool          `json:"password_require_symbols"`
-	MFAEnforcement          string        `json:"mfa_enforcement"`
-	AccessTokenTTL          time.Duration `json:"access_token_ttl"`
-	RefreshTokenTTL         time.Duration `json:"refresh_token_ttl"`
-	LogoURL                    string        `json:"logo_url,omitempty"`
-	PrimaryColor               string        `json:"primary_color,omitempty"`
-	BackgroundColor            string        `json:"background_color,omitempty"`
-	SelfRegistrationEnabled    bool          `json:"self_registration_enabled"`
-	EmailVerificationRequired  bool          `json:"email_verification_required"`
-	ForgotPasswordEnabled      bool          `json:"forgot_password_enabled"`
-	RememberMeEnabled          bool          `json:"remember_me_enabled"`
-	LoginPageTitle             string        `json:"login_page_title"`
-	LoginPageMessage           string        `json:"login_page_message"`
-	CreatedAt                  time.Time     `json:"created_at"`
-	UpdatedAt                  time.Time     `json:"updated_at"`
+	ID                        uuid.UUID     `json:"id"`
+	OrgID                     uuid.UUID     `json:"org_id"`
+	PasswordMinLength         int           `json:"password_min_length"`
+	PasswordRequireUppercase  bool          `json:"password_require_uppercase"`
+	PasswordRequireLowercase  bool          `json:"password_require_lowercase"`
+	PasswordRequireNumbers    bool          `json:"password_require_numbers"`
+	PasswordRequireSymbols    bool          `json:"password_require_symbols"`
+	MFAEnforcement            string        `json:"mfa_enforcement"`
+	AccessTokenTTL            time.Duration `json:"access_token_ttl"`
+	RefreshTokenTTL           time.Duration `json:"refresh_token_ttl"`
+	LogoURL                   string        `json:"logo_url,omitempty"`
+	PrimaryColor              string        `json:"primary_color,omitempty"`
+	BackgroundColor           string        `json:"background_color,omitempty"`
+	SelfRegistrationEnabled   bool          `json:"self_registration_enabled"`
+	EmailVerificationRequired bool          `json:"email_verification_required"`
+	ForgotPasswordEnabled     bool          `json:"forgot_password_enabled"`
+	RememberMeEnabled         bool          `json:"remember_me_enabled"`
+	LoginPageTitle            string        `json:"login_page_title"`
+	LoginPageMessage          string        `json:"login_page_message"`
+	CreatedAt                 time.Time     `json:"created_at"`
+	UpdatedAt                 time.Time     `json:"updated_at"`
 }
 
 // OrgResponse is returned from the admin API with an enriched user count.
@@ -92,48 +92,48 @@ type UpdateOrgRequest struct {
 
 // UpdateOrgSettingsRequest is the expected JSON body for updating org settings.
 type UpdateOrgSettingsRequest struct {
-	PasswordMinLength          int    `json:"password_min_length"`
-	PasswordRequireUppercase   bool   `json:"password_require_uppercase"`
-	PasswordRequireLowercase   bool   `json:"password_require_lowercase"`
-	PasswordRequireNumbers     bool   `json:"password_require_numbers"`
-	PasswordRequireSymbols     bool   `json:"password_require_symbols"`
-	MFAEnforcement             string `json:"mfa_enforcement"`
-	AccessTokenTTLSeconds      int    `json:"access_token_ttl_seconds"`
-	RefreshTokenTTLSeconds     int    `json:"refresh_token_ttl_seconds"`
-	LogoURL                    string `json:"logo_url"`
-	PrimaryColor               string `json:"primary_color"`
-	BackgroundColor            string `json:"background_color"`
-	SelfRegistrationEnabled    bool   `json:"self_registration_enabled"`
-	EmailVerificationRequired  bool   `json:"email_verification_required"`
-	ForgotPasswordEnabled      bool   `json:"forgot_password_enabled"`
-	RememberMeEnabled          bool   `json:"remember_me_enabled"`
-	LoginPageTitle             string `json:"login_page_title"`
-	LoginPageMessage           string `json:"login_page_message"`
+	PasswordMinLength         int    `json:"password_min_length"`
+	PasswordRequireUppercase  bool   `json:"password_require_uppercase"`
+	PasswordRequireLowercase  bool   `json:"password_require_lowercase"`
+	PasswordRequireNumbers    bool   `json:"password_require_numbers"`
+	PasswordRequireSymbols    bool   `json:"password_require_symbols"`
+	MFAEnforcement            string `json:"mfa_enforcement"`
+	AccessTokenTTLSeconds     int    `json:"access_token_ttl_seconds"`
+	RefreshTokenTTLSeconds    int    `json:"refresh_token_ttl_seconds"`
+	LogoURL                   string `json:"logo_url"`
+	PrimaryColor              string `json:"primary_color"`
+	BackgroundColor           string `json:"background_color"`
+	SelfRegistrationEnabled   bool   `json:"self_registration_enabled"`
+	EmailVerificationRequired bool   `json:"email_verification_required"`
+	ForgotPasswordEnabled     bool   `json:"forgot_password_enabled"`
+	RememberMeEnabled         bool   `json:"remember_me_enabled"`
+	LoginPageTitle            string `json:"login_page_title"`
+	LoginPageMessage          string `json:"login_page_message"`
 }
 
 // OrgSettingsResponse is the API representation of organization settings.
 type OrgSettingsResponse struct {
-	ID                       uuid.UUID `json:"id"`
-	OrgID                    uuid.UUID `json:"org_id"`
-	PasswordMinLength        int       `json:"password_min_length"`
-	PasswordRequireUppercase bool      `json:"password_require_uppercase"`
-	PasswordRequireLowercase bool      `json:"password_require_lowercase"`
-	PasswordRequireNumbers   bool      `json:"password_require_numbers"`
-	PasswordRequireSymbols   bool      `json:"password_require_symbols"`
-	MFAEnforcement           string    `json:"mfa_enforcement"`
-	AccessTokenTTLSeconds    int       `json:"access_token_ttl_seconds"`
-	RefreshTokenTTLSeconds   int       `json:"refresh_token_ttl_seconds"`
-	LogoURL                    string    `json:"logo_url,omitempty"`
-	PrimaryColor               string    `json:"primary_color,omitempty"`
-	BackgroundColor            string    `json:"background_color,omitempty"`
-	SelfRegistrationEnabled    bool      `json:"self_registration_enabled"`
-	EmailVerificationRequired  bool      `json:"email_verification_required"`
-	ForgotPasswordEnabled      bool      `json:"forgot_password_enabled"`
-	RememberMeEnabled          bool      `json:"remember_me_enabled"`
-	LoginPageTitle             string    `json:"login_page_title"`
-	LoginPageMessage           string    `json:"login_page_message"`
-	CreatedAt                  time.Time `json:"created_at"`
-	UpdatedAt                  time.Time `json:"updated_at"`
+	ID                        uuid.UUID `json:"id"`
+	OrgID                     uuid.UUID `json:"org_id"`
+	PasswordMinLength         int       `json:"password_min_length"`
+	PasswordRequireUppercase  bool      `json:"password_require_uppercase"`
+	PasswordRequireLowercase  bool      `json:"password_require_lowercase"`
+	PasswordRequireNumbers    bool      `json:"password_require_numbers"`
+	PasswordRequireSymbols    bool      `json:"password_require_symbols"`
+	MFAEnforcement            string    `json:"mfa_enforcement"`
+	AccessTokenTTLSeconds     int       `json:"access_token_ttl_seconds"`
+	RefreshTokenTTLSeconds    int       `json:"refresh_token_ttl_seconds"`
+	LogoURL                   string    `json:"logo_url,omitempty"`
+	PrimaryColor              string    `json:"primary_color,omitempty"`
+	BackgroundColor           string    `json:"background_color,omitempty"`
+	SelfRegistrationEnabled   bool      `json:"self_registration_enabled"`
+	EmailVerificationRequired bool      `json:"email_verification_required"`
+	ForgotPasswordEnabled     bool      `json:"forgot_password_enabled"`
+	RememberMeEnabled         bool      `json:"remember_me_enabled"`
+	LoginPageTitle            string    `json:"login_page_title"`
+	LoginPageMessage          string    `json:"login_page_message"`
+	CreatedAt                 time.Time `json:"created_at"`
+	UpdatedAt                 time.Time `json:"updated_at"`
 }
 
 // ToResponse converts OrgSettings to an API-friendly response with seconds instead of Duration.

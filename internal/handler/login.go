@@ -29,10 +29,10 @@ type LoginRequest struct {
 
 // LoginResponse is returned on successful authentication.
 type LoginResponse struct {
-	AccessToken  string             `json:"access_token"`
-	RefreshToken string             `json:"refresh_token"`
-	TokenType    string             `json:"token_type"`
-	ExpiresIn    int                `json:"expires_in"`
+	AccessToken  string              `json:"access_token"`
+	RefreshToken string              `json:"refresh_token"`
+	TokenType    string              `json:"token_type"`
+	ExpiresIn    int                 `json:"expires_in"`
 	User         *model.UserResponse `json:"user"`
 }
 
@@ -104,7 +104,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	resp := LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		TokenType:    "Bearer",
+		TokenType:    tokenTypeBearer,
 		ExpiresIn:    int(accessTTL.Seconds()),
 		User:         user.ToResponse(),
 	}
@@ -233,7 +233,7 @@ func (h *LoginHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -280,7 +280,7 @@ func (h *LoginHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	resp := RefreshResponse{
 		AccessToken: accessToken,
-		TokenType:   "Bearer",
+		TokenType:   tokenTypeBearer,
 		ExpiresIn:   int(h.accessTTL.Seconds()),
 	}
 
@@ -297,7 +297,7 @@ func (h *LoginHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	var req LogoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 

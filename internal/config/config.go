@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	defaultAccessTokenTTL  = 900     // 15 minutes
-	defaultRefreshTokenTTL = 604800  // 7 days
+	defaultAccessTokenTTL  = 900    // 15 minutes
+	defaultRefreshTokenTTL = 604800 // 7 days
 	defaultSigningKeyPath  = "rampart-signing-key.pem"
 	defaultIssuer          = "http://localhost:8080"
 )

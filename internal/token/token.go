@@ -16,7 +16,7 @@ import (
 type Claims struct {
 	jwt.RegisteredClaims
 	OrgID             uuid.UUID `json:"org_id"`
-	PreferredUsername  string    `json:"preferred_username"`
+	PreferredUsername string    `json:"preferred_username"`
 	Email             string    `json:"email"`
 	EmailVerified     bool      `json:"email_verified"`
 	GivenName         string    `json:"given_name,omitempty"`
@@ -34,13 +34,13 @@ func GenerateAccessToken(key *rsa.PrivateKey, kid, issuer string, ttl time.Durat
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},
-		OrgID:            orgID,
+		OrgID:             orgID,
 		PreferredUsername: username,
-		Email:            email,
-		EmailVerified:    emailVerified,
-		GivenName:        givenName,
-		FamilyName:       familyName,
-		Roles:            roles,
+		Email:             email,
+		EmailVerified:     emailVerified,
+		GivenName:         givenName,
+		FamilyName:        familyName,
+		Roles:             roles,
 	}
 
 	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)

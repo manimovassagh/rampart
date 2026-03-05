@@ -66,18 +66,18 @@ const (
 
 // mockLoginStore implements LoginStore for testing.
 type mockLoginStore struct {
-	defaultOrgID  uuid.UUID
-	defaultOrgErr error
-	slugOrgID     uuid.UUID
-	slugOrgErr    error
-	emailUser     *model.User
-	emailErr      error
-	usernameUser  *model.User
-	usernameErr   error
-	userByID      *model.User
-	userByIDErr   error
-	updateErr     error
-	orgSettings   *model.OrgSettings
+	defaultOrgID   uuid.UUID
+	defaultOrgErr  error
+	slugOrgID      uuid.UUID
+	slugOrgErr     error
+	emailUser      *model.User
+	emailErr       error
+	usernameUser   *model.User
+	usernameErr    error
+	userByID       *model.User
+	userByIDErr    error
+	updateErr      error
+	orgSettings    *model.OrgSettings
 	orgSettingsErr error
 }
 

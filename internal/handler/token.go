@@ -94,7 +94,7 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	client, err := h.store.GetOAuthClient(ctx, clientID)
 	if err != nil {
 		h.logger.Error("failed to fetch oauth client", "error", err)
-		h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Internal server error.")
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}
 	if client == nil {
@@ -106,7 +106,7 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	authCode, err := h.store.ConsumeAuthorizationCode(ctx, code)
 	if err != nil {
 		h.logger.Error("failed to consume authorization code", "error", err)
-		h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Internal server error.")
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}
 	if authCode == nil {
@@ -136,7 +136,7 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.GetUserByID(ctx, authCode.UserID)
 	if err != nil {
 		h.logger.Error("failed to fetch user for token exchange", "error", err)
-		h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Internal server error.")
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}
 	if user == nil || !user.Enabled {
@@ -167,7 +167,7 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		h.logger.Error("failed to generate access token", "error", err)
-		h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Internal server error.")
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := token.GenerateRefreshToken()
 	if err != nil {
 		h.logger.Error("failed to generate refresh token", "error", err)
-		h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Internal server error.")
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}
 
@@ -183,19 +183,19 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	expiresAt := time.Now().Add(refreshTTL)
 	if _, err := h.sessions.Create(ctx, user.ID, refreshToken, expiresAt); err != nil {
 		h.logger.Error("failed to create session", "error", err)
-		h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Internal server error.")
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}
 
 	resp := TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		TokenType:    "Bearer",
+		TokenType:    tokenTypeBearer,
 		ExpiresIn:    int(accessTTL.Seconds()),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
+	w.Header().Set("Cache-Control", cacheNoStore)
 	w.Header().Set("Pragma", "no-cache")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -205,8 +205,8 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 
 // writeOAuthError writes an OAuth 2.0 error response per RFC 6749 §5.2.
 func (h *TokenHandler) writeOAuthError(w http.ResponseWriter, status int, code, description string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
+	w.Header().Set("Cache-Control", cacheNoStore)
 	w.WriteHeader(status)
 
 	resp := map[string]string{

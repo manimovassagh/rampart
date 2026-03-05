@@ -3,10 +3,12 @@ package database
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/manimovassagh/rampart/internal/model"
 )
 
@@ -38,7 +40,7 @@ func (db *DB) ConsumeAuthorizationCode(ctx context.Context, code string) (*model
 	err := row.Scan(&ac.ID, &ac.CodeHash, &ac.ClientID, &ac.UserID, &ac.OrgID,
 		&ac.RedirectURI, &ac.CodeChallenge, &ac.Scope, &ac.Used, &ac.ExpiresAt, &ac.CreatedAt)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("consuming authorization code: %w", err)

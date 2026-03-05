@@ -89,7 +89,7 @@ func (h *OrgHandler) CreateOrg(w http.ResponseWriter, r *http.Request) {
 
 	var req model.CreateOrgRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -157,7 +157,7 @@ func (h *OrgHandler) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateOrgRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -241,7 +241,7 @@ func (h *OrgHandler) UpdateOrgSettings(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateOrgSettingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
