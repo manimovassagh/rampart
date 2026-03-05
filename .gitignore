@@ -58,4 +58,4 @@ samples/**/dist/
 # Docker
 docker-compose.override.yml
 firebase-debug.log
-rampart
+/rampart

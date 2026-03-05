@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -28,6 +29,9 @@ import (
 
 //go:embed templates/admin/*.html templates/admin/partials/*.html
 var adminTemplateFS embed.FS
+
+//go:embed static/admin.css static/htmx.min.js
+var staticFS embed.FS
 
 // Admin console string constants (SonarQube S1192 compliance).
 const (
@@ -97,6 +101,15 @@ const (
 	contentTypeHTML = "text/html; charset=utf-8"
 	cacheNoStore    = "no-store"
 )
+
+// StaticHandler returns an http.Handler that serves embedded static assets (CSS, JS).
+func StaticHandler() http.Handler {
+	sub, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		panic("failed to create static sub-filesystem: " + err.Error())
+	}
+	return http.FileServer(http.FS(sub))
+}
 
 // AdminConsoleStore defines the database operations required by AdminConsoleHandler.
 type AdminConsoleStore interface {

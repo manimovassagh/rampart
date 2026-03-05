@@ -1,0 +1,167 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build reports
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rampart
+          POSTGRES_PASSWORD: rampart
+          POSTGRES_DB: rampart
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rampart"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests with coverage
+        env:
+          RAMPART_DB_URL: postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable
+          RAMPART_REDIS_URL: redis://localhost:6379/0
+        run: |
+          go test -race -count=1 -coverprofile=coverage.out -covermode=atomic -json ./... > test-results.json 2>&1 || true
+          go tool cover -func=coverage.out > coverage-summary.txt
+          go tool cover -html=coverage.out -o coverage.html
+
+      - name: Generate reports page
+        run: |
+          mkdir -p _site
+
+          # Parse test results
+          total_tests=$(grep -c '"Test":' test-results.json || echo "0")
+          passed=$(grep '"Action":"pass"' test-results.json | grep '"Test":' | wc -l | tr -d ' ')
+          failed=$(grep '"Action":"fail"' test-results.json | grep '"Test":' | wc -l | tr -d ' ')
+          coverage=$(grep total coverage-summary.txt | awk '{print $3}')
+          commit_sha=$(git rev-parse --short HEAD)
+          commit_msg=$(git log -1 --pretty=%s)
+          build_date=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+          # Copy coverage report
+          cp coverage.html _site/coverage.html
+
+          # Generate index page
+          if [ "$failed" -eq 0 ]; then
+            status_badge="✅ All Passing"
+            status_color="#16a34a"
+          else
+            status_badge="❌ ${failed} Failed"
+            status_color="#dc2626"
+          fi
+
+          cat > _site/index.html << HEREDOC
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Rampart — CI Dashboard</title>
+              <style>
+                  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+                  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
+                  .container { max-width: 900px; margin: 0 auto; }
+                  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+                  .subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 2rem; }
+                  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+                  .card { background: #fff; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; }
+                  .card-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+                  .card-value { font-size: 1.75rem; font-weight: 700; margin-top: 0.25rem; }
+                  .card-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem; }
+                  .status { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.875rem; }
+                  .links { display: flex; gap: 1rem; margin-top: 1.5rem; }
+                  .links a { color: #2563eb; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
+                  .links a:hover { text-decoration: underline; }
+                  .meta { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; font-size: 0.8rem; color: #94a3b8; }
+                  .meta code { background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.75rem; }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>Rampart CI Dashboard</h1>
+                  <p class="subtitle">Automated test results and code coverage for the Rampart IAM server.</p>
+
+                  <div class="cards">
+                      <div class="card">
+                          <div class="card-label">Status</div>
+                          <div class="card-value" style="color: ${status_color}; font-size: 1.25rem;">${status_badge}</div>
+                      </div>
+                      <div class="card">
+                          <div class="card-label">Tests</div>
+                          <div class="card-value">${passed}</div>
+                          <div class="card-sub">of ${total_tests} passed</div>
+                      </div>
+                      <div class="card">
+                          <div class="card-label">Coverage</div>
+                          <div class="card-value">${coverage}</div>
+                          <div class="card-sub">line coverage</div>
+                      </div>
+                      <div class="card">
+                          <div class="card-label">Last Build</div>
+                          <div class="card-value" style="font-size: 1rem;">${build_date}</div>
+                          <div class="card-sub"><code>${commit_sha}</code> ${commit_msg}</div>
+                      </div>
+                  </div>
+
+                  <div class="links">
+                      <a href="coverage.html">📊 Full Coverage Report</a>
+                      <a href="https://github.com/manimovassagh/rampart">📁 Repository</a>
+                      <a href="https://github.com/manimovassagh/rampart/actions">⚙️ CI Runs</a>
+                  </div>
+
+                  <div class="meta">
+                      Generated from commit <code>${commit_sha}</code> on ${build_date}.
+                      Powered by <strong>Rampart</strong> CI pipeline.
+                  </div>
+              </div>
+          </body>
+          </html>
+          HEREDOC
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac2b3c603fc # v4
