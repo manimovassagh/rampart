@@ -98,7 +98,7 @@ func run(_ *slog.Logger) error {
 		cfg.AccessTokenTTL, cfg.RefreshTokenTTL, hmacKey,
 	)
 	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger)
-	server.RegisterAdminConsoleRoutes(router, kp.PublicKey, hmacKey, adminLoginHandler, adminConsoleHandler)
+	server.RegisterAdminConsoleRoutes(router, kp.PublicKey, hmacKey, handler.StaticHandler(), adminLoginHandler, adminConsoleHandler)
 
 	srv := server.New(cfg.Addr(), router, logger)
 
