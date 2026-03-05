@@ -87,7 +87,7 @@ const (
 	tmplOrgImport    = "org_import"
 
 	// Form values
-	formValueTrue         = "true"
+	formValueTrue          = "true"
 	clientTypeConfidential = "confidential"
 
 	// HTMX header
