@@ -101,6 +101,9 @@ func (db *DB) ListOrganizations(ctx context.Context, search string, limit, offse
 		}
 		orgs = append(orgs, &o)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating organization rows: %w", err)
+	}
 
 	return orgs, total, nil
 }

@@ -53,6 +53,9 @@ func (db *DB) ListGroups(ctx context.Context, orgID uuid.UUID, search string, li
 		}
 		groups = append(groups, &g)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating group rows: %w", err)
+	}
 	return groups, total, nil
 }
 
@@ -184,6 +187,9 @@ func (db *DB) GetGroupMembers(ctx context.Context, groupID uuid.UUID) ([]*model.
 		}
 		members = append(members, &m)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating group member rows: %w", err)
+	}
 	return members, nil
 }
 
@@ -226,6 +232,9 @@ func (db *DB) GetGroupRoles(ctx context.Context, groupID uuid.UUID) ([]*model.Gr
 		}
 		assignments = append(assignments, &a)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating group role rows: %w", err)
+	}
 	return assignments, nil
 }
 
@@ -256,6 +265,9 @@ func (db *DB) GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]st
 		}
 		names = append(names, name)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating effective role rows: %w", err)
+	}
 	return names, nil
 }
 
@@ -277,6 +289,9 @@ func (db *DB) GetUserGroups(ctx context.Context, userID uuid.UUID) ([]*model.Gro
 			return nil, fmt.Errorf("scanning user group: %w", err)
 		}
 		groups = append(groups, &g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating user group rows: %w", err)
 	}
 	return groups, nil
 }

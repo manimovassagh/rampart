@@ -94,6 +94,9 @@ func (db *DB) ListOAuthClients(ctx context.Context, orgID uuid.UUID, search stri
 		}
 		clients = append(clients, &c)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating oauth client rows: %w", err)
+	}
 
 	return clients, total, nil
 }

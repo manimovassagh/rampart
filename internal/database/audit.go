@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -85,9 +86,14 @@ func (db *DB) ListAuditEvents(ctx context.Context, orgID uuid.UUID, eventType, s
 			return nil, 0, fmt.Errorf("scanning audit event row: %w", err)
 		}
 		if len(detailsJSON) > 0 {
-			_ = json.Unmarshal(detailsJSON, &e.Details)
+			if unmarshalErr := json.Unmarshal(detailsJSON, &e.Details); unmarshalErr != nil {
+				slog.Warn("failed to unmarshal audit event details", "event_id", e.ID, "error", unmarshalErr)
+			}
 		}
 		events = append(events, &e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating audit event rows: %w", err)
 	}
 
 	return events, total, nil
