@@ -68,6 +68,7 @@ const (
 	pathAdminGroups    = "/admin/groups"
 	pathAdminGroupFmt  = "/admin/groups/%s"
 	pathAdminSessions  = "/admin/sessions"
+	pathAdminEvents    = "/admin/events"
 
 	// Page titles
 	titleCreateUser   = "Create User"
@@ -932,7 +933,7 @@ func (h *AdminConsoleHandler) ListClientsPage(w http.ResponseWriter, r *http.Req
 
 	h.render(w, r, "clients_list", &pageData{
 		Title:      "OAuth Clients",
-		ActiveNav:  "clients",
+		ActiveNav:  navClients,
 		Clients:    adminClients,
 		Search:     search,
 		Pagination: pg,
@@ -1016,7 +1017,7 @@ func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.
 	if clientSecret != "" {
 		h.render(w, r, "client_detail", &pageData{
 			Title:        fmt.Sprintf("Client: %s", created.Name),
-			ActiveNav:    "clients",
+			ActiveNav:    navClients,
 			ClientDetail: created.ToAdminResponse(),
 			ClientSecret: clientSecret,
 			Flash:        "Client created. Copy the secret now — it won't be shown again.",
@@ -1046,7 +1047,7 @@ func (h *AdminConsoleHandler) ClientDetailPage(w http.ResponseWriter, r *http.Re
 
 	h.render(w, r, "client_detail", &pageData{
 		Title:        fmt.Sprintf("Client: %s", client.Name),
-		ActiveNav:    "clients",
+		ActiveNav:    navClients,
 		ClientDetail: client.ToAdminResponse(),
 	})
 }
@@ -1149,7 +1150,7 @@ func (h *AdminConsoleHandler) RegenerateSecretAction(w http.ResponseWriter, r *h
 
 	h.render(w, r, "client_detail", &pageData{
 		Title:        fmt.Sprintf("Client: %s", client.Name),
-		ActiveNav:    "clients",
+		ActiveNav:    navClients,
 		ClientDetail: client.ToAdminResponse(),
 		ClientSecret: secret,
 		Flash:        "Secret regenerated. Copy it now — it won't be shown again.",
@@ -1405,7 +1406,7 @@ func (h *AdminConsoleHandler) ListEventsPage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	pg := buildPagination(page, limit, total, "/admin/events", search)
+	pg := buildPagination(page, limit, total, pathAdminEvents, search)
 	if eventFilter != "" {
 		pg.QueryExtra += "&event_type=" + url.QueryEscape(eventFilter)
 	}

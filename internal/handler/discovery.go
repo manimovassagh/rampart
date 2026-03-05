@@ -40,7 +40,7 @@ func DiscoveryHandler(issuer string, logger *slog.Logger) http.HandlerFunc {
 		ClaimsSupported: []string{
 			"sub", "iss", "iat", "exp",
 			"preferred_username", "email", "email_verified",
-			"given_name", "family_name", "org_id",
+			"given_name", "family_name", "org_id", "roles",
 		},
 		CodeChallengeMethodsSupported: []string{"S256"},
 	}
