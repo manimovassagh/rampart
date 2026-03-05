@@ -32,6 +32,7 @@ type OrgSettingsExport struct {
 	RememberMeEnabled         bool   `json:"remember_me_enabled"`
 	LoginPageTitle            string `json:"login_page_title"`
 	LoginPageMessage          string `json:"login_page_message"`
+	LoginTheme                string `json:"login_theme,omitempty"`
 }
 
 // RoleExport captures a role for export.
