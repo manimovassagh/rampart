@@ -24,10 +24,18 @@ help:
 css:
 	tailwindcss --input internal/handler/static/input.css --output internal/handler/static/admin.css --minify
 
-## build: compile the binary (rebuilds CSS first)
+## build: compile the server binary (rebuilds CSS first)
 build: css
 	@mkdir -p $(BUILD_DIR)
 	go build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME) ./cmd/rampart
+
+## build-cli: compile the CLI binary
+build-cli:
+	@mkdir -p $(BUILD_DIR)
+	go build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/rampart-cli ./cmd/rampart-cli
+
+## build-all: compile both server and CLI
+build-all: build build-cli
 
 ## run: build and run the server
 run: build
