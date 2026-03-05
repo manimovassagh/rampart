@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -13,16 +14,11 @@ import (
 
 // --- Mock implementation of Store interface ---
 
-type mockSession struct {
-	session *Session
-	err     error
-}
-
 type mockStore struct {
-	sessions       map[uuid.UUID]*Session
-	createErr      error
-	findErr        error
-	deleteErr      error
+	sessions        map[uuid.UUID]*Session
+	createErr       error
+	findErr         error
+	deleteErr       error
 	deleteByUserErr error
 }
 
@@ -54,7 +50,7 @@ func (m *mockStore) FindByRefreshToken(ctx context.Context, refreshToken string)
 	hash := HashToken(refreshToken)
 	now := time.Now()
 	for _, sess := range m.sessions {
-		if string(sess.RefreshTokenHash) == string(hash) && sess.ExpiresAt.After(now) {
+		if bytes.Equal(sess.RefreshTokenHash, hash) && sess.ExpiresAt.After(now) {
 			return sess, nil
 		}
 	}
@@ -87,7 +83,7 @@ func TestHashTokenDeterministic(t *testing.T) {
 	token := "test-refresh-token-abc123"
 	h1 := HashToken(token)
 	h2 := HashToken(token)
-	if string(h1) != string(h2) {
+	if !bytes.Equal(h1, h2) {
 		t.Fatal("HashToken should return the same hash for the same input")
 	}
 }
@@ -95,7 +91,7 @@ func TestHashTokenDeterministic(t *testing.T) {
 func TestHashTokenDifferentInputs(t *testing.T) {
 	h1 := HashToken("token-a")
 	h2 := HashToken("token-b")
-	if string(h1) == string(h2) {
+	if bytes.Equal(h1, h2) {
 		t.Fatal("HashToken should return different hashes for different inputs")
 	}
 }
@@ -148,7 +144,7 @@ func TestCreateSession(t *testing.T) {
 	if sess.ID == uuid.Nil {
 		t.Fatal("session ID should not be nil UUID")
 	}
-	if string(sess.RefreshTokenHash) != string(HashToken(token)) {
+	if !bytes.Equal(sess.RefreshTokenHash, HashToken(token)) {
 		t.Fatal("refresh token hash mismatch")
 	}
 }
@@ -425,7 +421,7 @@ func TestSQLQueriesWellFormed(t *testing.T) {
 }
 
 func containsSubstring(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsCheck(s, substr))
+	return len(s) >= len(substr) && (s == substr || s != "" && containsCheck(s, substr))
 }
 
 func containsCheck(s, substr string) bool {
@@ -460,7 +456,7 @@ func TestSessionStructFields(t *testing.T) {
 	if sess.UserID != userID {
 		t.Fatal("UserID mismatch")
 	}
-	if string(sess.RefreshTokenHash) != string(hash) {
+	if !bytes.Equal(sess.RefreshTokenHash, hash) {
 		t.Fatal("RefreshTokenHash mismatch")
 	}
 	if !sess.ExpiresAt.Equal(expires) {

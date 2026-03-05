@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"bytes"
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
@@ -347,7 +348,7 @@ func TestGenerateHMACKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateHMACKey error: %v", err)
 	}
-	if string(key) == string(key2) {
+	if bytes.Equal(key, key2) {
 		t.Error("two generated keys should differ")
 	}
 }

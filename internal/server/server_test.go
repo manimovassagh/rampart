@@ -420,15 +420,33 @@ func TestRegisterProtectedRoutes(t *testing.T) {
 // stubAdminEndpoints implements AdminEndpoints for route registration tests.
 type stubAdminEndpoints struct{}
 
-func (s *stubAdminEndpoints) Stats(w http.ResponseWriter, _ *http.Request)          { w.WriteHeader(http.StatusOK) }
-func (s *stubAdminEndpoints) ListUsers(w http.ResponseWriter, _ *http.Request)       { w.WriteHeader(http.StatusOK) }
-func (s *stubAdminEndpoints) CreateUser(w http.ResponseWriter, _ *http.Request)      { w.WriteHeader(http.StatusOK) }
-func (s *stubAdminEndpoints) GetUser(w http.ResponseWriter, _ *http.Request)         { w.WriteHeader(http.StatusOK) }
-func (s *stubAdminEndpoints) UpdateUser(w http.ResponseWriter, _ *http.Request)      { w.WriteHeader(http.StatusOK) }
-func (s *stubAdminEndpoints) DeleteUser(w http.ResponseWriter, _ *http.Request)      { w.WriteHeader(http.StatusOK) }
-func (s *stubAdminEndpoints) ResetPassword(w http.ResponseWriter, _ *http.Request)   { w.WriteHeader(http.StatusOK) }
-func (s *stubAdminEndpoints) ListSessions(w http.ResponseWriter, _ *http.Request)    { w.WriteHeader(http.StatusOK) }
-func (s *stubAdminEndpoints) RevokeSessions(w http.ResponseWriter, _ *http.Request)  { w.WriteHeader(http.StatusOK) }
+func (s *stubAdminEndpoints) Stats(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminEndpoints) ListUsers(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminEndpoints) CreateUser(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminEndpoints) GetUser(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminEndpoints) UpdateUser(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminEndpoints) DeleteUser(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminEndpoints) ResetPassword(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminEndpoints) ListSessions(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminEndpoints) RevokeSessions(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 
 func TestRegisterAdminRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
@@ -466,13 +484,27 @@ func TestRegisterAdminRoutes(t *testing.T) {
 // stubOrgEndpoints implements OrgEndpoints for route registration tests.
 type stubOrgEndpoints struct{}
 
-func (s *stubOrgEndpoints) ListOrgs(w http.ResponseWriter, _ *http.Request)          { w.WriteHeader(http.StatusOK) }
-func (s *stubOrgEndpoints) CreateOrg(w http.ResponseWriter, _ *http.Request)         { w.WriteHeader(http.StatusOK) }
-func (s *stubOrgEndpoints) GetOrg(w http.ResponseWriter, _ *http.Request)            { w.WriteHeader(http.StatusOK) }
-func (s *stubOrgEndpoints) UpdateOrg(w http.ResponseWriter, _ *http.Request)         { w.WriteHeader(http.StatusOK) }
-func (s *stubOrgEndpoints) DeleteOrg(w http.ResponseWriter, _ *http.Request)         { w.WriteHeader(http.StatusOK) }
-func (s *stubOrgEndpoints) GetOrgSettings(w http.ResponseWriter, _ *http.Request)    { w.WriteHeader(http.StatusOK) }
-func (s *stubOrgEndpoints) UpdateOrgSettings(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
+func (s *stubOrgEndpoints) ListOrgs(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubOrgEndpoints) CreateOrg(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubOrgEndpoints) GetOrg(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubOrgEndpoints) UpdateOrg(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubOrgEndpoints) DeleteOrg(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubOrgEndpoints) GetOrgSettings(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubOrgEndpoints) UpdateOrgSettings(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 
 func TestRegisterOrgRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
@@ -528,6 +560,226 @@ func TestRegisterExportImportRoutes(t *testing.T) {
 
 		if w.Code != http.StatusUnauthorized {
 			t.Errorf("%s %s: status = %d, want %d", tt.method, tt.path, w.Code, http.StatusUnauthorized)
+		}
+	}
+}
+
+// stubAdminLoginEndpoints implements AdminLoginEndpoints for tests.
+type stubAdminLoginEndpoints struct{}
+
+func (s *stubAdminLoginEndpoints) Login(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminLoginEndpoints) Callback(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminLoginEndpoints) Logout(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+// stubAdminConsoleEndpoints implements AdminConsoleEndpoints for tests.
+type stubAdminConsoleEndpoints struct{}
+
+func (s *stubAdminConsoleEndpoints) Dashboard(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ListUsersPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateUserPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateUserAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UserDetailPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UpdateUserAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) DeleteUserAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ResetPasswordAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) RevokeSessionsAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ListOrgsPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateOrgPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateOrgAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) OrgDetailPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UpdateOrgAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UpdateOrgSettingsAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) DeleteOrgAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ListClientsPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateClientPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateClientAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ClientDetailPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UpdateClientAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) DeleteClientAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) RegenerateSecretAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ListRolesPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateRolePage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateRoleAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) RoleDetailPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UpdateRoleAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) DeleteRoleAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) AssignRoleAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UnassignRoleAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ListEventsPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ListSessionsPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) RevokeSessionAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) RevokeAllSessionsAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ListGroupsPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateGroupPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateGroupAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) GroupDetailPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UpdateGroupAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) DeleteGroupAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) AddGroupMemberAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) RemoveGroupMemberAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) AssignGroupRoleAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UnassignGroupRoleAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ExportOrgAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ImportOrgPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) ImportOrgAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) OIDCPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func TestRegisterAdminConsoleRoutes(t *testing.T) {
+	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+	r := NewRouter(logger, []string{"*"})
+
+	hmacKey := []byte("test-hmac-key-for-csrf-testing-only")
+	staticHandler := http.FileServer(http.Dir(t.TempDir()))
+
+	RegisterAdminConsoleRoutes(r, testPubKey, hmacKey, staticHandler, &stubAdminLoginEndpoints{}, &stubAdminConsoleEndpoints{})
+
+	// Public routes should be accessible (200)
+	publicPaths := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/admin/login"},
+		{http.MethodGet, "/admin/callback"},
+	}
+
+	for _, tt := range publicPaths {
+		req := httptest.NewRequest(tt.method, tt.path, http.NoBody)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("%s %s: status = %d, want %d", tt.method, tt.path, w.Code, http.StatusOK)
+		}
+	}
+
+	// Protected routes should reject without session
+	protectedPaths := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/admin/"},
+		{http.MethodGet, "/admin/users"},
+		{http.MethodGet, "/admin/organizations"},
+		{http.MethodGet, "/admin/roles"},
+		{http.MethodGet, "/admin/sessions"},
+		{http.MethodGet, "/admin/events"},
+		{http.MethodGet, "/admin/clients"},
+		{http.MethodGet, "/admin/groups"},
+		{http.MethodGet, "/admin/oidc"},
+	}
+
+	for _, tt := range protectedPaths {
+		req := httptest.NewRequest(tt.method, tt.path, http.NoBody)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		// Without session cookie, should get redirect (302/303) or unauthorized (401/403)
+		if w.Code == http.StatusOK {
+			t.Errorf("%s %s: status = %d, expected non-200 for unauthenticated request", tt.method, tt.path, w.Code)
 		}
 	}
 }

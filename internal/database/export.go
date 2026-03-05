@@ -250,4 +250,3 @@ func (db *DB) ImportOrganization(ctx context.Context, export *model.OrgExport) e
 
 	return nil
 }
-

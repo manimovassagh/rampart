@@ -15,6 +15,8 @@ import (
 	"github.com/manimovassagh/rampart/internal/model"
 )
 
+const testRemoteAddr = "192.168.1.1:1234"
+
 // mockEventStore captures audit events for testing.
 type mockEventStore struct {
 	mu     sync.Mutex
@@ -280,7 +282,7 @@ func TestExtractIPPriority(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	req.Header.Set("X-Forwarded-For", "10.0.0.1")
 	req.Header.Set("X-Real-IP", "10.0.0.2")
-	req.RemoteAddr = "192.168.1.1:1234"
+	req.RemoteAddr = testRemoteAddr
 
 	ip := extractIP(req)
 	if ip != "10.0.0.1" {
@@ -290,10 +292,10 @@ func TestExtractIPPriority(t *testing.T) {
 
 func TestExtractIPFallsBackToRemoteAddr(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
-	req.RemoteAddr = "192.168.1.1:1234"
+	req.RemoteAddr = testRemoteAddr
 
 	ip := extractIP(req)
-	if ip != "192.168.1.1:1234" {
+	if ip != testRemoteAddr {
 		t.Errorf("extractIP = %q, want 192.168.1.1:1234", ip)
 	}
 }

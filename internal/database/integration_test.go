@@ -407,7 +407,7 @@ func TestUserListAndCount(t *testing.T) {
 	}
 
 	// List with search
-	users, total, err = db.ListUsers(ctx, org.ID, "listuser", "", 10, 0)
+	_, total, err = db.ListUsers(ctx, org.ID, "listuser", "", 10, 0)
 	if err != nil {
 		t.Fatalf("ListUsers with search: %v", err)
 	}
@@ -1274,7 +1274,7 @@ func TestAuditEventCreateAndList(t *testing.T) {
 	}
 
 	// Filter by type
-	events, total, err = db.ListAuditEvents(ctx, org.ID, "user.login", "", 10, 0)
+	_, total, err = db.ListAuditEvents(ctx, org.ID, "user.login", "", 10, 0)
 	if err != nil {
 		t.Fatalf("ListAuditEvents filter: %v", err)
 	}
@@ -1283,7 +1283,7 @@ func TestAuditEventCreateAndList(t *testing.T) {
 	}
 
 	// Search
-	events, total, err = db.ListAuditEvents(ctx, org.ID, "", "testuser", 10, 0)
+	_, total, err = db.ListAuditEvents(ctx, org.ID, "", "testuser", 10, 0)
 	if err != nil {
 		t.Fatalf("ListAuditEvents search: %v", err)
 	}
