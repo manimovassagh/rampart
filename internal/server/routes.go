@@ -190,7 +190,10 @@ type AdminLoginEndpoints interface {
 }
 
 // RegisterAdminConsoleRoutes mounts SSR admin console routes under /admin/.
-func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byte, login AdminLoginEndpoints, console AdminConsoleEndpoints) {
+func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byte, staticHandler http.Handler, login AdminLoginEndpoints, console AdminConsoleEndpoints) {
+	// Static assets (CSS, JS) — no auth required, long cache
+	r.Handle("/static/*", http.StripPrefix("/static/", staticHandler))
+
 	// Public admin routes (no session required)
 	r.Get("/admin/login", login.Login)
 	r.Get("/admin/callback", login.Callback)

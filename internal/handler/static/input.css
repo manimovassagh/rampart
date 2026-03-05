@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@source "../templates/";
+
+/* HTMX loading indicator — applied by htmx during active requests */
+[hx-request] {
+  opacity: 0.65;
+  transition: opacity 200ms;
+}

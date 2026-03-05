@@ -12,7 +12,7 @@ BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 
 .PHONY: all build run clean test test-cover test-threshold lint fmt vet \
-        security gosec vuln check dev-setup docker-build help
+        security gosec vuln check dev-setup docker-build css help
 
 ## help: show this help message
 help:
@@ -20,8 +20,12 @@ help:
 	@echo ""
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  /'
 
-## build: compile the binary
-build:
+## css: rebuild Tailwind CSS from templates
+css:
+	tailwindcss --input internal/handler/static/input.css --output internal/handler/static/admin.css --minify
+
+## build: compile the binary (rebuilds CSS first)
+build: css
 	@mkdir -p $(BUILD_DIR)
 	go build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME) ./cmd/rampart
 
