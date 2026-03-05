@@ -54,6 +54,9 @@ func (db *DB) ListRoles(ctx context.Context, orgID uuid.UUID, search string, lim
 		}
 		roles = append(roles, &r)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating role rows: %w", err)
+	}
 
 	return roles, total, nil
 }
@@ -186,6 +189,9 @@ func (db *DB) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*model.Role
 		}
 		roles = append(roles, &r)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating user role rows: %w", err)
+	}
 	return roles, nil
 }
 
@@ -212,6 +218,9 @@ func (db *DB) GetUserRoleNames(ctx context.Context, userID uuid.UUID) ([]string,
 		}
 		names = append(names, name)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating role name rows: %w", err)
+	}
 	return names, nil
 }
 
@@ -237,6 +246,9 @@ func (db *DB) GetRoleUsers(ctx context.Context, roleID uuid.UUID) ([]*model.User
 			return nil, fmt.Errorf("scanning role user row: %w", err)
 		}
 		assignments = append(assignments, &a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating role user rows: %w", err)
 	}
 	return assignments, nil
 }

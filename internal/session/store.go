@@ -136,6 +136,9 @@ func (s *PGStore) ListByUserID(ctx context.Context, userID uuid.UUID) ([]*Sessio
 		}
 		sessions = append(sessions, &sess)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating session rows: %w", err)
+	}
 	return sessions, nil
 }
 
@@ -202,6 +205,9 @@ func (s *PGStore) ListAll(ctx context.Context, search string, limit, offset int)
 			return nil, 0, fmt.Errorf("scanning session with user row: %w", err)
 		}
 		sessions = append(sessions, &sess)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating session with user rows: %w", err)
 	}
 	return sessions, total, nil
 }

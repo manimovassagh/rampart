@@ -28,7 +28,7 @@ func NewClient(cfg *Config) *Client {
 }
 
 // do executes an HTTP request and decodes the JSON response.
-func (c *Client) do(method, path string, body any, result any) error {
+func (c *Client) do(method, path string, body, result any) error {
 	var bodyReader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -38,8 +38,8 @@ func (c *Client) do(method, path string, body any, result any) error {
 		bodyReader = bytes.NewReader(data)
 	}
 
-	url := c.BaseURL + path
-	req, err := http.NewRequest(method, url, bodyReader)
+	reqURL := c.BaseURL + path
+	req, err := http.NewRequest(method, reqURL, bodyReader) //nolint:noctx // CLI tool, context not needed
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
@@ -51,11 +51,11 @@ func (c *Client) do(method, path string, body any, result any) error {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.HTTPClient.Do(req) //nolint:gosec // URL is constructed from user-provided server config, not external input
 	if err != nil {
 		return fmt.Errorf("request to %s: %w", path, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -87,7 +87,7 @@ func (c *Client) Get(path string, result any) error {
 }
 
 // Post performs an authenticated POST request.
-func (c *Client) Post(path string, body any, result any) error {
+func (c *Client) Post(path string, body, result any) error {
 	return c.do(http.MethodPost, path, body, result)
 }
 

@@ -191,6 +191,9 @@ func (db *DB) ListUsers(ctx context.Context, orgID uuid.UUID, search, status str
 		}
 		users = append(users, &u)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating user rows: %w", err)
+	}
 
 	return users, total, nil
 }
