@@ -176,6 +176,9 @@ type AdminConsoleEndpoints interface {
 	RemoveGroupMemberAction(w http.ResponseWriter, r *http.Request)
 	AssignGroupRoleAction(w http.ResponseWriter, r *http.Request)
 	UnassignGroupRoleAction(w http.ResponseWriter, r *http.Request)
+	ExportOrgAction(w http.ResponseWriter, r *http.Request)
+	ImportOrgPage(w http.ResponseWriter, r *http.Request)
+	ImportOrgAction(w http.ResponseWriter, r *http.Request)
 	OIDCPage(w http.ResponseWriter, r *http.Request)
 }
 
@@ -213,11 +216,14 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 		// Organizations
 		r.Get("/admin/organizations", console.ListOrgsPage)
 		r.Get("/admin/organizations/new", console.CreateOrgPage)
+		r.Get("/admin/organizations/import", console.ImportOrgPage)
+		r.Post("/admin/organizations/import", console.ImportOrgAction)
 		r.Post("/admin/organizations", console.CreateOrgAction)
 		r.Get("/admin/organizations/{id}", console.OrgDetailPage)
 		r.Post("/admin/organizations/{id}", console.UpdateOrgAction)
 		r.Post("/admin/organizations/{id}/settings", console.UpdateOrgSettingsAction)
 		r.Post("/admin/organizations/{id}/delete", console.DeleteOrgAction)
+		r.Get("/admin/organizations/{id}/export", console.ExportOrgAction)
 
 		// Roles
 		r.Get("/admin/roles", console.ListRolesPage)

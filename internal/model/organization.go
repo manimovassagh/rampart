@@ -29,11 +29,17 @@ type OrgSettings struct {
 	MFAEnforcement          string        `json:"mfa_enforcement"`
 	AccessTokenTTL          time.Duration `json:"access_token_ttl"`
 	RefreshTokenTTL         time.Duration `json:"refresh_token_ttl"`
-	LogoURL                 string        `json:"logo_url,omitempty"`
-	PrimaryColor            string        `json:"primary_color,omitempty"`
-	BackgroundColor         string        `json:"background_color,omitempty"`
-	CreatedAt               time.Time     `json:"created_at"`
-	UpdatedAt               time.Time     `json:"updated_at"`
+	LogoURL                    string        `json:"logo_url,omitempty"`
+	PrimaryColor               string        `json:"primary_color,omitempty"`
+	BackgroundColor            string        `json:"background_color,omitempty"`
+	SelfRegistrationEnabled    bool          `json:"self_registration_enabled"`
+	EmailVerificationRequired  bool          `json:"email_verification_required"`
+	ForgotPasswordEnabled      bool          `json:"forgot_password_enabled"`
+	RememberMeEnabled          bool          `json:"remember_me_enabled"`
+	LoginPageTitle             string        `json:"login_page_title"`
+	LoginPageMessage           string        `json:"login_page_message"`
+	CreatedAt                  time.Time     `json:"created_at"`
+	UpdatedAt                  time.Time     `json:"updated_at"`
 }
 
 // OrgResponse is returned from the admin API with an enriched user count.
@@ -86,17 +92,23 @@ type UpdateOrgRequest struct {
 
 // UpdateOrgSettingsRequest is the expected JSON body for updating org settings.
 type UpdateOrgSettingsRequest struct {
-	PasswordMinLength        int    `json:"password_min_length"`
-	PasswordRequireUppercase bool   `json:"password_require_uppercase"`
-	PasswordRequireLowercase bool   `json:"password_require_lowercase"`
-	PasswordRequireNumbers   bool   `json:"password_require_numbers"`
-	PasswordRequireSymbols   bool   `json:"password_require_symbols"`
-	MFAEnforcement           string `json:"mfa_enforcement"`
-	AccessTokenTTLSeconds    int    `json:"access_token_ttl_seconds"`
-	RefreshTokenTTLSeconds   int    `json:"refresh_token_ttl_seconds"`
-	LogoURL                  string `json:"logo_url"`
-	PrimaryColor             string `json:"primary_color"`
-	BackgroundColor          string `json:"background_color"`
+	PasswordMinLength          int    `json:"password_min_length"`
+	PasswordRequireUppercase   bool   `json:"password_require_uppercase"`
+	PasswordRequireLowercase   bool   `json:"password_require_lowercase"`
+	PasswordRequireNumbers     bool   `json:"password_require_numbers"`
+	PasswordRequireSymbols     bool   `json:"password_require_symbols"`
+	MFAEnforcement             string `json:"mfa_enforcement"`
+	AccessTokenTTLSeconds      int    `json:"access_token_ttl_seconds"`
+	RefreshTokenTTLSeconds     int    `json:"refresh_token_ttl_seconds"`
+	LogoURL                    string `json:"logo_url"`
+	PrimaryColor               string `json:"primary_color"`
+	BackgroundColor            string `json:"background_color"`
+	SelfRegistrationEnabled    bool   `json:"self_registration_enabled"`
+	EmailVerificationRequired  bool   `json:"email_verification_required"`
+	ForgotPasswordEnabled      bool   `json:"forgot_password_enabled"`
+	RememberMeEnabled          bool   `json:"remember_me_enabled"`
+	LoginPageTitle             string `json:"login_page_title"`
+	LoginPageMessage           string `json:"login_page_message"`
 }
 
 // OrgSettingsResponse is the API representation of organization settings.
@@ -111,30 +123,42 @@ type OrgSettingsResponse struct {
 	MFAEnforcement           string    `json:"mfa_enforcement"`
 	AccessTokenTTLSeconds    int       `json:"access_token_ttl_seconds"`
 	RefreshTokenTTLSeconds   int       `json:"refresh_token_ttl_seconds"`
-	LogoURL                  string    `json:"logo_url,omitempty"`
-	PrimaryColor             string    `json:"primary_color,omitempty"`
-	BackgroundColor          string    `json:"background_color,omitempty"`
-	CreatedAt                time.Time `json:"created_at"`
-	UpdatedAt                time.Time `json:"updated_at"`
+	LogoURL                    string    `json:"logo_url,omitempty"`
+	PrimaryColor               string    `json:"primary_color,omitempty"`
+	BackgroundColor            string    `json:"background_color,omitempty"`
+	SelfRegistrationEnabled    bool      `json:"self_registration_enabled"`
+	EmailVerificationRequired  bool      `json:"email_verification_required"`
+	ForgotPasswordEnabled      bool      `json:"forgot_password_enabled"`
+	RememberMeEnabled          bool      `json:"remember_me_enabled"`
+	LoginPageTitle             string    `json:"login_page_title"`
+	LoginPageMessage           string    `json:"login_page_message"`
+	CreatedAt                  time.Time `json:"created_at"`
+	UpdatedAt                  time.Time `json:"updated_at"`
 }
 
 // ToResponse converts OrgSettings to an API-friendly response with seconds instead of Duration.
 func (s *OrgSettings) ToResponse() *OrgSettingsResponse {
 	return &OrgSettingsResponse{
-		ID:                       s.ID,
-		OrgID:                    s.OrgID,
-		PasswordMinLength:        s.PasswordMinLength,
-		PasswordRequireUppercase: s.PasswordRequireUppercase,
-		PasswordRequireLowercase: s.PasswordRequireLowercase,
-		PasswordRequireNumbers:   s.PasswordRequireNumbers,
-		PasswordRequireSymbols:   s.PasswordRequireSymbols,
-		MFAEnforcement:           s.MFAEnforcement,
-		AccessTokenTTLSeconds:    int(s.AccessTokenTTL.Seconds()),
-		RefreshTokenTTLSeconds:   int(s.RefreshTokenTTL.Seconds()),
-		LogoURL:                  s.LogoURL,
-		PrimaryColor:             s.PrimaryColor,
-		BackgroundColor:          s.BackgroundColor,
-		CreatedAt:                s.CreatedAt,
-		UpdatedAt:                s.UpdatedAt,
+		ID:                        s.ID,
+		OrgID:                     s.OrgID,
+		PasswordMinLength:         s.PasswordMinLength,
+		PasswordRequireUppercase:  s.PasswordRequireUppercase,
+		PasswordRequireLowercase:  s.PasswordRequireLowercase,
+		PasswordRequireNumbers:    s.PasswordRequireNumbers,
+		PasswordRequireSymbols:    s.PasswordRequireSymbols,
+		MFAEnforcement:            s.MFAEnforcement,
+		AccessTokenTTLSeconds:     int(s.AccessTokenTTL.Seconds()),
+		RefreshTokenTTLSeconds:    int(s.RefreshTokenTTL.Seconds()),
+		LogoURL:                   s.LogoURL,
+		PrimaryColor:              s.PrimaryColor,
+		BackgroundColor:           s.BackgroundColor,
+		SelfRegistrationEnabled:   s.SelfRegistrationEnabled,
+		EmailVerificationRequired: s.EmailVerificationRequired,
+		ForgotPasswordEnabled:     s.ForgotPasswordEnabled,
+		RememberMeEnabled:         s.RememberMeEnabled,
+		LoginPageTitle:            s.LoginPageTitle,
+		LoginPageMessage:          s.LoginPageMessage,
+		CreatedAt:                 s.CreatedAt,
+		UpdatedAt:                 s.UpdatedAt,
 	}
 }
