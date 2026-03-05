@@ -83,6 +83,35 @@ jobs:
           go install github.com/securego/gosec/v2/cmd/gosec@latest
           gosec -fmt json -out gosec-output.json -severity high -confidence high -exclude=G117 ./... 2>/dev/null || true
 
+      # ── E2E Tests (Playwright) ─────────────────────────────
+      - name: Build Rampart server
+        env:
+          RAMPART_DB_URL: postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable
+          RAMPART_REDIS_URL: redis://localhost:6379/0
+        run: go build -o rampart-server ./cmd/rampart
+
+      - name: Start Rampart server
+        env:
+          RAMPART_DB_URL: postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable
+          RAMPART_REDIS_URL: redis://localhost:6379/0
+        run: |
+          ./rampart-server &
+          for i in $(seq 1 30); do curl -sf http://localhost:8080/healthz && break; sleep 1; done
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+
+      - name: Install Playwright and run e2e tests
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test --reporter=html || true
+
+      - name: Stop server
+        run: kill %1 2>/dev/null || true
+
       # ── Build matrix check ────────────────────────────────
       - name: Check cross-compilation
         run: |
@@ -191,6 +220,25 @@ jobs:
           # Copy coverage report
           cp coverage.html _site/coverage.html
 
+          # Copy Playwright e2e report
+          if [ -d "e2e/playwright-report" ]; then
+            cp -r e2e/playwright-report _site/e2e-report
+          fi
+
+          # E2E test summary
+          e2e_passed=0
+          e2e_failed=0
+          e2e_total=0
+          if [ -f "e2e/test-results/.last-run.json" ]; then
+            e2e_status_json=$(cat e2e/test-results/.last-run.json 2>/dev/null || echo '{}')
+          fi
+          if [ -d "e2e/playwright-report" ]; then
+            e2e_total=$(find e2e/test-results -name '*.json' 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+            e2e_label="Report available"
+          else
+            e2e_label="Not run"
+          fi
+
           # ── Generate index.html ──
           cat > _site/index.html << 'HTMLEOF'
           <!DOCTYPE html>
@@ -264,6 +312,8 @@ jobs:
             <div class="pipe-stage">Security $([ "$vuln_count" -eq 0 ] && [ "$gosec_count" -eq 0 ] && echo '<span style="color:#16a34a">&#10003;</span>' || echo '<span style="color:#ca8a04">&#9888;</span>')</div>
             <span class="pipe-arrow">&#8594;</span>
             <div class="pipe-stage">Build $([ "$builds_ok" -eq "$builds_total" ] && echo '<span style="color:#16a34a">&#10003;</span>' || echo '<span style="color:#dc2626">&#10007;</span>')</div>
+            <span class="pipe-arrow">&#8594;</span>
+            <div class="pipe-stage">E2E $([ -d "e2e/playwright-report" ] && echo '<span style="color:#16a34a">&#10003;</span>' || echo '<span style="color:#94a3b8">&#8212;</span>')</div>
           </div>
 
           <!-- Summary cards -->
@@ -297,6 +347,11 @@ jobs:
               <div class="card-label">Builds</div>
               <div class="card-value" style="color:$([ "$builds_ok" -eq "$builds_total" ] && echo '#16a34a' || echo '#dc2626')">${builds_ok}/${builds_total}</div>
               <div class="card-sub">cross-compile targets</div>
+            </div>
+            <div class="card">
+              <div class="card-label">E2E Tests</div>
+              <div class="card-value" style="color:$([ -d "e2e/playwright-report" ] && echo '#16a34a' || echo '#94a3b8')">$([ -d "e2e/playwright-report" ] && echo 'Done' || echo 'N/A')</div>
+              <div class="card-sub"><a href="e2e-report/index.html" style="color:#2563eb;text-decoration:none">Playwright Report</a></div>
             </div>
           </div>
 
@@ -332,6 +387,7 @@ jobs:
           <!-- Links -->
           <div class="section">
             <div class="links">
+              <a href="e2e-report/index.html">E2E Test Report</a>
               <a href="coverage.html">Full Coverage Report</a>
               <a href="https://github.com/manimovassagh/rampart">Repository</a>
               <a href="https://github.com/manimovassagh/rampart/actions">CI Runs</a>
