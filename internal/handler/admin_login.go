@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
@@ -31,6 +32,7 @@ type AdminLoginStore interface {
 	ConsumeAuthorizationCode(ctx context.Context, code string) (*model.AuthorizationCode, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
+	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 }
 
 // AdminLoginHandler handles the admin OAuth login flow.
@@ -38,6 +40,7 @@ type AdminLoginHandler struct {
 	store      AdminLoginStore
 	sessions   session.Store
 	logger     *slog.Logger
+	audit      *audit.Logger
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
 	kid        string
@@ -52,6 +55,7 @@ func NewAdminLoginHandler(
 	store AdminLoginStore,
 	sessions session.Store,
 	logger *slog.Logger,
+	auditLogger *audit.Logger,
 	privateKey *rsa.PrivateKey,
 	publicKey *rsa.PublicKey,
 	kid, issuer string,
@@ -62,6 +66,7 @@ func NewAdminLoginHandler(
 		store:      store,
 		sessions:   sessions,
 		logger:     logger,
+		audit:      auditLogger,
 		privateKey: privateKey,
 		publicKey:  publicKey,
 		kid:        kid,
@@ -217,12 +222,20 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Fetch user roles (admin client — include all roles)
+	adminRoles, rErr := h.store.GetEffectiveUserRoles(ctx, user.ID)
+	if rErr != nil {
+		h.logger.Warn("failed to fetch user roles for admin login", "error", rErr)
+		adminRoles = nil
+	}
+
 	// Generate access token
 	accessToken, err := token.GenerateAccessToken(
 		h.privateKey, h.kid, h.issuer, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,
+		adminRoles...,
 	)
 	if err != nil {
 		h.logger.Error("failed to generate access token", "error", err)
@@ -248,11 +261,18 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	// Set the session cookie with the access token
 	middleware.SetAdminSession(w, accessToken, h.hmacKey, int(accessTTL.Seconds()))
 
+	// Note: user.login event is already emitted by the authorize handler during
+	// credential verification, so we don't duplicate it here.
+
 	http.Redirect(w, r, "/admin/", http.StatusFound)
 }
 
 // Logout clears the admin session and redirects to login.
 func (h *AdminLoginHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	// Best-effort audit: extract user from the session context before clearing
+	if authUser := middleware.GetAuthenticatedUser(r.Context()); authUser != nil {
+		h.audit.LogSimple(r.Context(), r, authUser.OrgID, model.EventSessionRevoked, &authUser.UserID, authUser.PreferredUsername, "session", "", "admin_logout")
+	}
 	middleware.ClearAdminSession(w)
 	http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 }

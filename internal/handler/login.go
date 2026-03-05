@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
+	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
@@ -62,6 +63,7 @@ type LoginStore interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
 	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
+	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 }
 
 // LoginHandler handles authentication endpoints.
@@ -69,6 +71,7 @@ type LoginHandler struct {
 	store      LoginStore
 	sessions   session.Store
 	logger     *slog.Logger
+	audit      *audit.Logger
 	privateKey *rsa.PrivateKey
 	kid        string
 	issuer     string
@@ -77,11 +80,12 @@ type LoginHandler struct {
 }
 
 // NewLoginHandler creates a handler with all authentication dependencies.
-func NewLoginHandler(store LoginStore, sessions session.Store, logger *slog.Logger, privateKey *rsa.PrivateKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *LoginHandler {
+func NewLoginHandler(store LoginStore, sessions session.Store, logger *slog.Logger, auditLogger *audit.Logger, privateKey *rsa.PrivateKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *LoginHandler {
 	return &LoginHandler{
 		store:      store,
 		sessions:   sessions,
 		logger:     logger,
+		audit:      auditLogger,
 		privateKey: privateKey,
 		kid:        kid,
 		issuer:     issuer,
@@ -148,11 +152,13 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user == nil {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, nil, req.Identifier, "user", "", req.Identifier, map[string]any{"reason": "user_not_found"})
 		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
 	}
 
 	if !user.Enabled {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_disabled"})
 		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
 	}
@@ -164,6 +170,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_password"})
 		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
 	}
@@ -182,11 +189,19 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Fetch user roles (direct login API — include all roles)
+	roles, rErr := h.store.GetEffectiveUserRoles(ctx, user.ID)
+	if rErr != nil {
+		h.logger.Warn("failed to fetch user roles", "error", rErr)
+		roles = nil
+	}
+
 	accessToken, err := token.GenerateAccessToken(
 		h.privateKey, h.kid, h.issuer, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,
+		roles...,
 	)
 	if err != nil {
 		h.logger.Error("failed to generate access token", "error", err)
@@ -211,6 +226,8 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err := h.store.UpdateLastLoginAt(ctx, user.ID); err != nil {
 		h.logger.Warn("failed to update last_login_at", "error", err, "user_id", user.ID)
 	}
+
+	h.audit.LogSimple(ctx, r, orgID, model.EventUserLogin, &user.ID, user.Username, "user", user.ID.String(), user.Username)
 
 	resp := LoginResponse{
 		AccessToken:  accessToken,
@@ -266,11 +283,19 @@ func (h *LoginHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch user roles for refreshed token
+	refreshRoles, rErr := h.store.GetEffectiveUserRoles(ctx, user.ID)
+	if rErr != nil {
+		h.logger.Warn("failed to fetch user roles for refresh", "error", rErr)
+		refreshRoles = nil
+	}
+
 	accessToken, err := token.GenerateAccessToken(
 		h.privateKey, h.kid, h.issuer, h.accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,
+		refreshRoles...,
 	)
 	if err != nil {
 		h.logger.Error("failed to generate access token", "error", err)
@@ -323,6 +348,11 @@ func (h *LoginHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to delete session", "error", err)
 		apierror.InternalError(w)
 		return
+	}
+
+	// Look up user for audit event
+	if user, uErr := h.store.GetUserByID(ctx, sess.UserID); uErr == nil && user != nil {
+		h.audit.LogSimple(ctx, r, user.OrgID, model.EventSessionRevoked, &user.ID, user.Username, "session", sess.ID.String(), "")
 	}
 
 	w.WriteHeader(http.StatusNoContent)

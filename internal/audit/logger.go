@@ -28,7 +28,11 @@ func NewLogger(store EventStore, logger *slog.Logger) *Logger {
 }
 
 // Log records an audit event asynchronously (fire-and-forget).
+// Safe to call on a nil receiver (no-op).
 func (l *Logger) Log(ctx context.Context, r *http.Request, orgID uuid.UUID, eventType string, actorID *uuid.UUID, actorName, targetType, targetID, targetName string, details map[string]any) {
+	if l == nil {
+		return
+	}
 	event := &model.AuditEvent{
 		OrgID:      orgID,
 		EventType:  eventType,
@@ -57,7 +61,11 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, orgID uuid.UUID, even
 }
 
 // LogSimple is a convenience wrapper for events with no extra details.
+// Safe to call on a nil receiver (no-op).
 func (l *Logger) LogSimple(ctx context.Context, r *http.Request, orgID uuid.UUID, eventType string, actorID *uuid.UUID, actorName, targetType, targetID, targetName string) {
+	if l == nil {
+		return
+	}
 	l.Log(ctx, r, orgID, eventType, actorID, actorName, targetType, targetID, targetName, nil)
 }
 

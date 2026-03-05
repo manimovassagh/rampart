@@ -66,7 +66,7 @@ func newTestOAuthClient(orgID uuid.UUID) *model.OAuthClient {
 
 func TestAuthorizeGetMissingParams(t *testing.T) {
 	store := &mockAuthorizeStore{}
-	h := NewAuthorizeHandler(store, noopLogger())
+	h := NewAuthorizeHandler(store, noopLogger(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize", http.NoBody)
 	w := httptest.NewRecorder()
@@ -83,7 +83,7 @@ func TestAuthorizeGetMissingParams(t *testing.T) {
 
 func TestAuthorizeGetUnknownClient(t *testing.T) {
 	store := &mockAuthorizeStore{oauthClient: nil}
-	h := NewAuthorizeHandler(store, noopLogger())
+	h := NewAuthorizeHandler(store, noopLogger(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=unknown&redirect_uri=http://evil.com/cb&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()
@@ -103,7 +103,7 @@ func TestAuthorizeGetInvalidRedirectURI(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger())
+	h := NewAuthorizeHandler(store, noopLogger(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://evil.com/cb&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()
@@ -123,7 +123,7 @@ func TestAuthorizeGetMissingPKCE(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger())
+	h := NewAuthorizeHandler(store, noopLogger(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc", http.NoBody)
 	w := httptest.NewRecorder()
@@ -143,7 +143,7 @@ func TestAuthorizeGetRendersLoginPage(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger())
+	h := NewAuthorizeHandler(store, noopLogger(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc123&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()
@@ -173,7 +173,7 @@ func TestAuthorizePostBadCredentials(t *testing.T) {
 		emailUser:    nil,
 		usernameUser: nil,
 	}
-	h := NewAuthorizeHandler(store, noopLogger())
+	h := NewAuthorizeHandler(store, noopLogger(), nil)
 
 	form := url.Values{
 		"client_id":             {"test-client"},
@@ -217,7 +217,7 @@ func TestAuthorizePostValidCredentialsRedirects(t *testing.T) {
 		oauthClient: newTestOAuthClient(orgID),
 		emailUser:   user,
 	}
-	h := NewAuthorizeHandler(store, noopLogger())
+	h := NewAuthorizeHandler(store, noopLogger(), nil)
 
 	form := url.Values{
 		"client_id":             {"test-client"},
@@ -259,7 +259,7 @@ func TestAuthorizeGetMissingState(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger())
+	h := NewAuthorizeHandler(store, noopLogger(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&code_challenge=xyz&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()

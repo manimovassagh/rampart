@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
+	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/model"
@@ -39,11 +40,12 @@ type AuthorizeStore interface {
 type AuthorizeHandler struct {
 	store  AuthorizeStore
 	logger *slog.Logger
+	audit  *audit.Logger
 }
 
 // NewAuthorizeHandler creates a new authorization endpoint handler.
-func NewAuthorizeHandler(store AuthorizeStore, logger *slog.Logger) *AuthorizeHandler {
-	return &AuthorizeHandler{store: store, logger: logger}
+func NewAuthorizeHandler(store AuthorizeStore, logger *slog.Logger, auditLogger *audit.Logger) *AuthorizeHandler {
+	return &AuthorizeHandler{store: store, logger: logger, audit: auditLogger}
 }
 
 type loginPageData struct {
@@ -210,12 +212,14 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user == nil {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, nil, identifier, "user", "", identifier, map[string]any{"reason": "user_not_found", "client_id": clientID})
 		pageData.Error = msgInvalidLogin
 		h.renderLoginPage(w, http.StatusOK, pageData)
 		return
 	}
 
 	if !user.Enabled {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_disabled", "client_id": clientID})
 		pageData.Error = msgInvalidLogin
 		h.renderLoginPage(w, http.StatusOK, pageData)
 		return
@@ -228,6 +232,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_password", "client_id": clientID})
 		pageData.Error = msgInvalidLogin
 		h.renderLoginPage(w, http.StatusOK, pageData)
 		return
@@ -251,6 +256,8 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	if err := h.store.UpdateLastLoginAt(ctx, user.ID); err != nil {
 		h.logger.Warn("failed to update last_login_at", "error", err, "user_id", user.ID)
 	}
+
+	h.audit.Log(ctx, r, orgID, model.EventUserLogin, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"client_id": clientID})
 
 	// Redirect back to the client with the authorization code
 	redirectURL := redirectURI + "?code=" + code + "&state=" + state

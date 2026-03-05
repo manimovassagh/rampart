@@ -65,7 +65,8 @@ func run(_ *slog.Logger) error {
 	server.RegisterAuthRoutes(router, registerHandler.Register)
 
 	sessionStore := session.NewPGStore(db.Pool)
-	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	auditLogger := audit.NewLogger(db, logger)
+	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout)
 
 	server.RegisterProtectedRoutes(router, kp.PublicKey, handler.Me)
@@ -77,7 +78,7 @@ func run(_ *slog.Logger) error {
 	server.RegisterOrgRoutes(router, kp.PublicKey, orgHandler)
 
 	// OAuth 2.0 Authorization Code + PKCE endpoints
-	authorizeHandler := handler.NewAuthorizeHandler(db, logger)
+	authorizeHandler := handler.NewAuthorizeHandler(db, logger, auditLogger)
 	tokenHandler := handler.NewTokenHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, tokenHandler.Token)
 
@@ -92,11 +93,10 @@ func run(_ *slog.Logger) error {
 		return err
 	}
 	adminLoginHandler := handler.NewAdminLoginHandler(
-		db, sessionStore, logger,
+		db, sessionStore, logger, auditLogger,
 		kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer,
 		cfg.AccessTokenTTL, cfg.RefreshTokenTTL, hmacKey,
 	)
-	auditLogger := audit.NewLogger(db, logger)
 	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger)
 	server.RegisterAdminConsoleRoutes(router, kp.PublicKey, hmacKey, adminLoginHandler, adminConsoleHandler)
 
