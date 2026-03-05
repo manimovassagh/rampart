@@ -1,0 +1,66 @@
+{{define "content"}}
+<div class="flex items-center justify-between mb-6 gap-4">
+    <div class="flex-1 max-w-md">
+        <input type="text" name="search" placeholder="Search events..."
+               value="{{.Search}}"
+               hx-get="/admin/events" hx-trigger="keyup changed delay:300ms"
+               hx-target="#table-body" hx-push-url="true"
+               hx-include="[name='search'],[name='event_type']"
+               class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+    </div>
+    <div>
+        <select name="event_type"
+                hx-get="/admin/events" hx-trigger="change"
+                hx-target="#table-body" hx-push-url="true"
+                hx-include="[name='search'],[name='event_type']"
+                class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">All Events</option>
+            <option value="user.login" {{if eq .EventFilter "user.login"}}selected{{end}}>User Login</option>
+            <option value="user.login_failed" {{if eq .EventFilter "user.login_failed"}}selected{{end}}>Login Failed</option>
+            <option value="user.created" {{if eq .EventFilter "user.created"}}selected{{end}}>User Created</option>
+            <option value="user.updated" {{if eq .EventFilter "user.updated"}}selected{{end}}>User Updated</option>
+            <option value="user.deleted" {{if eq .EventFilter "user.deleted"}}selected{{end}}>User Deleted</option>
+            <option value="user.password_reset" {{if eq .EventFilter "user.password_reset"}}selected{{end}}>Password Reset</option>
+            <option value="role.assigned" {{if eq .EventFilter "role.assigned"}}selected{{end}}>Role Assigned</option>
+            <option value="role.unassigned" {{if eq .EventFilter "role.unassigned"}}selected{{end}}>Role Unassigned</option>
+            <option value="role.created" {{if eq .EventFilter "role.created"}}selected{{end}}>Role Created</option>
+            <option value="role.deleted" {{if eq .EventFilter "role.deleted"}}selected{{end}}>Role Deleted</option>
+            <option value="client.created" {{if eq .EventFilter "client.created"}}selected{{end}}>Client Created</option>
+            <option value="client.deleted" {{if eq .EventFilter "client.deleted"}}selected{{end}}>Client Deleted</option>
+            <option value="client.secret_regenerated" {{if eq .EventFilter "client.secret_regenerated"}}selected{{end}}>Secret Regenerated</option>
+            <option value="org.created" {{if eq .EventFilter "org.created"}}selected{{end}}>Org Created</option>
+            <option value="org.deleted" {{if eq .EventFilter "org.deleted"}}selected{{end}}>Org Deleted</option>
+            <option value="session.revoked" {{if eq .EventFilter "session.revoked"}}selected{{end}}>Session Revoked</option>
+        </select>
+    </div>
+</div>
+
+<div id="table-body">
+{{template "events_table" .}}
+</div>
+{{end}}
+
+{{define "events_table"}}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actor</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {{range .Events}}
+            {{template "event_row" .}}
+            {{else}}
+            <tr><td colspan="5" class="px-6 py-8 text-center text-gray-500 text-sm">No events found.</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+{{template "pagination" .Pagination}}
+{{end}}

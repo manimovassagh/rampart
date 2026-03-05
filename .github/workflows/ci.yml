@@ -6,77 +6,52 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   lint:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version-file: go.mod
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - name: Run golangci-lint
-        run: golangci-lint run ./...
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+    with:
+      go-version-file: go.mod
 
   test:
-    name: test
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: rampart
-          POSTGRES_PASSWORD: rampart
-          POSTGRES_DB: rampart
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U rampart"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version-file: go.mod
-      - name: Run tests
-        env:
-          RAMPART_DB_URL: postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable
-        run: go test -race -count=1 -coverprofile=coverage.out ./...
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage.out
+    name: Test
+    uses: ./.github/workflows/test.yml
+    with:
+      go-version-file: go.mod
+      coverage-threshold: 25
 
   security:
-    name: security
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version-file: go.mod
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
-      - name: Run govulncheck
-        run: govulncheck ./...
+    name: Security
+    uses: ./.github/workflows/security.yml
+    with:
+      go-version-file: go.mod
 
-  build:
-    name: build
+  # Final status check — branch protection can require just this one job
+  ci-ok:
+    name: CI passed
     runs-on: ubuntu-latest
+    needs: [lint, test, security]
+    if: always()
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version-file: go.mod
-      - name: Build binary
-        run: go build -o bin/rampart ./cmd/rampart
-      - name: Verify binary exists
-        run: test -f bin/rampart
+      - name: Check all jobs
+        run: |
+          if [[ "${{ needs.lint.result }}" != "success" ]]; then
+            echo "Lint failed"
+            exit 1
+          fi
+          if [[ "${{ needs.test.result }}" != "success" ]]; then
+            echo "Test failed"
+            exit 1
+          fi
+          if [[ "${{ needs.security.result }}" != "success" ]]; then
+            echo "Security failed"
+            exit 1
+          fi
+          echo "All CI checks passed"

@@ -24,18 +24,18 @@ func noopLogger() *slog.Logger {
 
 // mockUserStore implements UserStore for testing.
 type mockUserStore struct {
-	defaultOrgID    uuid.UUID
-	defaultOrgErr   error
-	slugOrgID       uuid.UUID
-	slugOrgErr      error
-	emailUser       *model.User
-	emailErr        error
-	usernameUser    *model.User
-	usernameErr     error
-	createdUser     *model.User
-	createErr       error
-	orgSettings     *model.OrgSettings
-	orgSettingsErr  error
+	defaultOrgID   uuid.UUID
+	defaultOrgErr  error
+	slugOrgID      uuid.UUID
+	slugOrgErr     error
+	emailUser      *model.User
+	emailErr       error
+	usernameUser   *model.User
+	usernameErr    error
+	createdUser    *model.User
+	createErr      error
+	orgSettings    *model.OrgSettings
+	orgSettingsErr error
 }
 
 func (m *mockUserStore) GetDefaultOrganizationID(_ context.Context) (uuid.UUID, error) {

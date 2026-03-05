@@ -1,0 +1,68 @@
+{{define "content"}}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex-1 max-w-md">
+        <input type="text" name="search" placeholder="Search by username or email..."
+               value="{{.Search}}"
+               hx-get="/admin/sessions" hx-trigger="keyup changed delay:300ms"
+               hx-target="#table-body" hx-push-url="true"
+               hx-include="this"
+               class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+    </div>
+    {{if .GlobalSessions}}
+    <form method="POST" action="/admin/sessions/revoke-all">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit" class="ml-4 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
+                onclick="return confirm('Are you sure you want to revoke ALL active sessions? All users will be logged out.')">
+            Revoke All
+        </button>
+    </form>
+    {{end}}
+</div>
+
+<div id="table-body">
+{{template "sessions_table" .}}
+</div>
+{{end}}
+
+{{define "sessions_table"}}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {{range .GlobalSessions}}
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <a href="/admin/users/{{.UserID}}" class="text-sm font-medium text-blue-600 hover:text-blue-800">{{.Username}}</a>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{.Email}}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm text-gray-600 font-mono text-xs">{{slice (.ID.String) 0 8}}...</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{.CreatedAt.Format "Jan 02, 15:04"}}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{.ExpiresAt.Format "Jan 02, 15:04"}}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    <form method="POST" action="/admin/sessions/{{.ID}}/delete" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                        <button type="submit" class="text-sm text-red-600 hover:text-red-800"
+                                onclick="return confirm('Revoke this session?')">Revoke</button>
+                    </form>
+                </td>
+            </tr>
+            {{else}}
+            <tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm">No active sessions.</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+{{template "pagination" .Pagination}}
+{{end}}

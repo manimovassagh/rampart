@@ -17,17 +17,17 @@ import (
 )
 
 type mockOrgStore struct {
-	org         *model.Organization
-	orgErr      error
-	orgs        []*model.Organization
-	orgsTotal   int
-	orgsErr     error
-	createdOrg  *model.Organization
-	createErr   error
-	updatedOrg  *model.Organization
-	updateErr   error
-	deleteErr   error
-	countUsers  int
+	org           *model.Organization
+	orgErr        error
+	orgs          []*model.Organization
+	orgsTotal     int
+	orgsErr       error
+	createdOrg    *model.Organization
+	createErr     error
+	updatedOrg    *model.Organization
+	updateErr     error
+	deleteErr     error
+	countUsers    int
 	countUsersErr error
 }
 

@@ -40,8 +40,11 @@ func TestDiscoveryReturnsMetadata(t *testing.T) {
 	if resp.JWKSURI != "https://auth.example.com/.well-known/jwks.json" {
 		t.Errorf("jwks_uri = %q, want https://auth.example.com/.well-known/jwks.json", resp.JWKSURI)
 	}
-	if resp.TokenEndpoint != "https://auth.example.com/login" {
-		t.Errorf("token_endpoint = %q, want https://auth.example.com/login", resp.TokenEndpoint)
+	if resp.AuthorizationEndpoint != "https://auth.example.com/oauth/authorize" {
+		t.Errorf("authorization_endpoint = %q, want https://auth.example.com/oauth/authorize", resp.AuthorizationEndpoint)
+	}
+	if resp.TokenEndpoint != "https://auth.example.com/oauth/token" {
+		t.Errorf("token_endpoint = %q, want https://auth.example.com/oauth/token", resp.TokenEndpoint)
 	}
 	if resp.UserinfoEndpoint != "https://auth.example.com/me" {
 		t.Errorf("userinfo_endpoint = %q, want https://auth.example.com/me", resp.UserinfoEndpoint)

@@ -13,6 +13,12 @@ import (
 	"github.com/manimovassagh/rampart/internal/model"
 )
 
+const (
+	mfaOff      = "off"
+	mfaOptional = "optional"
+	mfaRequired = "required"
+)
+
 // OrgStore defines the database operations required by OrgHandler.
 type OrgStore interface {
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (*model.Organization, error)
@@ -89,7 +95,7 @@ func (h *OrgHandler) CreateOrg(w http.ResponseWriter, r *http.Request) {
 
 	var req model.CreateOrgRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -157,7 +163,7 @@ func (h *OrgHandler) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateOrgRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -241,7 +247,7 @@ func (h *OrgHandler) UpdateOrgSettings(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateOrgSettingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.BadRequest(w, "Invalid or malformed JSON request body.")
+		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
@@ -249,7 +255,7 @@ func (h *OrgHandler) UpdateOrgSettings(w http.ResponseWriter, r *http.Request) {
 		apierror.BadRequest(w, "Password minimum length must be at least 1.")
 		return
 	}
-	if req.MFAEnforcement != "off" && req.MFAEnforcement != "optional" && req.MFAEnforcement != "required" {
+	if req.MFAEnforcement != mfaOff && req.MFAEnforcement != mfaOptional && req.MFAEnforcement != mfaRequired {
 		apierror.BadRequest(w, "MFA enforcement must be one of: off, optional, required.")
 		return
 	}

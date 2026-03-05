@@ -1,0 +1,23 @@
+{{define "role_row"}}
+<tr>
+    <td class="px-6 py-4 whitespace-nowrap">
+        <span class="text-sm font-medium text-gray-900">{{.Name}}</span>
+    </td>
+    <td class="px-6 py-4">
+        <span class="text-sm text-gray-600">{{.Description}}</span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        {{if .Builtin}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Built-in</span>
+        {{else}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Custom</span>
+        {{end}}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        <span class="text-sm text-gray-600">{{.UserCount}}</span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-right">
+        <a href="/admin/roles/{{.ID}}" class="text-sm text-blue-600 hover:text-blue-800">Edit</a>
+    </td>
+</tr>
+{{end}}

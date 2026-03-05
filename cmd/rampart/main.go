@@ -8,9 +8,11 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/config"
 	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/handler"
+	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/server"
 	"github.com/manimovassagh/rampart/internal/session"
 	"github.com/manimovassagh/rampart/internal/signing"
@@ -63,7 +65,8 @@ func run(_ *slog.Logger) error {
 	server.RegisterAuthRoutes(router, registerHandler.Register)
 
 	sessionStore := session.NewPGStore(db.Pool)
-	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	auditLogger := audit.NewLogger(db, logger)
+	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout)
 
 	server.RegisterProtectedRoutes(router, kp.PublicKey, handler.Me)
@@ -74,10 +77,28 @@ func run(_ *slog.Logger) error {
 	orgHandler := handler.NewOrgHandler(db, db, logger)
 	server.RegisterOrgRoutes(router, kp.PublicKey, orgHandler)
 
+	// OAuth 2.0 Authorization Code + PKCE endpoints
+	authorizeHandler := handler.NewAuthorizeHandler(db, logger, auditLogger)
+	tokenHandler := handler.NewTokenHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, tokenHandler.Token)
+
 	// OIDC Discovery + JWKS (public endpoints, no auth)
 	discoveryHandler := handler.DiscoveryHandler(cfg.Issuer, logger)
 	jwksHandler := handler.JWKSHandler(kp, logger)
 	server.RegisterOIDCRoutes(router, discoveryHandler, jwksHandler)
+
+	// Admin Console (SSR)
+	hmacKey, err := middleware.GenerateHMACKey()
+	if err != nil {
+		return err
+	}
+	adminLoginHandler := handler.NewAdminLoginHandler(
+		db, sessionStore, logger, auditLogger,
+		kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer,
+		cfg.AccessTokenTTL, cfg.RefreshTokenTTL, hmacKey,
+	)
+	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger)
+	server.RegisterAdminConsoleRoutes(router, kp.PublicKey, hmacKey, adminLoginHandler, adminConsoleHandler)
 
 	srv := server.New(cfg.Addr(), router, logger)
 

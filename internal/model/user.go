@@ -112,12 +112,13 @@ type ListUsersResponse struct {
 
 // CreateUserRequest is the expected JSON body for admin user creation.
 type CreateUserRequest struct {
-	Username   string `json:"username"`
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	GivenName  string `json:"given_name"`
-	FamilyName string `json:"family_name"`
-	Enabled    bool   `json:"enabled"`
+	Username      string `json:"username"`
+	Email         string `json:"email"`
+	Password      string `json:"password"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Enabled       bool   `json:"enabled"`
+	EmailVerified bool   `json:"email_verified"`
 }
 
 // UpdateUserRequest is the expected JSON body for admin user updates.
@@ -141,6 +142,10 @@ type DashboardStats struct {
 	ActiveSessions     int `json:"active_sessions"`
 	RecentUsers        int `json:"recent_users"`
 	TotalOrganizations int `json:"total_organizations"`
+	TotalClients       int `json:"total_clients"`
+	TotalRoles         int `json:"total_roles"`
+	TotalGroups        int `json:"total_groups"`
+	RecentEvents       int `json:"recent_events"`
 }
 
 // SessionResponse is a session representation for the admin API.

@@ -478,6 +478,46 @@ paths:
         "200":
           description: Branding updated
 
+  /api/v1/admin/organizations/{org_id}/export:
+    get:
+      tags: [Admin - Organizations]
+      summary: Export organization configuration
+      description: Downloads the full organization configuration (settings, roles, groups, clients) as JSON.
+      operationId: exportOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrgId"
+      responses:
+        "200":
+          description: Organization export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationExport"
+
+  /api/v1/admin/organizations/import:
+    post:
+      tags: [Admin - Organizations]
+      summary: Import organization from JSON
+      description: Creates a new organization from an exported JSON configuration file.
+      operationId: importOrganization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationExport"
+      responses:
+        "201":
+          description: Organization imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+
   # ─── Admin API: Users ──────────────────────────────────────────────
 
   /api/v1/admin/users:
@@ -1944,30 +1984,26 @@ components:
     OrganizationSettings:
       type: object
       properties:
-        session_lifetime:
+        password_min_length:
           type: integer
-        mfa_policy:
+          minimum: 1
+        password_require_uppercase:
+          type: boolean
+        password_require_lowercase:
+          type: boolean
+        password_require_numbers:
+          type: boolean
+        password_require_symbols:
+          type: boolean
+        mfa_enforcement:
           type: string
-          enum: [disabled, optional, required]
-        password_policy:
-          type: object
-          properties:
-            min_length:
-              type: integer
-            require_uppercase:
-              type: boolean
-            require_number:
-              type: boolean
-            require_special:
-              type: boolean
-        allowed_redirect_domains:
-          type: array
-          items:
-            type: string
-
-    OrganizationBranding:
-      type: object
-      properties:
+          enum: [off, optional, required]
+        access_token_ttl_seconds:
+          type: integer
+          minimum: 60
+        refresh_token_ttl_seconds:
+          type: integer
+          minimum: 60
         logo_url:
           type: string
           format: uri
@@ -1975,8 +2011,77 @@ components:
           type: string
         background_color:
           type: string
-        custom_css:
+        self_registration_enabled:
+          type: boolean
+        email_verification_required:
+          type: boolean
+        forgot_password_enabled:
+          type: boolean
+        remember_me_enabled:
+          type: boolean
+        login_page_title:
           type: string
+          maxLength: 255
+        login_page_message:
+          type: string
+
+    OrganizationExport:
+      type: object
+      description: Full organization configuration export for backup/migration
+      properties:
+        organization:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+            display_name:
+              type: string
+        settings:
+          $ref: "#/components/schemas/OrganizationSettings"
+        roles:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+        groups:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+              roles:
+                type: array
+                items:
+                  type: string
+        clients:
+          type: array
+          items:
+            type: object
+            properties:
+              client_id:
+                type: string
+              name:
+                type: string
+              description:
+                type: string
+              client_type:
+                type: string
+                enum: [public, confidential]
+              redirect_uris:
+                type: array
+                items:
+                  type: string
+              enabled:
+                type: boolean
 
     # ─── Users ─────────────────────────────────────────────────────
 
