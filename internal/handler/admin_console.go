@@ -86,6 +86,10 @@ const (
 	tmplGroupCreate  = "group_create"
 	tmplOrgImport    = "org_import"
 
+	// Form values
+	formValueTrue         = "true"
+	clientTypeConfidential = "confidential"
+
 	// HTMX header
 	headerHXRequest = "HX-Request"
 
@@ -393,7 +397,7 @@ func (h *AdminConsoleHandler) ListUsersPage(w http.ResponseWriter, r *http.Reque
 
 	pg := buildPaginationWithExtra(page, limit, total, pathAdminUsers, search, status, "status")
 
-	if r.Header.Get(headerHXRequest) == "true" {
+	if r.Header.Get(headerHXRequest) == formValueTrue {
 		h.renderPartial(w, r, "users_list", "users_table", &pageData{Users: adminUsers, Search: search, StatusFilter: status, Pagination: pg})
 		return
 	}
@@ -429,8 +433,8 @@ func (h *AdminConsoleHandler) CreateUserAction(w http.ResponseWriter, r *http.Re
 	password := r.FormValue("password")
 	givenName := strings.TrimSpace(r.FormValue("given_name"))
 	familyName := strings.TrimSpace(r.FormValue("family_name"))
-	enabled := r.FormValue("enabled") == "true"
-	emailVerified := r.FormValue("email_verified") == "true"
+	enabled := r.FormValue("enabled") == formValueTrue
+	emailVerified := r.FormValue("email_verified") == formValueTrue
 
 	// Validate
 	var errors []string
@@ -543,8 +547,8 @@ func (h *AdminConsoleHandler) UpdateUserAction(w http.ResponseWriter, r *http.Re
 		Email:         strings.ToLower(strings.TrimSpace(r.FormValue("email"))),
 		GivenName:     strings.TrimSpace(r.FormValue("given_name")),
 		FamilyName:    strings.TrimSpace(r.FormValue("family_name")),
-		Enabled:       r.FormValue("enabled") == "true",
-		EmailVerified: r.FormValue("email_verified") == "true",
+		Enabled:       r.FormValue("enabled") == formValueTrue,
+		EmailVerified: r.FormValue("email_verified") == formValueTrue,
 	}
 
 	if _, err := h.store.UpdateUser(r.Context(), userID, req); err != nil {
@@ -677,7 +681,7 @@ func (h *AdminConsoleHandler) ListOrgsPage(w http.ResponseWriter, r *http.Reques
 
 	pg := buildPagination(page, limit, total, pathAdminOrgs, search)
 
-	if r.Header.Get(headerHXRequest) == "true" {
+	if r.Header.Get(headerHXRequest) == formValueTrue {
 		h.renderPartial(w, r, "orgs_list", "orgs_table", &pageData{Orgs: orgResponses, Search: search, Pagination: pg})
 		return
 	}
@@ -778,7 +782,7 @@ func (h *AdminConsoleHandler) UpdateOrgAction(w http.ResponseWriter, r *http.Req
 	req := &model.UpdateOrgRequest{
 		Name:        strings.TrimSpace(r.FormValue("name")),
 		DisplayName: strings.TrimSpace(r.FormValue("display_name")),
-		Enabled:     r.FormValue("enabled") == "true",
+		Enabled:     r.FormValue("enabled") == formValueTrue,
 	}
 
 	if _, err := h.store.UpdateOrganization(r.Context(), orgID, req); err != nil {
@@ -821,23 +825,23 @@ func (h *AdminConsoleHandler) UpdateOrgSettingsAction(w http.ResponseWriter, r *
 	}
 
 	mfa := r.FormValue("mfa_enforcement")
-	if mfa != "off" && mfa != "optional" && mfa != "required" {
-		mfa = "off"
+	if mfa != mfaOff && mfa != mfaOptional && mfa != mfaRequired {
+		mfa = mfaOff
 	}
 
 	req := &model.UpdateOrgSettingsRequest{
 		PasswordMinLength:         minLen,
-		PasswordRequireUppercase:  r.FormValue("password_require_uppercase") == "true",
-		PasswordRequireLowercase:  r.FormValue("password_require_lowercase") == "true",
-		PasswordRequireNumbers:    r.FormValue("password_require_numbers") == "true",
-		PasswordRequireSymbols:    r.FormValue("password_require_symbols") == "true",
+		PasswordRequireUppercase:  r.FormValue("password_require_uppercase") == formValueTrue,
+		PasswordRequireLowercase:  r.FormValue("password_require_lowercase") == formValueTrue,
+		PasswordRequireNumbers:    r.FormValue("password_require_numbers") == formValueTrue,
+		PasswordRequireSymbols:    r.FormValue("password_require_symbols") == formValueTrue,
 		MFAEnforcement:            mfa,
 		AccessTokenTTLSeconds:     accessTTL,
 		RefreshTokenTTLSeconds:    refreshTTL,
-		SelfRegistrationEnabled:   r.FormValue("self_registration_enabled") == "true",
-		EmailVerificationRequired: r.FormValue("email_verification_required") == "true",
-		ForgotPasswordEnabled:     r.FormValue("forgot_password_enabled") == "true",
-		RememberMeEnabled:         r.FormValue("remember_me_enabled") == "true",
+		SelfRegistrationEnabled:   r.FormValue("self_registration_enabled") == formValueTrue,
+		EmailVerificationRequired: r.FormValue("email_verification_required") == formValueTrue,
+		ForgotPasswordEnabled:     r.FormValue("forgot_password_enabled") == formValueTrue,
+		RememberMeEnabled:         r.FormValue("remember_me_enabled") == formValueTrue,
 		LoginPageTitle:            strings.TrimSpace(r.FormValue("login_page_title")),
 		LoginPageMessage:          strings.TrimSpace(r.FormValue("login_page_message")),
 	}
@@ -929,7 +933,7 @@ func (h *AdminConsoleHandler) ListClientsPage(w http.ResponseWriter, r *http.Req
 
 	pg := buildPagination(page, limit, total, pathAdminClients, search)
 
-	if r.Header.Get(headerHXRequest) == "true" {
+	if r.Header.Get(headerHXRequest) == formValueTrue {
 		h.renderPartial(w, r, "clients_list", "clients_table", &pageData{Clients: adminClients, Search: search, Pagination: pg})
 		return
 	}
@@ -969,7 +973,7 @@ func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if clientType != "public" && clientType != "confidential" {
+	if clientType != "public" && clientType != clientTypeConfidential {
 		clientType = "public"
 	}
 
@@ -991,7 +995,7 @@ func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.
 	}
 
 	var clientSecret string
-	if clientType == "confidential" {
+	if clientType == clientTypeConfidential {
 		secret, err := generateRandomSecret()
 		if err != nil {
 			h.logger.Error("failed to generate client secret", "error", err)
@@ -1073,7 +1077,7 @@ func (h *AdminConsoleHandler) UpdateClientAction(w http.ResponseWriter, r *http.
 		Name:         strings.TrimSpace(r.FormValue("name")),
 		Description:  strings.TrimSpace(r.FormValue("description")),
 		RedirectURIs: strings.TrimSpace(r.FormValue("redirect_uris")),
-		Enabled:      r.FormValue("enabled") == "true",
+		Enabled:      r.FormValue("enabled") == formValueTrue,
 	}
 
 	if _, err := h.store.UpdateOAuthClient(r.Context(), clientID, req); err != nil {
@@ -1122,7 +1126,7 @@ func (h *AdminConsoleHandler) RegenerateSecretAction(w http.ResponseWriter, r *h
 		return
 	}
 
-	if client.ClientType != "confidential" {
+	if client.ClientType != clientTypeConfidential {
 		middleware.SetFlash(w, "Only confidential clients have secrets.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
 		return
@@ -1194,7 +1198,7 @@ func (h *AdminConsoleHandler) ListRolesPage(w http.ResponseWriter, r *http.Reque
 
 	pg := buildPagination(page, limit, total, pathAdminRoles, search)
 
-	if r.Header.Get(headerHXRequest) == "true" {
+	if r.Header.Get(headerHXRequest) == formValueTrue {
 		h.renderPartial(w, r, "roles_list", "roles_table", &pageData{Roles: roleResponses, Search: search, Pagination: pg})
 		return
 	}
@@ -1414,7 +1418,7 @@ func (h *AdminConsoleHandler) ListEventsPage(w http.ResponseWriter, r *http.Requ
 		pg.QueryExtra += "&event_type=" + url.QueryEscape(eventFilter)
 	}
 
-	if r.Header.Get(headerHXRequest) == "true" {
+	if r.Header.Get(headerHXRequest) == formValueTrue {
 		h.renderPartial(w, r, "events_list", "events_table", &pageData{Events: events, EventFilter: eventFilter, Search: search, Pagination: pg})
 		return
 	}
@@ -1445,7 +1449,7 @@ func (h *AdminConsoleHandler) ListSessionsPage(w http.ResponseWriter, r *http.Re
 
 	pg := buildPagination(page, limit, total, pathAdminSessions, search)
 
-	if r.Header.Get(headerHXRequest) == "true" {
+	if r.Header.Get(headerHXRequest) == formValueTrue {
 		h.renderPartial(w, r, "sessions_list", "sessions_table", &pageData{GlobalSessions: sessions, Search: search, Pagination: pg})
 		return
 	}
@@ -1520,7 +1524,7 @@ func (h *AdminConsoleHandler) ListGroupsPage(w http.ResponseWriter, r *http.Requ
 
 	pg := buildPagination(page, limit, total, pathAdminGroups, search)
 
-	if r.Header.Get(headerHXRequest) == "true" {
+	if r.Header.Get(headerHXRequest) == formValueTrue {
 		h.renderPartial(w, r, "groups_list", "groups_table", &pageData{Groups: groupResponses, Search: search, Pagination: pg})
 		return
 	}
@@ -1887,7 +1891,7 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 		})
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var export model.OrgExport
 	if err := json.NewDecoder(file).Decode(&export); err != nil {
@@ -1931,7 +1935,7 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 
 	// Import settings
 	if export.Settings != nil {
-		h.store.UpdateOrgSettings(ctx, org.ID, &model.UpdateOrgSettingsRequest{
+		_, _ = h.store.UpdateOrgSettings(ctx, org.ID, &model.UpdateOrgSettingsRequest{
 			PasswordMinLength:         export.Settings.PasswordMinLength,
 			PasswordRequireUppercase:  export.Settings.PasswordRequireUppercase,
 			PasswordRequireLowercase:  export.Settings.PasswordRequireLowercase,
@@ -1974,7 +1978,7 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 		}
 		for _, roleName := range ge.Roles {
 			if roleID, ok := roleMap[roleName]; ok {
-				h.store.AssignRoleToGroup(ctx, group.ID, roleID)
+				_ = h.store.AssignRoleToGroup(ctx, group.ID, roleID)
 			}
 		}
 	}

@@ -15,6 +15,8 @@ import (
 	"github.com/manimovassagh/rampart/internal/oauth"
 )
 
+const testVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+
 type mockTokenStore struct {
 	oauthClient    *model.OAuthClient
 	oauthErr       error
@@ -96,7 +98,9 @@ func TestTokenInvalidCode(t *testing.T) {
 	}
 
 	var resp map[string]string
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	if resp["error"] != "invalid_grant" {
 		t.Errorf("error = %q, want invalid_grant", resp["error"])
 	}
@@ -104,7 +108,7 @@ func TestTokenInvalidCode(t *testing.T) {
 
 func TestTokenWrongClientID(t *testing.T) {
 	orgID := uuid.New()
-	verifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+	verifier := testVerifier
 	challenge := oauth.ComputeS256Challenge(verifier)
 
 	store := &mockTokenStore{
@@ -135,7 +139,7 @@ func TestTokenWrongClientID(t *testing.T) {
 
 func TestTokenWrongRedirectURI(t *testing.T) {
 	orgID := uuid.New()
-	verifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+	verifier := testVerifier
 	challenge := oauth.ComputeS256Challenge(verifier)
 
 	store := &mockTokenStore{
@@ -167,7 +171,7 @@ func TestTokenWrongRedirectURI(t *testing.T) {
 func TestTokenWrongCodeVerifier(t *testing.T) {
 	orgID := uuid.New()
 	userID := uuid.New()
-	correctVerifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+	correctVerifier := testVerifier
 	challenge := oauth.ComputeS256Challenge(correctVerifier)
 
 	store := &mockTokenStore{
@@ -197,7 +201,9 @@ func TestTokenWrongCodeVerifier(t *testing.T) {
 	}
 
 	var resp map[string]string
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	if resp["error"] != "invalid_grant" {
 		t.Errorf("error = %q, want invalid_grant", resp["error"])
 	}
@@ -206,7 +212,7 @@ func TestTokenWrongCodeVerifier(t *testing.T) {
 func TestTokenValidExchange(t *testing.T) {
 	orgID := uuid.New()
 	userID := uuid.New()
-	verifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+	verifier := testVerifier
 	challenge := oauth.ComputeS256Challenge(verifier)
 
 	user := &model.User{

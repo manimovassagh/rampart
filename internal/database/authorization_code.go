@@ -13,7 +13,7 @@ import (
 )
 
 // StoreAuthorizationCode persists an authorization code (as SHA-256 hash) in the database.
-func (db *DB) StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope string, expiresAt time.Time) error {
+func (db *DB) StoreAuthorizationCode(ctx context.Context, code, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope string, expiresAt time.Time) error {
 	hash := sha256.Sum256([]byte(code))
 	_, err := db.Pool.Exec(ctx, `
 		INSERT INTO authorization_codes (code_hash, client_id, user_id, org_id, redirect_uri, code_challenge, scope, expires_at)
