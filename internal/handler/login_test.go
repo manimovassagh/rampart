@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -440,5 +441,312 @@ func TestLogoutNoToken(t *testing.T) {
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusNoContent)
+	}
+}
+
+func TestLogoutInvalidJSON(t *testing.T) {
+	store := &mockLoginStore{}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	req := httptest.NewRequest(http.MethodPost, "/logout", bytes.NewReader([]byte("not json")))
+	w := httptest.NewRecorder()
+
+	h.Logout(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestLogoutSessionNotFound(t *testing.T) {
+	store := &mockLoginStore{}
+	sessions := &mockSessionStore{found: nil}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "nonexistent-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/logout", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Logout(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNoContent)
+	}
+}
+
+func TestLogoutDeleteSessionError(t *testing.T) {
+	sess := &session.Session{ID: uuid.New(), UserID: uuid.New()}
+	store := &mockLoginStore{}
+	sessions := &mockSessionStore{found: sess, deleteErr: fmt.Errorf("delete failed")}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "some-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/logout", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Logout(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestLogoutFindSessionError(t *testing.T) {
+	store := &mockLoginStore{}
+	sessions := &mockSessionStore{findErr: fmt.Errorf("redis connection failed")}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "some-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/logout", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Logout(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestRefreshInvalidJSON(t *testing.T) {
+	store := &mockLoginStore{}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	req := httptest.NewRequest(http.MethodPost, "/token/refresh", bytes.NewReader([]byte("not json")))
+	w := httptest.NewRecorder()
+
+	h.Refresh(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestRefreshFindSessionError(t *testing.T) {
+	store := &mockLoginStore{}
+	sessions := &mockSessionStore{findErr: fmt.Errorf("redis down")}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "some-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/token/refresh", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Refresh(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestRefreshUserNotFound(t *testing.T) {
+	sess := &session.Session{
+		ID:        uuid.New(),
+		UserID:    uuid.New(),
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	}
+	store := &mockLoginStore{userByID: nil}
+	sessions := &mockSessionStore{found: sess}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "some-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/token/refresh", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Refresh(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRefreshDisabledUser(t *testing.T) {
+	user := newTestUser()
+	user.Enabled = false
+	sess := &session.Session{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	}
+	store := &mockLoginStore{userByID: user}
+	sessions := &mockSessionStore{found: sess}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "some-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/token/refresh", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Refresh(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRefreshGetUserError(t *testing.T) {
+	sess := &session.Session{
+		ID:        uuid.New(),
+		UserID:    uuid.New(),
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	}
+	store := &mockLoginStore{userByIDErr: fmt.Errorf("db error")}
+	sessions := &mockSessionStore{found: sess}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "some-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/token/refresh", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Refresh(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestLoginWithOrgSlug(t *testing.T) {
+	user := newTestUser()
+	orgID := uuid.New()
+	store := &mockLoginStore{
+		slugOrgID: orgID,
+		emailUser: user,
+	}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin@rampart.local", "password": "Str0ng!Pass", "org_slug": "my-org"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestLoginOrgSlugError(t *testing.T) {
+	store := &mockLoginStore{
+		slugOrgID:  uuid.New(),
+		slugOrgErr: fmt.Errorf("org not found"),
+	}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin@rampart.local", "password": "Str0ng!Pass", "org_slug": "nonexistent"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestLoginDefaultOrgError(t *testing.T) {
+	store := &mockLoginStore{defaultOrgErr: fmt.Errorf("db down")}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin@rampart.local", "password": "Str0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestLoginEmailLookupError(t *testing.T) {
+	store := &mockLoginStore{
+		defaultOrgID: uuid.New(),
+		emailErr:     fmt.Errorf("db error"),
+	}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin@rampart.local", "password": "Str0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestLoginUsernameLookupError(t *testing.T) {
+	store := &mockLoginStore{
+		defaultOrgID: uuid.New(),
+		usernameErr:  fmt.Errorf("db error"),
+	}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin", "password": "Str0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestLoginSessionCreateError(t *testing.T) {
+	user := newTestUser()
+	store := &mockLoginStore{
+		defaultOrgID: user.OrgID,
+		emailUser:    user,
+	}
+	sessions := &mockSessionStore{createErr: fmt.Errorf("redis down")}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin@rampart.local", "password": "Str0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestLoginWithOrgSettings(t *testing.T) {
+	user := newTestUser()
+	store := &mockLoginStore{
+		defaultOrgID: user.OrgID,
+		emailUser:    user,
+		orgSettings: &model.OrgSettings{
+			AccessTokenTTL:  30 * time.Minute,
+			RefreshTokenTTL: 14 * 24 * time.Hour,
+		},
+	}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin@rampart.local", "password": "Str0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp LoginResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	// With 30 min org setting, expires_in should be 1800
+	if resp.ExpiresIn != 1800 {
+		t.Errorf("expires_in = %d, want 1800", resp.ExpiresIn)
 	}
 }
