@@ -28,7 +28,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat config: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0600 {
+	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Errorf("config file permissions = %o, want 0600", perm)
 	}
 
