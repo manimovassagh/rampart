@@ -19,8 +19,8 @@ type errResponseWriter struct {
 	status int
 }
 
-func (w *errResponseWriter) Header() http.Header         { return w.header }
-func (w *errResponseWriter) WriteHeader(code int)         { w.status = code }
+func (w *errResponseWriter) Header() http.Header  { return w.header }
+func (w *errResponseWriter) WriteHeader(code int) { w.status = code }
 func (w *errResponseWriter) Write([]byte) (int, error) {
 	return 0, fmt.Errorf("broken pipe")
 }

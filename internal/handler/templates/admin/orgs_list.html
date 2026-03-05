@@ -1,0 +1,50 @@
+{{define "content"}}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex-1 max-w-md">
+        <input type="text" name="search" placeholder="Search organizations..."
+               value="{{.Search}}"
+               hx-get="/admin/organizations" hx-trigger="keyup changed delay:300ms"
+               hx-target="#table-body" hx-push-url="true"
+               hx-include="this"
+               class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+    </div>
+    <div class="flex items-center gap-2 ml-4">
+        <a href="/admin/organizations/import" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+            Import
+        </a>
+        <a href="/admin/organizations/new" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+            Create Organization
+        </a>
+    </div>
+</div>
+
+<div id="table-body">
+{{template "orgs_table" .}}
+</div>
+{{end}}
+
+{{define "orgs_table"}}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slug</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Users</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {{range .Orgs}}
+            {{template "org_row" .}}
+            {{else}}
+            <tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm">No organizations found.</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+{{template "pagination" .Pagination}}
+{{end}}

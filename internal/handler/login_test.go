@@ -66,18 +66,18 @@ const (
 
 // mockLoginStore implements LoginStore for testing.
 type mockLoginStore struct {
-	defaultOrgID  uuid.UUID
-	defaultOrgErr error
-	slugOrgID     uuid.UUID
-	slugOrgErr    error
-	emailUser     *model.User
-	emailErr      error
-	usernameUser  *model.User
-	usernameErr   error
-	userByID      *model.User
-	userByIDErr   error
-	updateErr     error
-	orgSettings   *model.OrgSettings
+	defaultOrgID   uuid.UUID
+	defaultOrgErr  error
+	slugOrgID      uuid.UUID
+	slugOrgErr     error
+	emailUser      *model.User
+	emailErr       error
+	usernameUser   *model.User
+	usernameErr    error
+	userByID       *model.User
+	userByIDErr    error
+	updateErr      error
+	orgSettings    *model.OrgSettings
 	orgSettingsErr error
 }
 
@@ -110,6 +110,10 @@ func (m *mockLoginStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error
 
 func (m *mockLoginStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {
 	return m.orgSettings, m.orgSettingsErr
+}
+
+func (m *mockLoginStore) GetEffectiveUserRoles(_ context.Context, _ uuid.UUID) ([]string, error) {
+	return nil, nil
 }
 
 // mockSessionStore implements session.Store for testing.
@@ -165,7 +169,7 @@ func newTestUser() *model.User {
 }
 
 func newTestLoginHandler(store *mockLoginStore, sessions *mockSessionStore) *LoginHandler {
-	return NewLoginHandler(store, sessions, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+	return NewLoginHandler(store, sessions, noopLogger(), nil, testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
 }
 
 func TestLoginSuccess(t *testing.T) {

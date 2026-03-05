@@ -1,0 +1,19 @@
+{{define "group_row"}}
+<tr>
+    <td class="px-6 py-4 whitespace-nowrap">
+        <span class="text-sm font-medium text-gray-900">{{.Name}}</span>
+    </td>
+    <td class="px-6 py-4">
+        <span class="text-sm text-gray-600">{{.Description}}</span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        <span class="text-sm text-gray-600">{{.MemberCount}}</span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        <span class="text-sm text-gray-600">{{.RoleCount}}</span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-right">
+        <a href="/admin/groups/{{.ID}}" class="text-sm text-blue-600 hover:text-blue-800">Edit</a>
+    </td>
+</tr>
+{{end}}

@@ -20,12 +20,16 @@ func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSe
 		       password_require_numbers, password_require_symbols,
 		       mfa_enforcement, access_token_ttl, refresh_token_ttl,
 		       logo_url, primary_color, background_color,
+		       self_registration_enabled, email_verification_required,
+		       forgot_password_enabled, remember_me_enabled,
+		       login_page_title, login_page_message,
 		       created_at, updated_at
 		FROM organization_settings
 		WHERE org_id = $1`
 
 	var s model.OrgSettings
 	var logoURL, primaryColor, bgColor *string
+	var loginTitle, loginMessage *string
 	var accessTTL, refreshTTL time.Duration
 
 	err := db.Pool.QueryRow(ctx, query, orgID).Scan(
@@ -34,6 +38,9 @@ func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSe
 		&s.PasswordRequireNumbers, &s.PasswordRequireSymbols,
 		&s.MFAEnforcement, &accessTTL, &refreshTTL,
 		&logoURL, &primaryColor, &bgColor,
+		&s.SelfRegistrationEnabled, &s.EmailVerificationRequired,
+		&s.ForgotPasswordEnabled, &s.RememberMeEnabled,
+		&loginTitle, &loginMessage,
 		&s.CreatedAt, &s.UpdatedAt,
 	)
 	if err != nil {
@@ -53,6 +60,12 @@ func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSe
 	}
 	if bgColor != nil {
 		s.BackgroundColor = *bgColor
+	}
+	if loginTitle != nil {
+		s.LoginPageTitle = *loginTitle
+	}
+	if loginMessage != nil {
+		s.LoginPageMessage = *loginMessage
 	}
 
 	return &s, nil
@@ -76,6 +89,12 @@ func (db *DB) UpdateOrgSettings(ctx context.Context, orgID uuid.UUID, req *model
 		    logo_url = NULLIF($10, ''),
 		    primary_color = NULLIF($11, ''),
 		    background_color = NULLIF($12, ''),
+		    self_registration_enabled = $13,
+		    email_verification_required = $14,
+		    forgot_password_enabled = $15,
+		    remember_me_enabled = $16,
+		    login_page_title = NULLIF($17, ''),
+		    login_page_message = NULLIF($18, ''),
 		    updated_at = now()
 		WHERE org_id = $1
 		RETURNING id, org_id,
@@ -83,10 +102,14 @@ func (db *DB) UpdateOrgSettings(ctx context.Context, orgID uuid.UUID, req *model
 		          password_require_numbers, password_require_symbols,
 		          mfa_enforcement, access_token_ttl, refresh_token_ttl,
 		          logo_url, primary_color, background_color,
+		          self_registration_enabled, email_verification_required,
+		          forgot_password_enabled, remember_me_enabled,
+		          login_page_title, login_page_message,
 		          created_at, updated_at`
 
 	var s model.OrgSettings
 	var logoURL, primaryColor, bgColor *string
+	var loginTitle, loginMessage *string
 	var aTTL, rTTL time.Duration
 
 	err := db.Pool.QueryRow(ctx, query,
@@ -102,12 +125,21 @@ func (db *DB) UpdateOrgSettings(ctx context.Context, orgID uuid.UUID, req *model
 		req.LogoURL,
 		req.PrimaryColor,
 		req.BackgroundColor,
+		req.SelfRegistrationEnabled,
+		req.EmailVerificationRequired,
+		req.ForgotPasswordEnabled,
+		req.RememberMeEnabled,
+		req.LoginPageTitle,
+		req.LoginPageMessage,
 	).Scan(
 		&s.ID, &s.OrgID,
 		&s.PasswordMinLength, &s.PasswordRequireUppercase, &s.PasswordRequireLowercase,
 		&s.PasswordRequireNumbers, &s.PasswordRequireSymbols,
 		&s.MFAEnforcement, &aTTL, &rTTL,
 		&logoURL, &primaryColor, &bgColor,
+		&s.SelfRegistrationEnabled, &s.EmailVerificationRequired,
+		&s.ForgotPasswordEnabled, &s.RememberMeEnabled,
+		&loginTitle, &loginMessage,
 		&s.CreatedAt, &s.UpdatedAt,
 	)
 	if err != nil {
@@ -127,6 +159,12 @@ func (db *DB) UpdateOrgSettings(ctx context.Context, orgID uuid.UUID, req *model
 	}
 	if bgColor != nil {
 		s.BackgroundColor = *bgColor
+	}
+	if loginTitle != nil {
+		s.LoginPageTitle = *loginTitle
+	}
+	if loginMessage != nil {
+		s.LoginPageMessage = *loginMessage
 	}
 
 	return &s, nil

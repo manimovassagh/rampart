@@ -143,11 +143,12 @@ func (db *DB) ListUsers(ctx context.Context, orgID uuid.UUID, search, status str
 		paramIdx++
 	}
 
-	if status == "enabled" {
+	switch status {
+	case "enabled":
 		where = append(where, fmt.Sprintf("enabled = $%d", paramIdx))
 		args = append(args, true)
 		paramIdx++
-	} else if status == "disabled" {
+	case "disabled":
 		where = append(where, fmt.Sprintf("enabled = $%d", paramIdx))
 		args = append(args, false)
 		paramIdx++

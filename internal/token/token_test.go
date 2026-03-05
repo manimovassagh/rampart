@@ -155,9 +155,9 @@ func TestVerifyAccessTokenExpired(t *testing.T) {
 			IssuedAt:  jwt.NewNumericDate(now.Add(-2 * time.Hour)),
 			ExpiresAt: jwt.NewNumericDate(now.Add(-1 * time.Hour)),
 		},
-		OrgID:            uuid.New(),
+		OrgID:             uuid.New(),
 		PreferredUsername: "admin",
-		Email:            "admin@test.com",
+		Email:             "admin@test.com",
 	}
 
 	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
