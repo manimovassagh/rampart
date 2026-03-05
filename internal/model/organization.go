@@ -38,6 +38,7 @@ type OrgSettings struct {
 	RememberMeEnabled         bool          `json:"remember_me_enabled"`
 	LoginPageTitle            string        `json:"login_page_title"`
 	LoginPageMessage          string        `json:"login_page_message"`
+	LoginTheme                string        `json:"login_theme"`
 	CreatedAt                 time.Time     `json:"created_at"`
 	UpdatedAt                 time.Time     `json:"updated_at"`
 }
@@ -109,6 +110,7 @@ type UpdateOrgSettingsRequest struct {
 	RememberMeEnabled         bool   `json:"remember_me_enabled"`
 	LoginPageTitle            string `json:"login_page_title"`
 	LoginPageMessage          string `json:"login_page_message"`
+	LoginTheme                string `json:"login_theme"`
 }
 
 // OrgSettingsResponse is the API representation of organization settings.
@@ -132,6 +134,7 @@ type OrgSettingsResponse struct {
 	RememberMeEnabled         bool      `json:"remember_me_enabled"`
 	LoginPageTitle            string    `json:"login_page_title"`
 	LoginPageMessage          string    `json:"login_page_message"`
+	LoginTheme                string    `json:"login_theme"`
 	CreatedAt                 time.Time `json:"created_at"`
 	UpdatedAt                 time.Time `json:"updated_at"`
 }
@@ -158,6 +161,7 @@ func (s *OrgSettings) ToResponse() *OrgSettingsResponse {
 		RememberMeEnabled:         s.RememberMeEnabled,
 		LoginPageTitle:            s.LoginPageTitle,
 		LoginPageMessage:          s.LoginPageMessage,
+		LoginTheme:                s.LoginTheme,
 		CreatedAt:                 s.CreatedAt,
 		UpdatedAt:                 s.UpdatedAt,
 	}

@@ -857,6 +857,7 @@ func (h *AdminConsoleHandler) UpdateOrgSettingsAction(w http.ResponseWriter, r *
 		RememberMeEnabled:         r.FormValue("remember_me_enabled") == formValueTrue,
 		LoginPageTitle:            strings.TrimSpace(r.FormValue("login_page_title")),
 		LoginPageMessage:          strings.TrimSpace(r.FormValue("login_page_message")),
+		LoginTheme:                strings.TrimSpace(r.FormValue("login_theme")),
 	}
 
 	if _, err := h.store.UpdateOrgSettings(r.Context(), orgID, req); err != nil {
@@ -1829,6 +1830,7 @@ func (h *AdminConsoleHandler) ExportOrgAction(w http.ResponseWriter, r *http.Req
 			RememberMeEnabled:         settings.RememberMeEnabled,
 			LoginPageTitle:            settings.LoginPageTitle,
 			LoginPageMessage:          settings.LoginPageMessage,
+			LoginTheme:                settings.LoginTheme,
 		}
 	}
 
@@ -1963,6 +1965,7 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 			RememberMeEnabled:         export.Settings.RememberMeEnabled,
 			LoginPageTitle:            export.Settings.LoginPageTitle,
 			LoginPageMessage:          export.Settings.LoginPageMessage,
+			LoginTheme:                export.Settings.LoginTheme,
 		})
 	}
 
