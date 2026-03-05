@@ -15,8 +15,8 @@
 | Layer | Tech | Rationale |
 |-------|------|-----------|
 | Backend | Go | Single binary, low memory, fast startup |
-| Admin UI | React + Vite + Tailwind | Modern SPA, no Vercel dependency, embeds in Go binary |
-| Login/Consent UI | React + Vite + Tailwind | SPA, themeable per-tenant via props/CSS variables, embedded in Go binary |
+| Admin UI | htmx + Go Templates + Tailwind | Server-rendered, lightweight, embedded in Go binary |
+| Login/Consent UI | Go Templates + Tailwind | Server-rendered, themeable per-tenant via CSS variables, embedded in Go binary |
 | Database | PostgreSQL | Battle-tested, JSONB for flexibility |
 | Cache/Sessions | Redis/Valkey | Session mgmt, token blacklisting |
 | Config | YAML + API-first | GitOps-friendly |
@@ -27,7 +27,7 @@
 - Plugin system: TBD (WASM vs gRPC vs Go-only)
 - Event sourcing for audit trail
 - Multi-tenant by default (organizations/realms)
-- **Login page themes**: At least 10 built-in themes for the login/consent UI. Admins select a theme per organization via admin dashboard. Themes are CSS variable-based — no component re-rendering needed. Theme selector UI in admin dashboard shows live previews.
+- **Login page themes**: CSS variable-based theming with Go templates. Admins can configure per-tenant themes via the admin dashboard.
 
 ## Competitive Positioning
 
@@ -141,7 +141,7 @@ Key differentiators vs competitors:
 ### File & Package Organization
 - **Entry point lives in `cmd/rampart/main.go`.** Standard Go project layout.
 - **Internal packages live in `internal/`.** Keeps the public API surface small.
-- **Frontend (React + Vite) lives in `client/`** — added later when UI work starts.
+- **Frontend templates live in `internal/` or `web/`** — Go templates + htmx, embedded in the binary.
 - One concern per package. Don't put user management and OIDC in the same package.
 - Avoid circular dependencies — if two packages need each other, extract a shared interface.
 
@@ -180,8 +180,8 @@ Key differentiators vs competitors:
 - Architecture: C4 diagrams (system context, components), ER diagram, deployment
 - Sequence diagrams: auth code + PKCE, client credentials, token refresh, registration, MFA, device flow
 - SDK strategy: auto-generated from OpenAPI, framework adapters as thin wrappers
-- **Frontend decision: React + Vite + TanStack Router** for everything (not Next.js — no Vercel dependency, no SSR needed)
-- **Login/Consent UI: also React + Vite** — not Go templates. Go templates was Keycloak's mistake (FreeMarker is their #1 pain point). Per-tenant theming via component props + CSS variables.
+- **Frontend decision: htmx + Go Templates + Tailwind** for admin dashboard, Go Templates + Tailwind for login/consent UI. Server-rendered, lightweight, embedded in Go binary.
+- **Login/Consent UI: Go Templates + Tailwind** — server-rendered, per-tenant theming via CSS variables.
 - **Go backend: stdlib + chi router + pgx** (no ORM, no DI framework, minimal deps)
 - **Cloud-agnostic deployment**: AWS (EC2, ECS), Azure (Container Apps, VMs), GCP (Cloud Run, GCE) with Terraform modules
 - **CLI tool** (`rampart-cli`): management commands + Device Flow auth for developers
