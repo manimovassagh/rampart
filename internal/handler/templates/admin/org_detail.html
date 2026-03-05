@@ -122,6 +122,18 @@
                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">{{.OrgSettings.LoginPageMessage}}</textarea>
         </div>
 
+        <div>
+            <label for="login_theme" class="block text-sm font-medium text-gray-700 mb-1">Login Theme</label>
+            <select id="login_theme" name="login_theme"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <option value="default" {{if eq .OrgSettings.LoginTheme "default"}}selected{{end}}>Default — Clean, modern</option>
+                <option value="dark" {{if eq .OrgSettings.LoginTheme "dark"}}selected{{end}}>Dark — Purple/blue accents</option>
+                <option value="minimal" {{if eq .OrgSettings.LoginTheme "minimal"}}selected{{end}}>Minimal — Ultra-minimal</option>
+                <option value="corporate" {{if eq .OrgSettings.LoginTheme "corporate"}}selected{{end}}>Corporate — Professional with header</option>
+                <option value="gradient" {{if eq .OrgSettings.LoginTheme "gradient"}}selected{{end}}>Gradient — Eye-catching gradient</option>
+            </select>
+        </div>
+
         <h3 class="text-sm font-semibold text-gray-900 border-b pb-3 pt-2">Token Settings</h3>
 
         <div class="grid grid-cols-2 gap-4">
