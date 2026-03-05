@@ -28,37 +28,36 @@ linters:
     - unconvert
     - unparam
     - whitespace
-
-linters-settings:
-  goconst:
-    min-len: 3
-    min-occurrences: 3
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-  gosec:
-    severity: medium
-    confidence: medium
-    excludes:
-      - G117
-  revive:
-    rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: exported
-      - name: increment-decrement
-      - name: var-declaration
-      - name: package-comments
-        disabled: true
+  settings:
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    gosec:
+      severity: medium
+      confidence: medium
+      excludes:
+        - G117
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: exported
+        - name: increment-decrement
+        - name: var-declaration
+        - name: package-comments
+          disabled: true
+  exclusions:
+    paths:
+      - web
 
 issues:
-  exclude-use-default: false
-  exclude-dirs:
-    - web
   max-issues-per-linter: 0
   max-same-issues: 0
