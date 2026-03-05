@@ -34,6 +34,8 @@ Thumbs.db
 # Node (UI)
 node_modules/
 .next/
+dist/
+build/
 adapters/**/dist/
 samples/**/node_modules/
 samples/**/dist/

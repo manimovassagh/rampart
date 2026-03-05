@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven Central Publishing Instructions
+  ======================================
+  1. Configure GPG signing and Sonatype OSSRH credentials in ~/.m2/settings.xml:
+       <servers>
+         <server>
+           <id>ossrh</id>
+           <username>${env.OSSRH_USERNAME}</username>
+           <password>${env.OSSRH_PASSWORD}</password>
+         </server>
+       </servers>
+  2. Add the maven-gpg-plugin and nexus-staging-maven-plugin to the build/plugins
+     section (or use a release profile).
+  3. Ensure the groupId (com.rampart) is registered in Sonatype JIRA.
+  4. Deploy a snapshot:  mvn clean deploy -P release
+  5. Release to Central:  mvn nexus-staging:release -P release
+  See https://central.sonatype.org/publish/publish-guide/ for full details.
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
