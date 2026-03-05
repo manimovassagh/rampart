@@ -166,6 +166,16 @@ type AdminConsoleEndpoints interface {
 	ListSessionsPage(w http.ResponseWriter, r *http.Request)
 	RevokeSessionAction(w http.ResponseWriter, r *http.Request)
 	RevokeAllSessionsAction(w http.ResponseWriter, r *http.Request)
+	ListGroupsPage(w http.ResponseWriter, r *http.Request)
+	CreateGroupPage(w http.ResponseWriter, r *http.Request)
+	CreateGroupAction(w http.ResponseWriter, r *http.Request)
+	GroupDetailPage(w http.ResponseWriter, r *http.Request)
+	UpdateGroupAction(w http.ResponseWriter, r *http.Request)
+	DeleteGroupAction(w http.ResponseWriter, r *http.Request)
+	AddGroupMemberAction(w http.ResponseWriter, r *http.Request)
+	RemoveGroupMemberAction(w http.ResponseWriter, r *http.Request)
+	AssignGroupRoleAction(w http.ResponseWriter, r *http.Request)
+	UnassignGroupRoleAction(w http.ResponseWriter, r *http.Request)
 	OIDCPage(w http.ResponseWriter, r *http.Request)
 }
 
@@ -225,6 +235,18 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 		r.Get("/admin/sessions", console.ListSessionsPage)
 		r.Post("/admin/sessions/{id}/delete", console.RevokeSessionAction)
 		r.Post("/admin/sessions/revoke-all", console.RevokeAllSessionsAction)
+
+		// Groups
+		r.Get("/admin/groups", console.ListGroupsPage)
+		r.Get("/admin/groups/new", console.CreateGroupPage)
+		r.Post("/admin/groups", console.CreateGroupAction)
+		r.Get("/admin/groups/{id}", console.GroupDetailPage)
+		r.Post("/admin/groups/{id}", console.UpdateGroupAction)
+		r.Post("/admin/groups/{id}/delete", console.DeleteGroupAction)
+		r.Post("/admin/groups/{id}/members", console.AddGroupMemberAction)
+		r.Post("/admin/groups/{id}/members/{userId}/delete", console.RemoveGroupMemberAction)
+		r.Post("/admin/groups/{id}/roles", console.AssignGroupRoleAction)
+		r.Post("/admin/groups/{id}/roles/{roleId}/delete", console.UnassignGroupRoleAction)
 
 		// Events
 		r.Get("/admin/events", console.ListEventsPage)

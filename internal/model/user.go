@@ -144,6 +144,7 @@ type DashboardStats struct {
 	TotalOrganizations int `json:"total_organizations"`
 	TotalClients       int `json:"total_clients"`
 	TotalRoles         int `json:"total_roles"`
+	TotalGroups        int `json:"total_groups"`
 	RecentEvents       int `json:"recent_events"`
 }
 

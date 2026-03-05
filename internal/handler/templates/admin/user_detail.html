@@ -87,6 +87,22 @@
         {{end}}
     </div>
 
+    <!-- Groups -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 class="text-sm font-semibold text-gray-900 mb-4">Groups</h3>
+        {{if .UserGroups}}
+        <div class="flex flex-wrap gap-2">
+            {{range .UserGroups}}
+            <a href="/admin/groups/{{.ID}}" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-800 hover:bg-pink-200">
+                {{.Name}}
+            </a>
+            {{end}}
+        </div>
+        {{else}}
+        <p class="text-sm text-gray-500">Not a member of any groups.</p>
+        {{end}}
+    </div>
+
     <!-- Password Reset -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 class="text-sm font-semibold text-gray-900 mb-4">Reset Password</h3>

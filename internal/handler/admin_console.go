@@ -73,6 +73,23 @@ type AdminConsoleStore interface {
 	CreateAuditEvent(ctx context.Context, event *model.AuditEvent) error
 	ListAuditEvents(ctx context.Context, orgID uuid.UUID, eventType, search string, limit, offset int) ([]*model.AuditEvent, int, error)
 	CountRecentEvents(ctx context.Context, orgID uuid.UUID, hours int) (int, error)
+
+	// Group operations
+	ListGroups(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*model.Group, int, error)
+	GetGroupByID(ctx context.Context, id uuid.UUID) (*model.Group, error)
+	CreateGroup(ctx context.Context, group *model.Group) (*model.Group, error)
+	UpdateGroup(ctx context.Context, id uuid.UUID, req *model.UpdateGroupRequest) (*model.Group, error)
+	DeleteGroup(ctx context.Context, id uuid.UUID) error
+	CountGroups(ctx context.Context, orgID uuid.UUID) (int, error)
+	CountGroupMembers(ctx context.Context, groupID uuid.UUID) (int, error)
+	CountGroupRoles(ctx context.Context, groupID uuid.UUID) (int, error)
+	AddUserToGroup(ctx context.Context, userID, groupID uuid.UUID) error
+	RemoveUserFromGroup(ctx context.Context, userID, groupID uuid.UUID) error
+	GetGroupMembers(ctx context.Context, groupID uuid.UUID) ([]*model.GroupMember, error)
+	GetGroupRoles(ctx context.Context, groupID uuid.UUID) ([]*model.GroupRoleAssignment, error)
+	AssignRoleToGroup(ctx context.Context, groupID, roleID uuid.UUID) error
+	UnassignRoleFromGroup(ctx context.Context, groupID, roleID uuid.UUID) error
+	GetUserGroups(ctx context.Context, userID uuid.UUID) ([]*model.Group, error)
 }
 
 // AdminConsoleSessionStore defines session operations for the admin console.
@@ -139,6 +156,9 @@ func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessio
 		"role_detail":   parseAdminPage("role_detail.html"),
 		"events_list":    parseAdminPage("events_list.html"),
 		"sessions_list":  parseAdminPage("sessions_list.html"),
+		"groups_list":    parseAdminPage("groups_list.html"),
+		"group_create":   parseAdminPage("group_create.html"),
+		"group_detail":   parseAdminPage("group_detail.html"),
 		"oidc":           parseAdminPage("oidc.html"),
 	}
 
@@ -180,6 +200,11 @@ type pageData struct {
 	Events         []*model.AuditEvent
 	EventFilter    string
 	GlobalSessions []*session.SessionWithUser
+	Groups         []*model.GroupResponse
+	GroupDetail    *model.GroupResponse
+	GroupMembers   []*model.GroupMember
+	GroupRoles     []*model.GroupRoleAssignment
+	UserGroups     []*model.Group
 	OIDC           *DiscoveryResponse
 	Search       string
 	Pagination   *paginationData
@@ -252,6 +277,7 @@ func (h *AdminConsoleHandler) Dashboard(w http.ResponseWriter, r *http.Request) 
 	totalOrgs, _ := h.store.CountOrganizations(ctx)
 	totalClients, _ := h.store.CountOAuthClients(ctx, orgID)
 	totalRoles, _ := h.store.CountRoles(ctx, orgID)
+	totalGroups, _ := h.store.CountGroups(ctx, orgID)
 	recentEvents, _ := h.store.CountRecentEvents(ctx, orgID, 24)
 
 	h.render(w, r, "dashboard", &pageData{
@@ -264,6 +290,7 @@ func (h *AdminConsoleHandler) Dashboard(w http.ResponseWriter, r *http.Request) 
 			TotalOrganizations: totalOrgs,
 			TotalClients:       totalClients,
 			TotalRoles:         totalRoles,
+			TotalGroups:        totalGroups,
 			RecentEvents:       recentEvents,
 		},
 	})
@@ -409,6 +436,7 @@ func (h *AdminConsoleHandler) UserDetailPage(w http.ResponseWriter, r *http.Requ
 	sessionCount, _ := h.sessions.CountByUserID(ctx, userID)
 	sessions, _ := h.sessions.ListByUserID(ctx, userID)
 	userRoles, _ := h.store.GetUserRoles(ctx, userID)
+	userGroups, _ := h.store.GetUserGroups(ctx, userID)
 
 	authUser := middleware.GetAuthenticatedUser(ctx)
 	allRoles, _, _ := h.store.ListRoles(ctx, authUser.OrgID, "", 100, 0)
@@ -420,6 +448,7 @@ func (h *AdminConsoleHandler) UserDetailPage(w http.ResponseWriter, r *http.Requ
 		Sessions:   sessions,
 		UserRoles:  userRoles,
 		AllRoles:   allRoles,
+		UserGroups: userGroups,
 	})
 }
 
@@ -1384,6 +1413,285 @@ func (h *AdminConsoleHandler) RevokeAllSessionsAction(w http.ResponseWriter, r *
 	}
 
 	http.Redirect(w, r, "/admin/sessions", http.StatusFound)
+}
+
+// ListGroupsPage handles GET /admin/groups
+func (h *AdminConsoleHandler) ListGroupsPage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	orgID := authUser.OrgID
+
+	search := r.URL.Query().Get("search")
+	page := queryInt(r, "page", 1)
+	limit := 20
+	offset := (page - 1) * limit
+
+	groups, total, err := h.store.ListGroups(ctx, orgID, search, limit, offset)
+	if err != nil {
+		h.logger.Error("failed to list groups", "error", err)
+		h.render(w, r, "groups_list", &pageData{Title: "Groups", ActiveNav: "groups", Error: "Failed to load groups."})
+		return
+	}
+
+	groupResponses := make([]*model.GroupResponse, len(groups))
+	for i, g := range groups {
+		memberCount, _ := h.store.CountGroupMembers(ctx, g.ID)
+		roleCount, _ := h.store.CountGroupRoles(ctx, g.ID)
+		groupResponses[i] = g.ToGroupResponse(memberCount, roleCount)
+	}
+
+	pg := buildPagination(page, limit, total, "/admin/groups", search)
+
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderPartial(w, r, "groups_list", "groups_table", &pageData{Groups: groupResponses, Search: search, Pagination: pg})
+		return
+	}
+
+	h.render(w, r, "groups_list", &pageData{
+		Title:      "Groups",
+		ActiveNav:  "groups",
+		Groups:     groupResponses,
+		Search:     search,
+		Pagination: pg,
+	})
+}
+
+// CreateGroupPage handles GET /admin/groups/new
+func (h *AdminConsoleHandler) CreateGroupPage(w http.ResponseWriter, r *http.Request) {
+	h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups"})
+}
+
+// CreateGroupAction handles POST /admin/groups
+func (h *AdminConsoleHandler) CreateGroupAction(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups", Error: "Invalid form data."})
+		return
+	}
+
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	orgID := authUser.OrgID
+
+	name := strings.TrimSpace(r.FormValue("name"))
+	description := strings.TrimSpace(r.FormValue("description"))
+
+	if name == "" {
+		h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups", Error: "Group name is required."})
+		return
+	}
+
+	group := &model.Group{
+		OrgID:       orgID,
+		Name:        name,
+		Description: description,
+	}
+
+	if _, err := h.store.CreateGroup(ctx, group); err != nil {
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique") {
+			h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups", Error: "A group with this name already exists."})
+			return
+		}
+		h.logger.Error("failed to create group", "error", err)
+		h.render(w, r, "group_create", &pageData{Title: "Create Group", ActiveNav: "groups", Error: "Failed to create group."})
+		return
+	}
+
+	middleware.SetFlash(w, "Group created successfully.")
+	http.Redirect(w, r, "/admin/groups", http.StatusFound)
+}
+
+// GroupDetailPage handles GET /admin/groups/{id}
+func (h *AdminConsoleHandler) GroupDetailPage(w http.ResponseWriter, r *http.Request) {
+	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+
+	ctx := r.Context()
+	group, err := h.store.GetGroupByID(ctx, groupID)
+	if err != nil || group == nil {
+		middleware.SetFlash(w, "Group not found.")
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	orgID := authUser.OrgID
+
+	memberCount, _ := h.store.CountGroupMembers(ctx, groupID)
+	roleCount, _ := h.store.CountGroupRoles(ctx, groupID)
+	members, _ := h.store.GetGroupMembers(ctx, groupID)
+	groupRoles, _ := h.store.GetGroupRoles(ctx, groupID)
+	allRoles, _, _ := h.store.ListRoles(ctx, orgID, "", 100, 0)
+
+	h.render(w, r, "group_detail", &pageData{
+		Title:        fmt.Sprintf("Group: %s", group.Name),
+		ActiveNav:    "groups",
+		GroupDetail:  group.ToGroupResponse(memberCount, roleCount),
+		GroupMembers: members,
+		GroupRoles:   groupRoles,
+		AllRoles:     allRoles,
+	})
+}
+
+// UpdateGroupAction handles POST /admin/groups/{id}
+func (h *AdminConsoleHandler) UpdateGroupAction(w http.ResponseWriter, r *http.Request) {
+	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		middleware.SetFlash(w, "Invalid form data.")
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	req := &model.UpdateGroupRequest{
+		Name:        strings.TrimSpace(r.FormValue("name")),
+		Description: strings.TrimSpace(r.FormValue("description")),
+	}
+
+	if _, err := h.store.UpdateGroup(r.Context(), groupID, req); err != nil {
+		h.logger.Error("failed to update group", "error", err)
+		middleware.SetFlash(w, "Failed to update group.")
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	middleware.SetFlash(w, "Group updated successfully.")
+	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+}
+
+// DeleteGroupAction handles POST /admin/groups/{id}/delete
+func (h *AdminConsoleHandler) DeleteGroupAction(w http.ResponseWriter, r *http.Request) {
+	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+
+	if err := h.store.DeleteGroup(r.Context(), groupID); err != nil {
+		h.logger.Error("failed to delete group", "error", err)
+		middleware.SetFlash(w, "Failed to delete group.")
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	middleware.SetFlash(w, "Group deleted.")
+	http.Redirect(w, r, "/admin/groups", http.StatusFound)
+}
+
+// AddGroupMemberAction handles POST /admin/groups/{id}/members
+func (h *AdminConsoleHandler) AddGroupMemberAction(w http.ResponseWriter, r *http.Request) {
+	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		middleware.SetFlash(w, "Invalid form data.")
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	userID, err := uuid.Parse(r.FormValue("user_id"))
+	if err != nil {
+		middleware.SetFlash(w, "Invalid user.")
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	if err := h.store.AddUserToGroup(r.Context(), userID, groupID); err != nil {
+		h.logger.Error("failed to add member to group", "error", err)
+		middleware.SetFlash(w, "Failed to add member.")
+	} else {
+		middleware.SetFlash(w, "Member added.")
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+}
+
+// RemoveGroupMemberAction handles POST /admin/groups/{id}/members/{userId}/delete
+func (h *AdminConsoleHandler) RemoveGroupMemberAction(w http.ResponseWriter, r *http.Request) {
+	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+
+	userID, err := uuid.Parse(chi.URLParam(r, "userId"))
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	if err := h.store.RemoveUserFromGroup(r.Context(), userID, groupID); err != nil {
+		h.logger.Error("failed to remove member from group", "error", err)
+		middleware.SetFlash(w, "Failed to remove member.")
+	} else {
+		middleware.SetFlash(w, "Member removed.")
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+}
+
+// AssignGroupRoleAction handles POST /admin/groups/{id}/roles
+func (h *AdminConsoleHandler) AssignGroupRoleAction(w http.ResponseWriter, r *http.Request) {
+	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		middleware.SetFlash(w, "Invalid form data.")
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	roleID, err := uuid.Parse(r.FormValue("role_id"))
+	if err != nil {
+		middleware.SetFlash(w, "Invalid role.")
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	if err := h.store.AssignRoleToGroup(r.Context(), groupID, roleID); err != nil {
+		h.logger.Error("failed to assign role to group", "error", err)
+		middleware.SetFlash(w, "Failed to assign role.")
+	} else {
+		middleware.SetFlash(w, "Role assigned to group.")
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+}
+
+// UnassignGroupRoleAction handles POST /admin/groups/{id}/roles/{roleId}/delete
+func (h *AdminConsoleHandler) UnassignGroupRoleAction(w http.ResponseWriter, r *http.Request) {
+	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+
+	roleID, err := uuid.Parse(chi.URLParam(r, "roleId"))
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
+		return
+	}
+
+	if err := h.store.UnassignRoleFromGroup(r.Context(), groupID, roleID); err != nil {
+		h.logger.Error("failed to unassign role from group", "error", err)
+		middleware.SetFlash(w, "Failed to unassign role.")
+	} else {
+		middleware.SetFlash(w, "Role unassigned from group.")
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/admin/groups/%s", groupID), http.StatusFound)
 }
 
 // auditLog is a helper that extracts actor info from the request context and logs an audit event.
