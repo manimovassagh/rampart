@@ -21,10 +21,11 @@ type Claims struct {
 	EmailVerified     bool      `json:"email_verified"`
 	GivenName         string    `json:"given_name,omitempty"`
 	FamilyName        string    `json:"family_name,omitempty"`
+	Roles             []string  `json:"roles,omitempty"`
 }
 
 // GenerateAccessToken creates a signed RS256 JWT with user claims.
-func GenerateAccessToken(key *rsa.PrivateKey, kid, issuer string, ttl time.Duration, userID, orgID uuid.UUID, username, email string, emailVerified bool, givenName, familyName string) (string, error) {
+func GenerateAccessToken(key *rsa.PrivateKey, kid, issuer string, ttl time.Duration, userID, orgID uuid.UUID, username, email string, emailVerified bool, givenName, familyName string, roles ...string) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -39,6 +40,7 @@ func GenerateAccessToken(key *rsa.PrivateKey, kid, issuer string, ttl time.Durat
 		EmailVerified:    emailVerified,
 		GivenName:        givenName,
 		FamilyName:       familyName,
+		Roles:            roles,
 	}
 
 	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)

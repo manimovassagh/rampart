@@ -1,0 +1,35 @@
+{{define "pagination"}}
+{{if gt .TotalPages 1}}
+<div class="flex items-center justify-between mt-4 px-2">
+    <p class="text-sm text-gray-600">
+        Showing {{.From}}–{{.To}} of {{.Total}}
+    </p>
+    <nav class="flex items-center gap-1">
+        {{if gt .Page 1}}
+        <a href="{{.BaseURL}}?page={{subtract .Page 1}}{{.QueryExtra}}"
+           hx-get="{{.BaseURL}}?page={{subtract .Page 1}}{{.QueryExtra}}"
+           hx-target="#table-body" hx-push-url="true"
+           class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Previous</a>
+        {{end}}
+
+        {{range .Pages}}
+        {{if eq . $.Page}}
+        <span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md">{{.}}</span>
+        {{else}}
+        <a href="{{$.BaseURL}}?page={{.}}{{$.QueryExtra}}"
+           hx-get="{{$.BaseURL}}?page={{.}}{{$.QueryExtra}}"
+           hx-target="#table-body" hx-push-url="true"
+           class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">{{.}}</a>
+        {{end}}
+        {{end}}
+
+        {{if lt .Page .TotalPages}}
+        <a href="{{.BaseURL}}?page={{add .Page 1}}{{.QueryExtra}}"
+           hx-get="{{.BaseURL}}?page={{add .Page 1}}{{.QueryExtra}}"
+           hx-target="#table-body" hx-push-url="true"
+           class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Next</a>
+        {{end}}
+    </nav>
+</div>
+{{end}}
+{{end}}

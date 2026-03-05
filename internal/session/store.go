@@ -21,6 +21,16 @@ type Session struct {
 	CreatedAt        time.Time
 }
 
+// SessionWithUser enriches a Session with user information for global views.
+type SessionWithUser struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Username  string
+	Email     string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
 // Store defines operations for managing sessions.
 type Store interface {
 	Create(ctx context.Context, userID uuid.UUID, refreshToken string, expiresAt time.Time) (*Session, error)
@@ -150,4 +160,57 @@ func (s *PGStore) CountActive(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("counting active sessions: %w", err)
 	}
 	return count, nil
+}
+
+// ListAll returns all active sessions with user info, paginated and searchable.
+func (s *PGStore) ListAll(ctx context.Context, search string, limit, offset int) ([]*SessionWithUser, int, error) {
+	baseWhere := "s.expires_at > now()"
+	args := []any{}
+	paramIdx := 1
+
+	if search != "" {
+		baseWhere += fmt.Sprintf(" AND (u.username ILIKE $%d OR u.email ILIKE $%d)", paramIdx, paramIdx)
+		args = append(args, "%"+search+"%")
+		paramIdx++
+	}
+
+	var total int
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM sessions s JOIN users u ON u.id = s.user_id WHERE %s", baseWhere)
+	if err := s.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("counting all sessions: %w", err)
+	}
+
+	dataQuery := fmt.Sprintf(`
+		SELECT s.id, s.user_id, u.username, u.email, s.expires_at, s.created_at
+		FROM sessions s
+		JOIN users u ON u.id = s.user_id
+		WHERE %s
+		ORDER BY s.created_at DESC
+		LIMIT $%d OFFSET $%d`, baseWhere, paramIdx, paramIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := s.pool.Query(ctx, dataQuery, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listing all sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var sessions []*SessionWithUser
+	for rows.Next() {
+		var sess SessionWithUser
+		if err := rows.Scan(&sess.ID, &sess.UserID, &sess.Username, &sess.Email, &sess.ExpiresAt, &sess.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scanning session with user row: %w", err)
+		}
+		sessions = append(sessions, &sess)
+	}
+	return sessions, total, nil
+}
+
+// DeleteAll removes all active sessions.
+func (s *PGStore) DeleteAll(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, "DELETE FROM sessions WHERE expires_at > now()")
+	if err != nil {
+		return fmt.Errorf("deleting all sessions: %w", err)
+	}
+	return nil
 }

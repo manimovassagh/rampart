@@ -1,0 +1,31 @@
+{{define "user_row"}}
+<tr id="user-{{.ID}}">
+    <td class="px-6 py-4 whitespace-nowrap">
+        <div class="flex items-center">
+            <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
+                {{slice .Username 0 1}}
+            </div>
+            <div class="ml-3">
+                <a href="/admin/users/{{.ID}}" class="text-sm font-medium text-gray-900 hover:text-blue-600">{{.Username}}</a>
+                {{if .GivenName}}<p class="text-xs text-gray-500">{{.GivenName}} {{.FamilyName}}</p>{{end}}
+            </div>
+        </div>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+        {{.Email}}
+        {{if .EmailVerified}}<span class="ml-1 text-green-500" title="Verified">&#10003;</span>{{end}}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        {{if .Enabled}}
+        <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+        {{else}}
+        <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">Disabled</span>
+        {{end}}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{.SessionCount}}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-right">
+        <a href="/admin/users/{{.ID}}" class="text-sm text-blue-600 hover:text-blue-800">Edit</a>
+    </td>
+</tr>
+{{end}}

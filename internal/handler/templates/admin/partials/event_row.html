@@ -1,0 +1,36 @@
+{{define "event_row"}}
+<tr>
+    <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
+        {{.CreatedAt.Format "Jan 02, 15:04:05"}}
+    </td>
+    <td class="px-6 py-3 whitespace-nowrap">
+        {{if eq .EventType "user.login"}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{{.EventType}}</span>
+        {{else if eq .EventType "user.login_failed"}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{{.EventType}}</span>
+        {{else if eq .EventType "user.deleted"}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{{.EventType}}</span>
+        {{else if eq .EventType "user.password_reset"}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{{.EventType}}</span>
+        {{else if eq .EventType "client.secret_regenerated"}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{{.EventType}}</span>
+        {{else if eq .EventType "session.revoked"}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">{{.EventType}}</span>
+        {{else if eq .EventType "session.revoked_all"}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">{{.EventType}}</span>
+        {{else}}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{{.EventType}}</span>
+        {{end}}
+    </td>
+    <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
+        {{if .ActorName}}{{.ActorName}}{{else}}<span class="text-gray-400">system</span>{{end}}
+    </td>
+    <td class="px-6 py-3 whitespace-nowrap text-sm">
+        {{if .TargetName}}<span class="text-gray-900">{{.TargetName}}</span>{{end}}
+        {{if .TargetType}}<span class="text-gray-400 text-xs">({{.TargetType}})</span>{{end}}
+    </td>
+    <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500 font-mono text-xs">
+        {{.IPAddress}}
+    </td>
+</tr>
+{{end}}

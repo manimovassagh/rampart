@@ -128,3 +128,117 @@ func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
 	r.Get("/.well-known/openid-configuration", discovery)
 	r.Get("/.well-known/jwks.json", jwks)
 }
+
+// AdminConsoleEndpoints groups the handler methods needed by RegisterAdminConsoleRoutes.
+type AdminConsoleEndpoints interface {
+	Dashboard(w http.ResponseWriter, r *http.Request)
+	ListUsersPage(w http.ResponseWriter, r *http.Request)
+	CreateUserPage(w http.ResponseWriter, r *http.Request)
+	CreateUserAction(w http.ResponseWriter, r *http.Request)
+	UserDetailPage(w http.ResponseWriter, r *http.Request)
+	UpdateUserAction(w http.ResponseWriter, r *http.Request)
+	DeleteUserAction(w http.ResponseWriter, r *http.Request)
+	ResetPasswordAction(w http.ResponseWriter, r *http.Request)
+	RevokeSessionsAction(w http.ResponseWriter, r *http.Request)
+	ListOrgsPage(w http.ResponseWriter, r *http.Request)
+	CreateOrgPage(w http.ResponseWriter, r *http.Request)
+	CreateOrgAction(w http.ResponseWriter, r *http.Request)
+	OrgDetailPage(w http.ResponseWriter, r *http.Request)
+	UpdateOrgAction(w http.ResponseWriter, r *http.Request)
+	UpdateOrgSettingsAction(w http.ResponseWriter, r *http.Request)
+	DeleteOrgAction(w http.ResponseWriter, r *http.Request)
+	ListClientsPage(w http.ResponseWriter, r *http.Request)
+	CreateClientPage(w http.ResponseWriter, r *http.Request)
+	CreateClientAction(w http.ResponseWriter, r *http.Request)
+	ClientDetailPage(w http.ResponseWriter, r *http.Request)
+	UpdateClientAction(w http.ResponseWriter, r *http.Request)
+	DeleteClientAction(w http.ResponseWriter, r *http.Request)
+	RegenerateSecretAction(w http.ResponseWriter, r *http.Request)
+	ListRolesPage(w http.ResponseWriter, r *http.Request)
+	CreateRolePage(w http.ResponseWriter, r *http.Request)
+	CreateRoleAction(w http.ResponseWriter, r *http.Request)
+	RoleDetailPage(w http.ResponseWriter, r *http.Request)
+	UpdateRoleAction(w http.ResponseWriter, r *http.Request)
+	DeleteRoleAction(w http.ResponseWriter, r *http.Request)
+	AssignRoleAction(w http.ResponseWriter, r *http.Request)
+	UnassignRoleAction(w http.ResponseWriter, r *http.Request)
+	ListEventsPage(w http.ResponseWriter, r *http.Request)
+	ListSessionsPage(w http.ResponseWriter, r *http.Request)
+	RevokeSessionAction(w http.ResponseWriter, r *http.Request)
+	RevokeAllSessionsAction(w http.ResponseWriter, r *http.Request)
+	OIDCPage(w http.ResponseWriter, r *http.Request)
+}
+
+// AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
+type AdminLoginEndpoints interface {
+	Login(w http.ResponseWriter, r *http.Request)
+	Callback(w http.ResponseWriter, r *http.Request)
+	Logout(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterAdminConsoleRoutes mounts SSR admin console routes under /admin/.
+func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byte, login AdminLoginEndpoints, console AdminConsoleEndpoints) {
+	// Public admin routes (no session required)
+	r.Get("/admin/login", login.Login)
+	r.Get("/admin/callback", login.Callback)
+
+	// Protected admin routes (session cookie required)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AdminSession(pubKey, hmacKey))
+		r.Use(middleware.CSRFProtect())
+
+		r.Get("/admin/", console.Dashboard)
+		r.Post("/admin/logout", login.Logout)
+
+		// Users
+		r.Get("/admin/users", console.ListUsersPage)
+		r.Get("/admin/users/new", console.CreateUserPage)
+		r.Post("/admin/users", console.CreateUserAction)
+		r.Get("/admin/users/{id}", console.UserDetailPage)
+		r.Post("/admin/users/{id}", console.UpdateUserAction)
+		r.Post("/admin/users/{id}/delete", console.DeleteUserAction)
+		r.Post("/admin/users/{id}/reset-password", console.ResetPasswordAction)
+		r.Post("/admin/users/{id}/revoke-sessions", console.RevokeSessionsAction)
+
+		// Organizations
+		r.Get("/admin/organizations", console.ListOrgsPage)
+		r.Get("/admin/organizations/new", console.CreateOrgPage)
+		r.Post("/admin/organizations", console.CreateOrgAction)
+		r.Get("/admin/organizations/{id}", console.OrgDetailPage)
+		r.Post("/admin/organizations/{id}", console.UpdateOrgAction)
+		r.Post("/admin/organizations/{id}/settings", console.UpdateOrgSettingsAction)
+		r.Post("/admin/organizations/{id}/delete", console.DeleteOrgAction)
+
+		// Roles
+		r.Get("/admin/roles", console.ListRolesPage)
+		r.Get("/admin/roles/new", console.CreateRolePage)
+		r.Post("/admin/roles", console.CreateRoleAction)
+		r.Get("/admin/roles/{id}", console.RoleDetailPage)
+		r.Post("/admin/roles/{id}", console.UpdateRoleAction)
+		r.Post("/admin/roles/{id}/delete", console.DeleteRoleAction)
+
+		// User role management
+		r.Post("/admin/users/{id}/roles", console.AssignRoleAction)
+		r.Post("/admin/users/{id}/roles/{roleId}/delete", console.UnassignRoleAction)
+
+		// Sessions
+		r.Get("/admin/sessions", console.ListSessionsPage)
+		r.Post("/admin/sessions/{id}/delete", console.RevokeSessionAction)
+		r.Post("/admin/sessions/revoke-all", console.RevokeAllSessionsAction)
+
+		// Events
+		r.Get("/admin/events", console.ListEventsPage)
+
+		// Clients
+		r.Get("/admin/clients", console.ListClientsPage)
+		r.Get("/admin/clients/new", console.CreateClientPage)
+		r.Post("/admin/clients", console.CreateClientAction)
+		r.Get("/admin/clients/{id}", console.ClientDetailPage)
+		r.Post("/admin/clients/{id}", console.UpdateClientAction)
+		r.Post("/admin/clients/{id}/delete", console.DeleteClientAction)
+		r.Post("/admin/clients/{id}/regenerate-secret", console.RegenerateSecretAction)
+
+		// OIDC
+		r.Get("/admin/oidc", console.OIDCPage)
+	})
+}

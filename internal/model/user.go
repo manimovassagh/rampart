@@ -142,6 +142,9 @@ type DashboardStats struct {
 	ActiveSessions     int `json:"active_sessions"`
 	RecentUsers        int `json:"recent_users"`
 	TotalOrganizations int `json:"total_organizations"`
+	TotalClients       int `json:"total_clients"`
+	TotalRoles         int `json:"total_roles"`
+	RecentEvents       int `json:"recent_events"`
 }
 
 // SessionResponse is a session representation for the admin API.
