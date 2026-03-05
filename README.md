@@ -14,8 +14,7 @@
   <a href="https://github.com/manimovassagh/rampart/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL_v3-E879F9?style=for-the-badge" alt="License"></a>&nbsp;
   <a href="https://goreportcard.com/report/github.com/manimovassagh/rampart"><img src="https://img.shields.io/badge/Go_Report-A+-22d3ee?style=for-the-badge&logo=go&logoColor=white" alt="Go Report Card"></a>&nbsp;
   <a href="https://github.com/manimovassagh/rampart/stargazers"><img src="https://img.shields.io/github/stars/manimovassagh/rampart?style=for-the-badge&logo=github&color=f59e0b" alt="Stars"></a>&nbsp;
-  <a href="https://manimovassagh.github.io/rampart/"><img src="https://img.shields.io/badge/Docs-Live-16a34a?style=for-the-badge&logo=docusaurus&logoColor=white" alt="Documentation"></a>&nbsp;
-  <a href="https://manimovassagh.github.io/rampart/ci/"><img src="https://img.shields.io/badge/CI_Dashboard-Live-16a34a?style=for-the-badge&logo=githubpages&logoColor=white" alt="CI Dashboard"></a>
+  <a href="https://manimovassagh.github.io/rampart/"><img src="https://img.shields.io/badge/Docs-Live-16a34a?style=for-the-badge&logo=docusaurus&logoColor=white" alt="Documentation"></a>
 </p>
 
 <p align="center">

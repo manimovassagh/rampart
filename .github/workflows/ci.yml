@@ -55,3 +55,38 @@ jobs:
             exit 1
           fi
           echo "All CI checks passed"
+
+      - name: Pipeline summary
+        if: always()
+        run: |
+          lint_result="${{ needs.lint.result }}"
+          test_result="${{ needs.test.result }}"
+          security_result="${{ needs.security.result }}"
+
+          icon_pass="✅"
+          icon_fail="❌"
+
+          lint_icon=$([ "$lint_result" = "success" ] && echo "$icon_pass" || echo "$icon_fail")
+          test_icon=$([ "$test_result" = "success" ] && echo "$icon_pass" || echo "$icon_fail")
+          security_icon=$([ "$security_result" = "success" ] && echo "$icon_pass" || echo "$icon_fail")
+
+          if [ "$lint_result" = "success" ] && [ "$test_result" = "success" ] && [ "$security_result" = "success" ]; then
+            overall="✅ **All checks passed**"
+          else
+            overall="❌ **Some checks failed**"
+          fi
+
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## Rampart CI Pipeline Summary
+
+          ${overall}
+
+          | Stage | Status | Result |
+          |-------|--------|--------|
+          | ${lint_icon} Lint | \`golangci-lint\`, \`go vet\`, \`gofmt\` | ${lint_result} |
+          | ${test_icon} Test | Unit tests, coverage, cross-compile | ${test_result} |
+          | ${security_icon} Security | \`govulncheck\`, \`gosec\` | ${security_result} |
+
+          **Commit:** \`${GITHUB_SHA::8}\` on \`${GITHUB_REF_NAME}\`
+          **Triggered by:** ${GITHUB_ACTOR}
+          EOF
