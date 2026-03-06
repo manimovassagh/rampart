@@ -133,6 +133,12 @@ func RegisterOAuthRoutes(r *chi.Mux, authorize, token http.HandlerFunc) {
 	r.Post("/oauth/token", token)
 }
 
+// RegisterSocialRoutes mounts social login initiation and callback endpoints.
+func RegisterSocialRoutes(r *chi.Mux, initiate, callback http.HandlerFunc) {
+	r.Get("/oauth/social/{provider}", initiate)
+	r.Get("/oauth/social/{provider}/callback", callback)
+}
+
 // RegisterOIDCRoutes mounts OIDC Discovery and JWKS endpoints (public, no auth).
 func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
 	r.Get("/.well-known/openid-configuration", discovery)
@@ -190,6 +196,7 @@ type AdminConsoleEndpoints interface {
 	ImportOrgPage(w http.ResponseWriter, r *http.Request)
 	ImportOrgAction(w http.ResponseWriter, r *http.Request)
 	OIDCPage(w http.ResponseWriter, r *http.Request)
+	SocialProvidersPage(w http.ResponseWriter, r *http.Request)
 }
 
 // AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
@@ -281,5 +288,8 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 
 		// OIDC
 		r.Get("/admin/oidc", console.OIDCPage)
+
+		// Social Providers
+		r.Get("/admin/social", console.SocialProvidersPage)
 	})
 }

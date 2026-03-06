@@ -17,6 +17,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
+	"github.com/manimovassagh/rampart/internal/social"
 )
 
 //go:embed templates/login/*.html
@@ -24,6 +25,7 @@ var loginThemeFS embed.FS
 
 const (
 	authCodeTTL       = 10 * time.Minute
+	scopeOpenID       = "openid"
 	themeDefault      = "default"
 	themeDark         = "dark"
 	themeMinimal      = "minimal"
@@ -69,14 +71,15 @@ type AuthorizeStore interface {
 
 // AuthorizeHandler handles the OAuth 2.0 authorization endpoint.
 type AuthorizeHandler struct {
-	store  AuthorizeStore
-	logger *slog.Logger
-	audit  *audit.Logger
+	store          AuthorizeStore
+	logger         *slog.Logger
+	audit          *audit.Logger
+	socialRegistry *social.Registry
 }
 
 // NewAuthorizeHandler creates a new authorization endpoint handler.
-func NewAuthorizeHandler(store AuthorizeStore, logger *slog.Logger, auditLogger *audit.Logger) *AuthorizeHandler {
-	return &AuthorizeHandler{store: store, logger: logger, audit: auditLogger}
+func NewAuthorizeHandler(store AuthorizeStore, logger *slog.Logger, auditLogger *audit.Logger, socialRegistry *social.Registry) *AuthorizeHandler {
+	return &AuthorizeHandler{store: store, logger: logger, audit: auditLogger, socialRegistry: socialRegistry}
 }
 
 type loginPageData struct {
@@ -93,6 +96,7 @@ type loginPageData struct {
 	LoginPageTitle   string
 	LoginPageMessage string
 	Theme            string
+	SocialProviders  []string
 }
 
 // Authorize handles both GET (render login) and POST (authenticate + redirect).
@@ -155,7 +159,7 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if scope == "" {
-		scope = "openid"
+		scope = scopeOpenID
 	}
 
 	data := &loginPageData{
@@ -165,6 +169,9 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		Scope:         scope,
 		State:         state,
 		CodeChallenge: codeChallenge,
+	}
+	if h.socialRegistry != nil {
+		data.SocialProviders = h.socialRegistry.Names()
 	}
 	h.applyOrgSettings(r.Context(), client.OrgID, data)
 	h.renderLoginPage(w, data)
@@ -223,6 +230,9 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		Scope:         scope,
 		State:         state,
 		CodeChallenge: codeChallenge,
+	}
+	if h.socialRegistry != nil {
+		pageData.SocialProviders = h.socialRegistry.Names()
 	}
 	h.applyOrgSettings(ctx, client.OrgID, &pageData)
 

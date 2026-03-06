@@ -1,0 +1,12 @@
+.git
+.github
+.claude
+*.md
+docs/
+docs-site/
+plans/
+e2e/
+.env
+.env.*
+*.pem
+coverage.out

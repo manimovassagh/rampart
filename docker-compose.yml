@@ -1,16 +1,29 @@
 services:
   rampart:
-    build: .
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-unknown}
     ports:
       - "${RAMPART_PORT:-8080}:8080"
     environment:
       RAMPART_PORT: "8080"
       RAMPART_DB_URL: "postgres://${POSTGRES_USER:-rampart}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-rampart}?sslmode=disable"
       RAMPART_REDIS_URL: "${RAMPART_REDIS_URL:-redis://redis:6379/0}"
-      RAMPART_LOG_LEVEL: "${RAMPART_LOG_LEVEL:-debug}"
+      RAMPART_LOG_LEVEL: "${RAMPART_LOG_LEVEL:-info}"
       RAMPART_ALLOWED_ORIGINS: "${RAMPART_ALLOWED_ORIGINS:-}"
       RAMPART_SIGNING_KEY_PATH: "/data/rampart-signing-key.pem"
       RAMPART_ISSUER: "${RAMPART_ISSUER:-http://localhost:8080}"
+      # Social login providers (uncomment and set to enable)
+      # RAMPART_GOOGLE_CLIENT_ID: ""
+      # RAMPART_GOOGLE_CLIENT_SECRET: ""
+      # RAMPART_GITHUB_CLIENT_ID: ""
+      # RAMPART_GITHUB_CLIENT_SECRET: ""
+      # RAMPART_APPLE_CLIENT_ID: ""
+      # RAMPART_APPLE_TEAM_ID: ""
+      # RAMPART_APPLE_KEY_ID: ""
+      # RAMPART_APPLE_PRIVATE_KEY: ""
     volumes:
       - signingkey:/data
     depends_on:
@@ -18,9 +31,25 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "1.0"
+        reservations:
+          memory: 64M
+          cpus: "0.25"
+    networks:
+      - rampart-net
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.6-alpine
     environment:
       POSTGRES_USER: "${POSTGRES_USER:-rampart}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-changeme}"
@@ -31,20 +60,52 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rampart}"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+          cpus: "0.25"
+    networks:
+      - rampart-net
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     ports:
       - "6379:6379"
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+        reservations:
+          memory: 32M
+          cpus: "0.1"
+    networks:
+      - rampart-net
 
 volumes:
   pgdata:
   signingkey:
+  redisdata:
+
+networks:
+  rampart-net:
+    driver: bridge

@@ -41,6 +41,21 @@
 
 ---
 
+## 📖 Documentation
+
+<p align="center">
+  <a href="https://manimovassagh.github.io/rampart/">
+    <img src="docs/images/docs-site-preview.png" alt="Rampart Documentation Site" width="720">
+  </a>
+</p>
+
+<p align="center">
+  <strong><a href="https://manimovassagh.github.io/rampart/">manimovassagh.github.io/rampart</a></strong><br>
+  Getting started, API reference, SDK guides, architecture, and more.
+</p>
+
+---
+
 <br>
 
 ## ⚡ Why Rampart?
