@@ -1,0 +1,33 @@
+# Development override — usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# This file overrides production settings for local development:
+#   - Debug log level
+#   - Ports exposed for debugging tools
+#   - Source code mounted for hot reload (use with air or similar)
+#   - Production security constraints relaxed
+
+services:
+  rampart:
+    build:
+      context: .
+      args:
+        VERSION: dev
+        COMMIT: local
+    environment:
+      RAMPART_LOG_LEVEL: "debug"
+    # Disable production security constraints for dev
+    read_only: false
+    security_opt: []
+    volumes:
+      - signingkey:/data
+      - ./cmd:/app/cmd:ro
+      - ./internal:/app/internal:ro
+      - ./migrations:/app/migrations:ro
+      - ./go.mod:/app/go.mod:ro
+      - ./go.sum:/app/go.sum:ro
+    ports:
+      - "${RAMPART_PORT:-8080}:8080"
+      - "2345:2345"  # delve debugger
+
+volumes:
+  signingkey:

@@ -1,0 +1,8 @@
+ignored:
+  - DL3018  # Allow apk add without version pinning (for ca-certificates, etc.)
+
+trustedRegistries:
+  - docker.io
+  - ghcr.io
+
+failure-threshold: warning
