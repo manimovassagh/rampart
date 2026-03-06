@@ -67,7 +67,7 @@ func run(_ *slog.Logger) error {
 		return err
 	}
 
-	router := server.NewRouter(logger, cfg.AllowedOrigins)
+	router := server.NewRouter(logger, cfg.AllowedOrigins, cfg.HSTSEnabled)
 	healthHandler := handler.NewHealthHandler(db)
 	server.RegisterHealthRoutes(router, healthHandler.Liveness, healthHandler.Readiness)
 
