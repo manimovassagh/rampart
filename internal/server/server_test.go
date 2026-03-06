@@ -228,7 +228,7 @@ func TestRegisterAuthRoutes(t *testing.T) {
 	RegisterAuthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusCreated)
-	})
+	}, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/register", http.NoBody)
 	w := httptest.NewRecorder()
@@ -260,7 +260,7 @@ func TestRegisterLoginRoutes(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}
 
-	RegisterLoginRoutes(r, loginH, refreshH, logoutH)
+	RegisterLoginRoutes(r, loginH, refreshH, logoutH, nil)
 
 	tests := []struct {
 		method string
@@ -296,7 +296,7 @@ func TestRegisterOAuthRoutes(t *testing.T) {
 	}, func(w http.ResponseWriter, _ *http.Request) {
 		tokenCall++
 		w.WriteHeader(http.StatusOK)
-	})
+	}, nil)
 
 	// GET /oauth/authorize
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize", http.NoBody)

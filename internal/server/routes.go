@@ -50,13 +50,23 @@ func RegisterHealthRoutes(r *chi.Mux, healthHandler, readyHandler http.HandlerFu
 }
 
 // RegisterAuthRoutes mounts authentication-related endpoints.
-func RegisterAuthRoutes(r *chi.Mux, registerHandler http.HandlerFunc) {
-	r.Post("/register", registerHandler)
+// If rl is non-nil, it is applied as rate limiting middleware.
+func RegisterAuthRoutes(r *chi.Mux, registerHandler http.HandlerFunc, rl *middleware.RateLimiter) {
+	if rl != nil {
+		r.With(rl.Middleware()).Post("/register", registerHandler)
+	} else {
+		r.Post("/register", registerHandler)
+	}
 }
 
 // RegisterLoginRoutes mounts login, token refresh, and logout endpoints.
-func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler http.HandlerFunc) {
-	r.Post("/login", loginHandler)
+// If rl is non-nil, it is applied as rate limiting middleware to /login.
+func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler http.HandlerFunc, rl *middleware.RateLimiter) {
+	if rl != nil {
+		r.With(rl.Middleware()).Post("/login", loginHandler)
+	} else {
+		r.Post("/login", loginHandler)
+	}
 	r.Post("/token/refresh", refreshHandler)
 	r.Post("/logout", logoutHandler)
 }
@@ -139,10 +149,15 @@ func RegisterExportImportRoutes(r *chi.Mux, pubKey *rsa.PublicKey, exportHandler
 }
 
 // RegisterOAuthRoutes mounts the OAuth 2.0 authorization and token endpoints.
-func RegisterOAuthRoutes(r *chi.Mux, authorize, token http.HandlerFunc) {
+// If rl is non-nil, it is applied as rate limiting middleware to /oauth/token.
+func RegisterOAuthRoutes(r *chi.Mux, authorize, token http.HandlerFunc, rl *middleware.RateLimiter) {
 	r.Get("/oauth/authorize", authorize)
 	r.Post("/oauth/authorize", authorize)
-	r.Post("/oauth/token", token)
+	if rl != nil {
+		r.With(rl.Middleware()).Post("/oauth/token", token)
+	} else {
+		r.Post("/oauth/token", token)
+	}
 }
 
 // RegisterSocialRoutes mounts social login initiation and callback endpoints.
