@@ -145,6 +145,31 @@ func RegisterSocialRoutes(r *chi.Mux, initiate, callback http.HandlerFunc) {
 	r.Get("/oauth/social/{provider}/callback", callback)
 }
 
+// MFAEndpoints groups the handler methods needed by RegisterMFARoutes.
+type MFAEndpoints interface {
+	EnrollTOTP(w http.ResponseWriter, r *http.Request)
+	VerifyTOTP(w http.ResponseWriter, r *http.Request)
+	ValidateTOTP(w http.ResponseWriter, r *http.Request)
+	DeleteTOTPDevice(w http.ResponseWriter, r *http.Request)
+	ListDevices(w http.ResponseWriter, r *http.Request)
+	RecoveryCodesStatus(w http.ResponseWriter, r *http.Request)
+	RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterMFARoutes mounts MFA enrollment and verification endpoints under /api/v1/mfa.
+func RegisterMFARoutes(r *chi.Mux, pubKey *rsa.PublicKey, mfa MFAEndpoints) {
+	r.Route("/api/v1/mfa", func(r chi.Router) {
+		r.Use(middleware.Auth(pubKey))
+		r.Post("/totp/enroll", mfa.EnrollTOTP)
+		r.Post("/totp/verify", mfa.VerifyTOTP)
+		r.Post("/totp/validate", mfa.ValidateTOTP)
+		r.Delete("/totp/{deviceID}", mfa.DeleteTOTPDevice)
+		r.Get("/devices", mfa.ListDevices)
+		r.Get("/recovery-codes", mfa.RecoveryCodesStatus)
+		r.Post("/recovery-codes/regenerate", mfa.RegenerateRecoveryCodes)
+	})
+}
+
 // RegisterOIDCRoutes mounts OIDC Discovery and JWKS endpoints (public, no auth).
 func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
 	r.Get("/.well-known/openid-configuration", discovery)

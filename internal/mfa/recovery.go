@@ -13,6 +13,9 @@ const (
 	// RecoveryCodeLength is the number of alphanumeric characters per half of a recovery code.
 	RecoveryCodeLength = 4
 
+	// RecoveryCodeCount is the default number of recovery codes to generate.
+	RecoveryCodeCount = 8
+
 	// BcryptCost is the bcrypt cost factor for hashing recovery codes.
 	BcryptCost = 10
 )
