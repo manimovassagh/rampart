@@ -743,6 +743,18 @@ func TestRegisterAdminConsoleRoutes(t *testing.T) {
 
 	RegisterAdminConsoleRoutes(r, testPubKey, hmacKey, staticHandler, &stubAdminLoginEndpoints{}, &stubAdminConsoleEndpoints{})
 
+	// GET /admin (no trailing slash) should redirect to /admin/
+	req := httptest.NewRequest(http.MethodGet, "/admin", http.NoBody)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusMovedPermanently {
+		t.Errorf("GET /admin: status = %d, want %d", w.Code, http.StatusMovedPermanently)
+	}
+	if loc := w.Header().Get("Location"); loc != "/admin/" {
+		t.Errorf("GET /admin: Location = %q, want %q", loc, "/admin/")
+	}
+
 	// Public routes should be accessible (200)
 	publicPaths := []struct {
 		method string
