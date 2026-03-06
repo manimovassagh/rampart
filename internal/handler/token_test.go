@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,6 +27,8 @@ type mockTokenStore struct {
 	userByIDErr    error
 	orgSettings    *model.OrgSettings
 	orgSettingsErr error
+	roles          []string
+	rolesErr       error
 }
 
 func (m *mockTokenStore) GetOAuthClient(_ context.Context, _ string) (*model.OAuthClient, error) {
@@ -45,7 +48,7 @@ func (m *mockTokenStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.
 }
 
 func (m *mockTokenStore) GetEffectiveUserRoles(_ context.Context, _ uuid.UUID) ([]string, error) {
-	return nil, nil
+	return m.roles, m.rolesErr
 }
 
 func TestTokenMissingGrantType(t *testing.T) {
@@ -270,5 +273,388 @@ func TestTokenValidExchange(t *testing.T) {
 	// Verify Cache-Control is no-store
 	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {
 		t.Errorf("Cache-Control = %q, want no-store", cc)
+	}
+}
+
+func TestTokenMethodNotAllowed(t *testing.T) {
+	store := &mockTokenStore{}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/token", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestTokenUnknownClientID(t *testing.T) {
+	store := &mockTokenStore{
+		oauthClient: nil, // client not found
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=unknown-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + testVerifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp["error"] != "invalid_client" {
+		t.Errorf("error = %q, want invalid_client", resp["error"])
+	}
+}
+
+func TestTokenClientFetchError(t *testing.T) {
+	store := &mockTokenStore{
+		oauthErr: fmt.Errorf("db connection failed"),
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + testVerifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestTokenConsumeCodeError(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockTokenStore{
+		oauthClient: newTestOAuthClient(orgID),
+		consumeErr:  fmt.Errorf("db error consuming code"),
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + testVerifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestTokenUserDisabledAfterCodeExchange(t *testing.T) {
+	orgID := uuid.New()
+	userID := uuid.New()
+	verifier := testVerifier
+	challenge := oauth.ComputeS256Challenge(verifier)
+
+	disabledUser := &model.User{
+		ID:       userID,
+		OrgID:    orgID,
+		Username: "disabled",
+		Email:    "disabled@test.com",
+		Enabled:  false,
+	}
+
+	store := &mockTokenStore{
+		oauthClient: newTestOAuthClient(orgID),
+		authCode: &model.AuthorizationCode{
+			ID:            uuid.New(),
+			ClientID:      "test-client",
+			UserID:        userID,
+			OrgID:         orgID,
+			RedirectURI:   "http://localhost:3002/callback",
+			CodeChallenge: challenge,
+			ExpiresAt:     time.Now().Add(10 * time.Minute),
+		},
+		userByID: disabledUser,
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + verifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp["error"] != "invalid_grant" {
+		t.Errorf("error = %q, want invalid_grant", resp["error"])
+	}
+}
+
+func TestTokenUserNotFoundAfterCodeExchange(t *testing.T) {
+	orgID := uuid.New()
+	verifier := testVerifier
+	challenge := oauth.ComputeS256Challenge(verifier)
+
+	store := &mockTokenStore{
+		oauthClient: newTestOAuthClient(orgID),
+		authCode: &model.AuthorizationCode{
+			ID:            uuid.New(),
+			ClientID:      "test-client",
+			UserID:        uuid.New(),
+			OrgID:         orgID,
+			RedirectURI:   "http://localhost:3002/callback",
+			CodeChallenge: challenge,
+			ExpiresAt:     time.Now().Add(10 * time.Minute),
+		},
+		userByID: nil, // user deleted between auth and token exchange
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + verifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestTokenUserFetchError(t *testing.T) {
+	orgID := uuid.New()
+	verifier := testVerifier
+	challenge := oauth.ComputeS256Challenge(verifier)
+
+	store := &mockTokenStore{
+		oauthClient: newTestOAuthClient(orgID),
+		authCode: &model.AuthorizationCode{
+			ID:            uuid.New(),
+			ClientID:      "test-client",
+			UserID:        uuid.New(),
+			OrgID:         orgID,
+			RedirectURI:   "http://localhost:3002/callback",
+			CodeChallenge: challenge,
+			ExpiresAt:     time.Now().Add(10 * time.Minute),
+		},
+		userByIDErr: fmt.Errorf("db error"),
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + verifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestTokenSessionCreateError(t *testing.T) {
+	orgID := uuid.New()
+	userID := uuid.New()
+	verifier := testVerifier
+	challenge := oauth.ComputeS256Challenge(verifier)
+
+	user := &model.User{
+		ID:       userID,
+		OrgID:    orgID,
+		Username: "testuser",
+		Email:    "test@test.com",
+		Enabled:  true,
+	}
+
+	store := &mockTokenStore{
+		oauthClient: newTestOAuthClient(orgID),
+		authCode: &model.AuthorizationCode{
+			ID:            uuid.New(),
+			ClientID:      "test-client",
+			UserID:        userID,
+			OrgID:         orgID,
+			RedirectURI:   "http://localhost:3002/callback",
+			CodeChallenge: challenge,
+			ExpiresAt:     time.Now().Add(10 * time.Minute),
+		},
+		userByID: user,
+	}
+	sessions := &mockSessionStore{createErr: fmt.Errorf("session store down")}
+	h := NewTokenHandler(store, sessions, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + verifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestTokenWithOrgSettings(t *testing.T) {
+	orgID := uuid.New()
+	userID := uuid.New()
+	verifier := testVerifier
+	challenge := oauth.ComputeS256Challenge(verifier)
+
+	user := &model.User{
+		ID:       userID,
+		OrgID:    orgID,
+		Username: "admin",
+		Email:    "admin@test.com",
+		Enabled:  true,
+	}
+
+	store := &mockTokenStore{
+		oauthClient: newTestOAuthClient(orgID),
+		authCode: &model.AuthorizationCode{
+			ID:            uuid.New(),
+			ClientID:      "test-client",
+			UserID:        userID,
+			OrgID:         orgID,
+			RedirectURI:   "http://localhost:3002/callback",
+			CodeChallenge: challenge,
+			ExpiresAt:     time.Now().Add(10 * time.Minute),
+		},
+		userByID: user,
+		orgSettings: &model.OrgSettings{
+			AccessTokenTTL:  30 * time.Minute,
+			RefreshTokenTTL: 14 * 24 * time.Hour,
+		},
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + verifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp TokenResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.ExpiresIn != 1800 {
+		t.Errorf("expires_in = %d, want 1800 (30 min org setting)", resp.ExpiresIn)
+	}
+}
+
+func TestFilterInternalRolesRemovesAdmin(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "removes admin role",
+			input:    []string{"user", "admin", "editor"},
+			expected: []string{"user", "editor"},
+		},
+		{
+			name:     "no admin role present",
+			input:    []string{"user", "editor"},
+			expected: []string{"user", "editor"},
+		},
+		{
+			name:     "only admin role",
+			input:    []string{"admin"},
+			expected: []string{},
+		},
+		{
+			name:     "empty roles",
+			input:    []string{},
+			expected: []string{},
+		},
+		{
+			name:     "nil roles",
+			input:    nil,
+			expected: []string{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := filterInternalRoles(tc.input)
+			if len(result) != len(tc.expected) {
+				t.Errorf("len = %d, want %d; result = %v", len(result), len(tc.expected), result)
+				return
+			}
+			for i, r := range result {
+				if r != tc.expected[i] {
+					t.Errorf("result[%d] = %q, want %q", i, r, tc.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestTokenWithAdminClientIncludesAdminRole(t *testing.T) {
+	orgID := uuid.New()
+	userID := uuid.New()
+	verifier := testVerifier
+	challenge := oauth.ComputeS256Challenge(verifier)
+
+	user := &model.User{
+		ID:       userID,
+		OrgID:    orgID,
+		Username: "adminuser",
+		Email:    "adminuser@test.com",
+		Enabled:  true,
+	}
+
+	store := &mockTokenStore{
+		oauthClient: &model.OAuthClient{
+			ID:           adminClientID,
+			OrgID:        orgID,
+			Name:         "Rampart Admin",
+			ClientType:   "public",
+			RedirectURIs: []string{"http://localhost:3002/callback"},
+		},
+		authCode: &model.AuthorizationCode{
+			ID:            uuid.New(),
+			ClientID:      adminClientID,
+			UserID:        userID,
+			OrgID:         orgID,
+			RedirectURI:   "http://localhost:3002/callback",
+			CodeChallenge: challenge,
+			ExpiresAt:     time.Now().Add(10 * time.Minute),
+		},
+		userByID: user,
+		roles:    []string{"admin", "user"},
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=" + adminClientID + "&redirect_uri=http://localhost:3002/callback&code_verifier=" + verifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
 	}
 }
