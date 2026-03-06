@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+const schemeHTTPS = "https"
+
 func TestRegistryRegisterAndGet(t *testing.T) {
 	reg := NewRegistry()
 	google := &GoogleProvider{ClientID: "google-id", ClientSecret: "google-secret"}
@@ -79,7 +81,7 @@ func TestGoogleAuthURL(t *testing.T) {
 		t.Fatalf("failed to parse auth URL: %v", err)
 	}
 
-	if parsed.Scheme != "https" || parsed.Host != "accounts.google.com" {
+	if parsed.Scheme != schemeHTTPS || parsed.Host != "accounts.google.com" {
 		t.Errorf("unexpected auth URL base: %s://%s", parsed.Scheme, parsed.Host)
 	}
 	if parsed.Path != "/o/oauth2/v2/auth" {
@@ -118,7 +120,7 @@ func TestGitHubAuthURL(t *testing.T) {
 		t.Fatalf("failed to parse auth URL: %v", err)
 	}
 
-	if parsed.Scheme != "https" || parsed.Host != "github.com" {
+	if parsed.Scheme != schemeHTTPS || parsed.Host != "github.com" {
 		t.Errorf("unexpected auth URL base: %s://%s", parsed.Scheme, parsed.Host)
 	}
 	if parsed.Path != "/login/oauth/authorize" {
@@ -155,7 +157,7 @@ func TestAppleAuthURL(t *testing.T) {
 		t.Fatalf("failed to parse auth URL: %v", err)
 	}
 
-	if parsed.Scheme != "https" || parsed.Host != "appleid.apple.com" {
+	if parsed.Scheme != schemeHTTPS || parsed.Host != "appleid.apple.com" {
 		t.Errorf("unexpected auth URL base: %s://%s", parsed.Scheme, parsed.Host)
 	}
 	if parsed.Path != "/auth/authorize" {

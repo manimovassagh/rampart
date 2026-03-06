@@ -121,7 +121,7 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if scope == "" {
-		scope = "openid"
+		scope = scopeOpenID
 	}
 
 	// Generate a random provider state for CSRF protection on the callback
@@ -142,7 +142,7 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 		ProviderState: providerState,
 	}
 
-	cookieValue, err := h.signCookiePayload(payload)
+	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
 		h.logger.Error("failed to sign social cookie", "error", err)
 		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
@@ -368,7 +368,7 @@ func (h *SocialHandler) resolveUser(ctx context.Context, r *http.Request, provid
 
 // signCookiePayload encodes and signs the cookie payload using HMAC-SHA256.
 // Format: base64(json) + "." + hex(hmac-sha256)
-func (h *SocialHandler) signCookiePayload(payload socialCookiePayload) (string, error) {
+func (h *SocialHandler) signCookiePayload(payload *socialCookiePayload) (string, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("marshaling cookie payload: %w", err)

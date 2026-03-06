@@ -126,11 +126,11 @@ func (g *GitHubProvider) exchangeToken(ctx context.Context, client *http.Client,
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:bodyclose,gosec // closed on next line; URL is a hardcoded constant
 	if err != nil {
 		return nil, fmt.Errorf("executing token request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -154,18 +154,18 @@ func (g *GitHubProvider) exchangeToken(ctx context.Context, client *http.Client,
 }
 
 func (g *GitHubProvider) fetchUser(ctx context.Context, client *http.Client, accessToken string) (*githubUserResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubUserURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubUserURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("creating user request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:bodyclose,gosec // closed on next line; URL is a hardcoded constant
 	if err != nil {
 		return nil, fmt.Errorf("executing user request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -183,19 +183,19 @@ func (g *GitHubProvider) fetchUser(ctx context.Context, client *http.Client, acc
 	return &user, nil
 }
 
-func (g *GitHubProvider) fetchPrimaryEmail(ctx context.Context, client *http.Client, accessToken string) (string, bool, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubEmailURL, nil)
+func (g *GitHubProvider) fetchPrimaryEmail(ctx context.Context, client *http.Client, accessToken string) (email string, verified bool, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubEmailURL, http.NoBody)
 	if err != nil {
 		return "", false, fmt.Errorf("creating email request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:bodyclose,gosec // closed on next line; URL is a hardcoded constant
 	if err != nil {
 		return "", false, fmt.Errorf("executing email request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

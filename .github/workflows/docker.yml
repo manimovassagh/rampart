@@ -59,7 +59,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e7f3b01541f01388 # v0.28.0
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
         with:
           image-ref: "rampart:${{ github.sha }}"
           format: "table"
@@ -68,7 +68,7 @@ jobs:
 
       - name: Trivy SARIF report
         if: always()
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e7f3b01541f01388 # v0.28.0
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
         with:
           image-ref: "rampart:${{ github.sha }}"
           format: "sarif"

@@ -119,11 +119,11 @@ func (g *GoogleProvider) exchangeToken(ctx context.Context, client *http.Client,
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:bodyclose,gosec // closed on next line; URL is a hardcoded constant
 	if err != nil {
 		return nil, fmt.Errorf("executing token request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -142,17 +142,17 @@ func (g *GoogleProvider) exchangeToken(ctx context.Context, client *http.Client,
 }
 
 func (g *GoogleProvider) fetchUserInfo(ctx context.Context, client *http.Client, accessToken string) (*googleUserInfoResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, googleUserInfoURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, googleUserInfoURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("creating userinfo request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:bodyclose,gosec // closed on next line; URL is a hardcoded constant
 	if err != nil {
 		return nil, fmt.Errorf("executing userinfo request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

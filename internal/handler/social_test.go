@@ -285,7 +285,7 @@ func TestSocialCallbackStateMismatch(t *testing.T) {
 		CodeChallenge: "xyz",
 		ProviderState: "correct-provider-state",
 	}
-	cookieValue, err := h.signCookiePayload(payload)
+	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
 		t.Fatalf("failed to sign cookie: %v", err)
 	}
@@ -330,7 +330,7 @@ func TestSocialCallbackSuccessCreatesUser(t *testing.T) {
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-123",
 	}
-	cookieValue, err := h.signCookiePayload(payload)
+	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
 		t.Fatalf("failed to sign cookie: %v", err)
 	}
@@ -413,7 +413,7 @@ func TestCookieSignAndVerify(t *testing.T) {
 		ProviderState: "pstate",
 	}
 
-	signed, err := h.signCookiePayload(payload)
+	signed, err := h.signCookiePayload(&payload)
 	if err != nil {
 		t.Fatalf("signCookiePayload failed: %v", err)
 	}

@@ -25,6 +25,7 @@ var loginThemeFS embed.FS
 
 const (
 	authCodeTTL       = 10 * time.Minute
+	scopeOpenID       = "openid"
 	themeDefault      = "default"
 	themeDark         = "dark"
 	themeMinimal      = "minimal"
@@ -158,7 +159,7 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if scope == "" {
-		scope = "openid"
+		scope = scopeOpenID
 	}
 
 	data := &loginPageData{

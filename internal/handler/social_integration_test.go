@@ -227,7 +227,7 @@ func TestSocialCallbackInvalidStateTableDriven(t *testing.T) {
 		CodeChallenge: "xyz",
 		ProviderState: "valid-provider-state",
 	}
-	validCookie, err := h.signCookiePayload(payload)
+	validCookie, err := h.signCookiePayload(&payload)
 	if err != nil {
 		t.Fatalf("failed to sign cookie: %v", err)
 	}
@@ -386,7 +386,7 @@ func TestSocialCallbackProviderExchangeFails(t *testing.T) {
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-456",
 	}
-	cookieValue, err := h.signCookiePayload(payload)
+	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
 		t.Fatalf("failed to sign cookie: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestSocialCallbackProviderReturnsNoEmail(t *testing.T) {
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-789",
 	}
-	cookieValue, err := h.signCookiePayload(payload)
+	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
 		t.Fatalf("failed to sign cookie: %v", err)
 	}
@@ -479,7 +479,7 @@ func TestSocialCallbackSuccessLinksExistingUser(t *testing.T) {
 		CodeChallenge: "challengeXYZ",
 		ProviderState: "provider-state-link",
 	}
-	cookieValue, err := h.signCookiePayload(payload)
+	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
 		t.Fatalf("failed to sign cookie: %v", err)
 	}
@@ -529,7 +529,7 @@ func TestSocialCallbackCookieClearedAfterCallback(t *testing.T) {
 		CodeChallenge: "challenge",
 		ProviderState: "pstate-clear",
 	}
-	cookieValue, err := h.signCookiePayload(payload)
+	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
 		t.Fatalf("failed to sign cookie: %v", err)
 	}

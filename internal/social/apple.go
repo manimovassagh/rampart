@@ -157,11 +157,11 @@ func (a *AppleProvider) exchangeToken(ctx context.Context, client *http.Client, 
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:bodyclose,gosec // closed on next line; URL is a hardcoded constant
 	if err != nil {
 		return nil, fmt.Errorf("executing token request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
