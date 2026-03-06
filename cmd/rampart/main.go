@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/config"
@@ -71,13 +72,26 @@ func run(_ *slog.Logger) error {
 	healthHandler := handler.NewHealthHandler(db)
 	server.RegisterHealthRoutes(router, healthHandler.Liveness, healthHandler.Readiness)
 
+	// Rate limiters for auth endpoints
+	loginRL := middleware.NewRateLimiter(cfg.RateLimit.LoginPerMinute, time.Minute)
+	defer loginRL.Close()
+	registerRL := middleware.NewRateLimiter(cfg.RateLimit.RegisterPerMinute, time.Minute)
+	defer registerRL.Close()
+	tokenRL := middleware.NewRateLimiter(cfg.RateLimit.TokenPerMinute, time.Minute)
+	defer tokenRL.Close()
+	logger.Info("rate limiting enabled",
+		"login_per_min", cfg.RateLimit.LoginPerMinute,
+		"register_per_min", cfg.RateLimit.RegisterPerMinute,
+		"token_per_min", cfg.RateLimit.TokenPerMinute,
+	)
+
 	registerHandler := handler.NewRegisterHandler(db, logger)
-	server.RegisterAuthRoutes(router, registerHandler.Register)
+	server.RegisterAuthRoutes(router, registerHandler.Register, registerRL)
 
 	sessionStore := session.NewPGStore(db.Pool)
 	auditLogger := audit.NewLogger(db, logger)
 	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
-	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout)
+	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout, loginRL)
 
 	meHandler := handler.NewMeHandler(db)
 	server.RegisterProtectedRoutes(router, kp.PublicKey, meHandler.Me)
@@ -116,7 +130,7 @@ func run(_ *slog.Logger) error {
 	// OAuth 2.0 Authorization Code + PKCE endpoints
 	authorizeHandler := handler.NewAuthorizeHandler(db, logger, auditLogger, socialRegistry)
 	tokenHandler := handler.NewTokenHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
-	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, tokenHandler.Token)
+	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, tokenHandler.Token, tokenRL)
 
 	// OIDC Discovery + JWKS (public endpoints, no auth)
 	discoveryHandler := handler.DiscoveryHandler(cfg.Issuer, logger)

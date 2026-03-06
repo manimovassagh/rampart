@@ -91,7 +91,7 @@ func setupTestServer(db *mockDB) *httptest.Server {
 	RegisterHealthRoutes(router, healthH.Liveness, healthH.Readiness)
 
 	registerH := handler.NewRegisterHandler(db, logger)
-	RegisterAuthRoutes(router, registerH.Register)
+	RegisterAuthRoutes(router, registerH.Register, nil)
 
 	return httptest.NewServer(router)
 }
