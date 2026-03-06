@@ -8,7 +8,10 @@ import (
 	"testing"
 )
 
-const contentTypeJSON = "application/json"
+const (
+	contentTypeJSON = "application/json"
+	providerGoogle  = "google"
+)
 
 func TestDiscoveryReturnsMetadata(t *testing.T) {
 	h := DiscoveryHandler("https://auth.example.com", noopLogger())
@@ -120,7 +123,7 @@ func TestDiscoverySocialProvidersOmittedWhenEmpty(t *testing.T) {
 }
 
 func TestDiscoverySocialProvidersIncluded(t *testing.T) {
-	h := DiscoveryHandler("http://localhost:8080", noopLogger(), "google", "github")
+	h := DiscoveryHandler("http://localhost:8080", noopLogger(), providerGoogle, "github")
 
 	req := httptest.NewRequest(http.MethodGet, "/.well-known/openid-configuration", http.NoBody)
 	w := httptest.NewRecorder()
@@ -135,7 +138,7 @@ func TestDiscoverySocialProvidersIncluded(t *testing.T) {
 	if len(resp.SocialProvidersSupported) != 2 {
 		t.Fatalf("expected 2 social providers, got %d", len(resp.SocialProvidersSupported))
 	}
-	if resp.SocialProvidersSupported[0] != "google" {
+	if resp.SocialProvidersSupported[0] != providerGoogle {
 		t.Errorf("expected first provider to be google, got %s", resp.SocialProvidersSupported[0])
 	}
 	if resp.SocialProvidersSupported[1] != "github" {

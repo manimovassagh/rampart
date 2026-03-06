@@ -16,7 +16,10 @@ import (
 	"github.com/manimovassagh/rampart/internal/oauth"
 )
 
-const testVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+const (
+	testVerifier    = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+	errInvalidGrant = "invalid_grant"
+)
 
 type mockTokenStore struct {
 	oauthClient    *model.OAuthClient
@@ -104,7 +107,7 @@ func TestTokenInvalidCode(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if resp["error"] != "invalid_grant" {
+	if resp["error"] != errInvalidGrant {
 		t.Errorf("error = %q, want invalid_grant", resp["error"])
 	}
 }
@@ -207,7 +210,7 @@ func TestTokenWrongCodeVerifier(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if resp["error"] != "invalid_grant" {
+	if resp["error"] != errInvalidGrant {
 		t.Errorf("error = %q, want invalid_grant", resp["error"])
 	}
 }
@@ -398,7 +401,7 @@ func TestTokenUserDisabledAfterCodeExchange(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if resp["error"] != "invalid_grant" {
+	if resp["error"] != errInvalidGrant {
 		t.Errorf("error = %q, want invalid_grant", resp["error"])
 	}
 }

@@ -16,6 +16,8 @@ import (
 	"github.com/manimovassagh/rampart/internal/token"
 )
 
+const contentTypeJSON = "application/json"
+
 // testRSAKeyPEM is a 2048-bit RSA key used only in tests.
 const testRSAKeyPEM = `-----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEAvN8Ex780DiM6xO5PgniD7BbnTEGx1IkX1LE0EbrGrZJHcVbX
@@ -449,7 +451,7 @@ func TestRequireRoleForbiddenResponseIsJSON(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	ct := w.Header().Get("Content-Type")
-	if ct != "application/json" {
+	if ct != contentTypeJSON {
 		t.Errorf("Content-Type = %q, want application/json", ct)
 	}
 }
@@ -486,7 +488,7 @@ func TestWriteAuthErrorContentType(t *testing.T) {
 	writeAuthError(w, "some error")
 
 	ct := w.Header().Get("Content-Type")
-	if ct != "application/json" {
+	if ct != contentTypeJSON {
 		t.Errorf("Content-Type = %q, want application/json", ct)
 	}
 }

@@ -23,6 +23,7 @@ const (
 // LogLevel defines the minimum severity for log output.
 type LogLevel string
 
+// Log level constants.
 const (
 	LogLevelDebug LogLevel = "debug"
 	LogLevelInfo  LogLevel = "info"

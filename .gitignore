@@ -50,13 +50,19 @@ samples/**/dist/
 # Playwright MCP
 .playwright-mcp/
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code
+CLAUDE.md
+.claude/
 .mcp.json
 
-# Screenshots (dev testing artifacts)
+# Internal plans (local only)
+plans/
+
+# Screenshots and snapshots (dev testing artifacts)
 *.png
 !docs/images/*.png
+repo-snapshot.md
+SECURITY_AUDIT.md
 
 # Docker
 docker-compose.override.yml

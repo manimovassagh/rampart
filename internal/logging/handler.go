@@ -37,6 +37,7 @@ func NewPrettyHandler(w io.Writer, opts *slog.HandlerOptions) *PrettyHandler {
 	return &PrettyHandler{opts: *opts, w: w}
 }
 
+// Enabled reports whether the handler handles records at the given level.
 func (h *PrettyHandler) Enabled(_ context.Context, level slog.Level) bool {
 	minLevel := slog.LevelInfo
 	if h.opts.Level != nil {
@@ -45,7 +46,8 @@ func (h *PrettyHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= minLevel
 }
 
-func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
+// Handle formats and writes a log record with ANSI colors.
+func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error { //nolint:gocritic // slog.Handler interface requires value receiver
 	timeStr := r.Time.Format(time.DateTime)
 	levelStr, levelColor := formatLevel(r.Level)
 
@@ -53,7 +55,7 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 	defer h.mu.Unlock()
 
 	// Time | Level | Message
-	fmt.Fprintf(h.w, "%s%s%s %s%-5s%s %s%s%s",
+	_, _ = fmt.Fprintf(h.w, "%s%s%s %s%-5s%s %s%s%s",
 		gray, timeStr, reset,
 		levelColor, levelStr, reset,
 		white, r.Message, reset,
@@ -61,26 +63,28 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 
 	// Attributes
 	r.Attrs(func(a slog.Attr) bool {
-		fmt.Fprintf(h.w, " %s%s%s=%s%s%s",
+		_, _ = fmt.Fprintf(h.w, " %s%s%s=%s%s%s",
 			cyan, a.Key, reset,
 			colorForValue(a.Key, a.Value), a.Value.String(), reset,
 		)
 		return true
 	})
 
-	fmt.Fprintln(h.w)
+	_, _ = fmt.Fprintln(h.w)
 	return nil
 }
 
+// WithAttrs returns the handler unchanged (attributes are not accumulated).
 func (h *PrettyHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return h
 }
 
+// WithGroup returns the handler unchanged (groups are not supported).
 func (h *PrettyHandler) WithGroup(name string) slog.Handler {
 	return h
 }
 
-func formatLevel(level slog.Level) (string, string) {
+func formatLevel(level slog.Level) (label, color string) {
 	switch {
 	case level >= slog.LevelError:
 		return "ERROR", red

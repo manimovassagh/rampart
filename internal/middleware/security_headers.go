@@ -12,13 +12,13 @@ const (
 	headerPermissionsPolicy   = "Permissions-Policy"
 	headerHSTS                = "Strict-Transport-Security"
 
-	valueNosniff                      = "nosniff"
-	valueDeny                         = "DENY"
-	valueXSSBlock                     = "1; mode=block"
-	valueReferrerPolicy               = "strict-origin-when-cross-origin"
-	valueCSP                          = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
-	valuePermissionsPolicy            = "camera=(), microphone=(), geolocation=()"
-	valueHSTS                         = "max-age=31536000; includeSubDomains"
+	valueNosniff           = "nosniff"
+	valueDeny              = "DENY"
+	valueXSSBlock          = "1; mode=block"
+	valueReferrerPolicy    = "strict-origin-when-cross-origin"
+	valueCSP               = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+	valuePermissionsPolicy = "camera=(), microphone=(), geolocation=()"
+	valueHSTS              = "max-age=31536000; includeSubDomains"
 )
 
 // SecurityHeadersConfig controls the behavior of the SecurityHeaders middleware.
