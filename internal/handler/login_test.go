@@ -718,6 +718,130 @@ func TestLoginSessionCreateError(t *testing.T) {
 	}
 }
 
+func TestLoginOrgSettingsError(t *testing.T) {
+	user := newTestUser()
+	store := &mockLoginStore{
+		defaultOrgID:   user.OrgID,
+		emailUser:      user,
+		orgSettingsErr: fmt.Errorf("db error fetching settings"),
+	}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin@rampart.local", "password": "Str0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	// Should succeed even if org settings fail (falls back to defaults)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp LoginResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	// Default accessTTL is 15 minutes = 900 seconds
+	if resp.ExpiresIn != 900 {
+		t.Errorf("expires_in = %d, want 900 (default)", resp.ExpiresIn)
+	}
+}
+
+func TestLoginWhitespaceTrimmingOnIdentifier(t *testing.T) {
+	user := newTestUser()
+	store := &mockLoginStore{
+		defaultOrgID: user.OrgID,
+		emailUser:    user,
+	}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "  admin@rampart.local  ", "password": "Str0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestLoginOnlyPasswordEmpty(t *testing.T) {
+	store := &mockLoginStore{defaultOrgID: uuid.New()}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "admin@rampart.local", "password": ""}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestLoginOnlyIdentifierEmpty(t *testing.T) {
+	store := &mockLoginStore{defaultOrgID: uuid.New()}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"identifier": "", "password": "Str0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Login(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRefreshDisabledUserAccount(t *testing.T) {
+	user := newTestUser()
+	user.Enabled = false
+	sess := &session.Session{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	}
+	store := &mockLoginStore{userByID: user}
+	sessions := &mockSessionStore{found: sess}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "some-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/token/refresh", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Refresh(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestLogoutWithUserAudit(t *testing.T) {
+	user := newTestUser()
+	sess := &session.Session{ID: uuid.New(), UserID: user.ID}
+	store := &mockLoginStore{userByID: user}
+	sessions := &mockSessionStore{found: sess}
+	h := newTestLoginHandler(store, sessions)
+
+	body := []byte(`{"refresh_token": "some-token"}`)
+	req := httptest.NewRequest(http.MethodPost, "/logout", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Logout(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNoContent)
+	}
+}
+
 func TestLoginWithOrgSettings(t *testing.T) {
 	user := newTestUser()
 	store := &mockLoginStore{

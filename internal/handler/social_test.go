@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -459,6 +460,140 @@ func TestSocialInitiateLoginUnknownClient(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "Unknown client_id") {
 		t.Error("expected unknown client error")
+	}
+}
+
+func TestSocialCallbackExistingSocialAccountLinksUser(t *testing.T) {
+	orgID := uuid.New()
+	existingUser := &model.User{
+		ID:       uuid.New(),
+		OrgID:    orgID,
+		Username: "existinguser",
+		Email:    "test@example.com",
+		Enabled:  true,
+	}
+	store := &mockSocialStore{
+		oauthClient:  newSocialTestOAuthClient(orgID),
+		defaultOrgID: orgID,
+		emailUser:    existingUser,
+		socialAccount: &model.SocialAccount{
+			ID:             uuid.New(),
+			UserID:         existingUser.ID,
+			Provider:       "google",
+			ProviderUserID: "provider-123",
+		},
+	}
+	hmacKey := []byte("test-hmac-key")
+	reg := newTestSocialRegistry(&mockProvider{name: "google", authURL: "https://accounts.google.com/auth"})
+	h := NewSocialHandler(store, reg, noopLogger(), nil, hmacKey, "http://localhost:8080")
+
+	payload := socialCookiePayload{
+		ClientID:      "test-client",
+		RedirectURI:   "http://localhost:3002/callback",
+		Scope:         "openid",
+		State:         "original-state",
+		CodeChallenge: "xyz",
+		ProviderState: "provider-state-existing",
+	}
+	cookieValue, err := h.signCookiePayload(&payload)
+	if err != nil {
+		t.Fatalf("failed to sign cookie: %v", err)
+	}
+
+	r := chi.NewRouter()
+	r.Get("/oauth/social/{provider}/callback", h.Callback)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/social/google/callback?code=authcode&state=provider-state-existing", http.NoBody)
+	req.AddCookie(&http.Cookie{
+		Name:  socialCookieName,
+		Value: cookieValue,
+	})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Errorf("status = %d, want %d; body = %s", w.Code, http.StatusFound, w.Body.String())
+	}
+
+	location := w.Header().Get("Location")
+	if !strings.HasPrefix(location, "http://localhost:3002/callback?code=") {
+		t.Errorf("Location = %q, want redirect to client callback", location)
+	}
+}
+
+func TestSocialCallbackStoreCodeError(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockSocialStore{
+		oauthClient:  newSocialTestOAuthClient(orgID),
+		defaultOrgID: orgID,
+		emailUser:    nil, // new user
+		storeErr:     fmt.Errorf("db error storing code"),
+	}
+	hmacKey := []byte("test-hmac-key")
+	reg := newTestSocialRegistry(&mockProvider{name: "google", authURL: "https://accounts.google.com/auth"})
+	h := NewSocialHandler(store, reg, noopLogger(), nil, hmacKey, "http://localhost:8080")
+
+	payload := socialCookiePayload{
+		ClientID:      "test-client",
+		RedirectURI:   "http://localhost:3002/callback",
+		Scope:         "openid",
+		State:         "original-state",
+		CodeChallenge: "xyz",
+		ProviderState: "provider-state-err",
+	}
+	cookieValue, err := h.signCookiePayload(&payload)
+	if err != nil {
+		t.Fatalf("failed to sign cookie: %v", err)
+	}
+
+	r := chi.NewRouter()
+	r.Get("/oauth/social/{provider}/callback", h.Callback)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/social/google/callback?code=authcode&state=provider-state-err", http.NoBody)
+	req.AddCookie(&http.Cookie{
+		Name:  socialCookieName,
+		Value: cookieValue,
+	})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestSocialInitiateClientFetchError(t *testing.T) {
+	store := &mockSocialStore{
+		oauthErr: fmt.Errorf("db error"),
+	}
+	reg := newTestSocialRegistry(&mockProvider{name: "google", authURL: "https://accounts.google.com/auth"})
+	h := NewSocialHandler(store, reg, noopLogger(), nil, []byte("test-hmac-key"), "http://localhost:8080")
+
+	r := chi.NewRouter()
+	r.Get("/oauth/social/{provider}", h.InitiateLogin)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/social/google?client_id=test-client&redirect_uri=http://localhost:3002/callback&state=abc", http.NoBody)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestCookieVerifyMalformedPayload(t *testing.T) {
+	h := NewSocialHandler(nil, nil, noopLogger(), nil, []byte("secret-key"), "http://localhost:8080")
+
+	// No dot separator
+	_, err := h.verifyCookiePayload("nodotseparator")
+	if err == nil {
+		t.Error("expected error for cookie without dot separator")
+	}
+
+	// Invalid hex signature
+	_, err = h.verifyCookiePayload("validbase64.invalidhex!!!")
+	if err == nil {
+		t.Error("expected error for invalid hex signature")
 	}
 }
 
