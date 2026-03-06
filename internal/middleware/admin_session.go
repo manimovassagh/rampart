@@ -68,10 +68,31 @@ func AdminSession(pubKey *rsa.PublicKey, hmacKey []byte) func(http.Handler) http
 				EmailVerified:     claims.EmailVerified,
 				GivenName:         claims.GivenName,
 				FamilyName:        claims.FamilyName,
+				Roles:             claims.Roles,
 			}
 
 			ctx := context.WithValue(r.Context(), authenticatedUserKey, authUser)
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RequireAdminSession returns middleware that checks the authenticated user has the "admin" role.
+// Must be used after AdminSession middleware. Redirects to login if the role is missing.
+func RequireAdminSession() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := GetAuthenticatedUser(r.Context())
+			if user == nil {
+				http.Redirect(w, r, AdminLoginPath, http.StatusFound)
+				return
+			}
+			if !user.HasRole("admin") {
+				ClearAdminSession(w)
+				http.Error(w, "Forbidden: admin role required.", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }

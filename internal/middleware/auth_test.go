@@ -285,6 +285,202 @@ func TestWriteAuthErrorIncludesRequestID(t *testing.T) {
 	}
 }
 
+func TestHasRoleReturnsTrue(t *testing.T) {
+	user := &AuthenticatedUser{
+		Roles: []string{"admin", "viewer"},
+	}
+	if !user.HasRole("admin") {
+		t.Error("expected HasRole to return true for admin")
+	}
+}
+
+func TestHasRoleReturnsFalse(t *testing.T) {
+	user := &AuthenticatedUser{
+		Roles: []string{"viewer"},
+	}
+	if user.HasRole("admin") {
+		t.Error("expected HasRole to return false for admin")
+	}
+}
+
+func TestHasRoleEmptyRoles(t *testing.T) {
+	user := &AuthenticatedUser{}
+	if user.HasRole("admin") {
+		t.Error("expected HasRole to return false for empty roles")
+	}
+}
+
+func generateTestTokenWithRoles(t *testing.T, roles ...string) string {
+	t.Helper()
+	tok, err := token.GenerateAccessToken(
+		testPrivKey, testKID, testIssuer, 15*time.Minute,
+		uuid.New(), uuid.New(),
+		"testuser", "test@test.com", true, "Test", "User",
+		roles...,
+	)
+	if err != nil {
+		t.Fatalf("failed to generate test token: %v", err)
+	}
+	return tok
+}
+
+func TestRequireRoleAdminAllowed(t *testing.T) {
+	tok := generateTestTokenWithRoles(t, "admin", "viewer")
+
+	called := false
+	handler := Auth(testPubKey)(
+		RequireRole("admin")(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	if !called {
+		t.Error("expected handler to be called for admin user")
+	}
+}
+
+func TestRequireRoleRegularUserForbidden(t *testing.T) {
+	tok := generateTestTokenWithRoles(t, "viewer")
+
+	handler := Auth(testPubKey)(
+		RequireRole("admin")(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Error("handler should not be called for non-admin user")
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "forbidden") {
+		t.Errorf("response body missing 'forbidden' error code, got: %s", body)
+	}
+	if !strings.Contains(body, "admin") {
+		t.Errorf("response body should mention required role, got: %s", body)
+	}
+}
+
+func TestRequireRoleNoRolesInToken(t *testing.T) {
+	tok := generateTestTokenWithRoles(t)
+
+	handler := Auth(testPubKey)(
+		RequireRole("admin")(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Error("handler should not be called for user with no roles")
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
+	}
+}
+
+func TestRequireRoleUnauthenticatedReturns401(t *testing.T) {
+	handler := Auth(testPubKey)(
+		RequireRole("admin")(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Error("handler should not be called")
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRequireRoleNoUserInContext(t *testing.T) {
+	handler := RequireRole("admin")(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Error("handler should not be called")
+		}),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRequireRoleForbiddenResponseIsJSON(t *testing.T) {
+	tok := generateTestTokenWithRoles(t, "viewer")
+
+	handler := Auth(testPubKey)(
+		RequireRole("admin")(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Error("handler should not be called")
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	ct := w.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+}
+
+func TestAuthMiddlewarePopulatesRoles(t *testing.T) {
+	tok := generateTestTokenWithRoles(t, "admin", "editor")
+
+	var gotUser *AuthenticatedUser
+	handler := Auth(testPubKey)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		gotUser = GetAuthenticatedUser(r.Context())
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/me", http.NoBody)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if gotUser == nil {
+		t.Fatal("expected authenticated user")
+	}
+	if len(gotUser.Roles) != 2 {
+		t.Fatalf("expected 2 roles, got %d", len(gotUser.Roles))
+	}
+	if !gotUser.HasRole("admin") {
+		t.Error("expected user to have admin role")
+	}
+	if !gotUser.HasRole("editor") {
+		t.Error("expected user to have editor role")
+	}
+}
+
 func TestWriteAuthErrorContentType(t *testing.T) {
 	w := httptest.NewRecorder()
 	writeAuthError(w, "some error")
