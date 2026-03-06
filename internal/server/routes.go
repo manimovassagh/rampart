@@ -110,6 +110,15 @@ func RegisterAdminRoutes(r *chi.Mux, pubKey *rsa.PublicKey, admin AdminEndpoints
 	})
 }
 
+// RegisterPluginRoutes mounts the plugin admin endpoint under /api/v1/admin.
+func RegisterPluginRoutes(r *chi.Mux, pubKey *rsa.PublicKey, listPlugins http.HandlerFunc) {
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(pubKey))
+
+		r.Get("/api/v1/admin/plugins", listPlugins)
+	})
+}
+
 // OrgEndpoints groups the handler methods needed by RegisterOrgRoutes.
 type OrgEndpoints interface {
 	ListOrgs(w http.ResponseWriter, r *http.Request)
