@@ -47,3 +47,13 @@ func (db *DB) ConsumeAuthorizationCode(ctx context.Context, code string) (*model
 	}
 	return &ac, nil
 }
+
+// DeleteExpiredAuthorizationCodes removes authorization codes that have expired.
+// Returns the number of rows deleted.
+func (db *DB) DeleteExpiredAuthorizationCodes(ctx context.Context) (int64, error) {
+	tag, err := db.Pool.Exec(ctx, `DELETE FROM authorization_codes WHERE expires_at < now()`)
+	if err != nil {
+		return 0, fmt.Errorf("deleting expired authorization codes: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}

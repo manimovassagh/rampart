@@ -195,6 +195,27 @@ func run(_ *slog.Logger) error {
 
 	srv := server.New(cfg.Addr(), router, logger)
 
+	// Background cleanup for expired authorization codes
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-cleanupCtx.Done():
+				return
+			case <-ticker.C:
+				n, err := db.DeleteExpiredAuthorizationCodes(cleanupCtx)
+				if err != nil {
+					logger.Error("failed to clean up expired auth codes", "error", err)
+				} else if n > 0 {
+					logger.Debug("cleaned up expired authorization codes", "count", n)
+				}
+			}
+		}
+	}()
+
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.Start()
