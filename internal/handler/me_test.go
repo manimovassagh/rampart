@@ -10,7 +10,22 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/middleware"
+	"github.com/manimovassagh/rampart/internal/model"
 )
+
+// mockMeStore is a test double for MeStore.
+type mockMeStore struct {
+	accounts []*model.SocialAccount
+	err      error
+}
+
+func (m *mockMeStore) GetSocialAccountsByUserID(_ context.Context, _ uuid.UUID) ([]*model.SocialAccount, error) {
+	return m.accounts, m.err
+}
+
+func newTestMeHandler(store MeStore) *MeHandler {
+	return NewMeHandler(store)
+}
 
 func TestMeSuccess(t *testing.T) {
 	userID := uuid.New()
@@ -31,7 +46,8 @@ func TestMeSuccess(t *testing.T) {
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
-	Me(w, req)
+	h := newTestMeHandler(&mockMeStore{})
+	h.Me(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
@@ -60,7 +76,8 @@ func TestMeUnauthenticated(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/me", http.NoBody)
 	w := httptest.NewRecorder()
 
-	Me(w, req)
+	h := newTestMeHandler(&mockMeStore{})
+	h.Me(w, req)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
@@ -72,7 +89,8 @@ func TestMeNilUser(t *testing.T) {
 	req = req.WithContext(context.Background())
 	w := httptest.NewRecorder()
 
-	Me(w, req)
+	h := newTestMeHandler(&mockMeStore{})
+	h.Me(w, req)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
@@ -95,7 +113,8 @@ func TestMeResponseContentType(t *testing.T) {
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
-	Me(w, req)
+	h := newTestMeHandler(&mockMeStore{})
+	h.Me(w, req)
 
 	contentType := w.Header().Get("Content-Type")
 	if contentType != "application/json" {
@@ -122,7 +141,8 @@ func TestMeOptionalFields(t *testing.T) {
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
-	Me(w, req)
+	h := newTestMeHandler(&mockMeStore{})
+	h.Me(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
@@ -144,5 +164,61 @@ func TestMeOptionalFields(t *testing.T) {
 	}
 	if resp.EmailVerified {
 		t.Error("email_verified = true, want false")
+	}
+}
+
+func TestMeWithSocialAccounts(t *testing.T) {
+	userID := uuid.New()
+	orgID := uuid.New()
+	socialID := uuid.New()
+
+	authUser := &middleware.AuthenticatedUser{
+		UserID:            userID,
+		OrgID:             orgID,
+		PreferredUsername: "socialuser",
+		Email:             "social@test.com",
+		EmailVerified:     true,
+	}
+
+	store := &mockMeStore{
+		accounts: []*model.SocialAccount{
+			{
+				ID:       socialID,
+				UserID:   userID,
+				Provider: "google",
+				Email:    "social@gmail.com",
+				Name:     "Social User",
+			},
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/me", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h := newTestMeHandler(store)
+	h.Me(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp MeResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if len(resp.SocialAccounts) != 1 {
+		t.Fatalf("social_accounts length = %d, want 1", len(resp.SocialAccounts))
+	}
+	if resp.SocialAccounts[0].Provider != "google" {
+		t.Errorf("provider = %q, want google", resp.SocialAccounts[0].Provider)
+	}
+	if resp.SocialAccounts[0].Email != "social@gmail.com" {
+		t.Errorf("email = %q, want social@gmail.com", resp.SocialAccounts[0].Email)
+	}
+	if resp.SocialAccounts[0].ID != socialID {
+		t.Errorf("id = %q, want %q", resp.SocialAccounts[0].ID, socialID)
 	}
 }

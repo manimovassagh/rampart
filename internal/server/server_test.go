@@ -727,6 +727,9 @@ func (s *stubAdminConsoleEndpoints) ImportOrgAction(w http.ResponseWriter, _ *ht
 func (s *stubAdminConsoleEndpoints) OIDCPage(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
+func (s *stubAdminConsoleEndpoints) SocialProvidersPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 
 func TestRegisterAdminConsoleRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))

@@ -164,6 +164,82 @@ func TestLoadAllowedOriginsDefault(t *testing.T) {
 	}
 }
 
+func TestLoadSocialProviderConfig(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("RAMPART_GOOGLE_CLIENT_ID", "google-id-123")
+	t.Setenv("RAMPART_GOOGLE_CLIENT_SECRET", "google-secret-456")
+	t.Setenv("RAMPART_GITHUB_CLIENT_ID", "github-id-789")
+	t.Setenv("RAMPART_GITHUB_CLIENT_SECRET", "github-secret-012")
+	t.Setenv("RAMPART_APPLE_CLIENT_ID", "com.example.app")
+	t.Setenv("RAMPART_APPLE_TEAM_ID", "TEAM123")
+	t.Setenv("RAMPART_APPLE_KEY_ID", "KEY456")
+	t.Setenv("RAMPART_APPLE_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.GoogleClientID != "google-id-123" {
+		t.Errorf("GoogleClientID = %q, want google-id-123", cfg.GoogleClientID)
+	}
+	if cfg.GoogleClientSecret != "google-secret-456" {
+		t.Errorf("GoogleClientSecret = %q, want google-secret-456", cfg.GoogleClientSecret)
+	}
+	if cfg.GitHubClientID != "github-id-789" {
+		t.Errorf("GitHubClientID = %q, want github-id-789", cfg.GitHubClientID)
+	}
+	if cfg.GitHubClientSecret != "github-secret-012" {
+		t.Errorf("GitHubClientSecret = %q, want github-secret-012", cfg.GitHubClientSecret)
+	}
+	if cfg.AppleClientID != "com.example.app" {
+		t.Errorf("AppleClientID = %q, want com.example.app", cfg.AppleClientID)
+	}
+	if cfg.AppleTeamID != "TEAM123" {
+		t.Errorf("AppleTeamID = %q, want TEAM123", cfg.AppleTeamID)
+	}
+	if cfg.AppleKeyID != "KEY456" {
+		t.Errorf("AppleKeyID = %q, want KEY456", cfg.AppleKeyID)
+	}
+	if cfg.ApplePrivateKey != "-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----" {
+		t.Errorf("ApplePrivateKey = %q, want PEM key", cfg.ApplePrivateKey)
+	}
+}
+
+func TestLoadSocialProviderConfigEmpty(t *testing.T) {
+	setRequiredEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.GoogleClientID != "" {
+		t.Errorf("GoogleClientID = %q, want empty", cfg.GoogleClientID)
+	}
+	if cfg.GoogleClientSecret != "" {
+		t.Errorf("GoogleClientSecret = %q, want empty", cfg.GoogleClientSecret)
+	}
+	if cfg.GitHubClientID != "" {
+		t.Errorf("GitHubClientID = %q, want empty", cfg.GitHubClientID)
+	}
+	if cfg.GitHubClientSecret != "" {
+		t.Errorf("GitHubClientSecret = %q, want empty", cfg.GitHubClientSecret)
+	}
+	if cfg.AppleClientID != "" {
+		t.Errorf("AppleClientID = %q, want empty", cfg.AppleClientID)
+	}
+	if cfg.AppleTeamID != "" {
+		t.Errorf("AppleTeamID = %q, want empty", cfg.AppleTeamID)
+	}
+	if cfg.AppleKeyID != "" {
+		t.Errorf("AppleKeyID = %q, want empty", cfg.AppleKeyID)
+	}
+	if cfg.ApplePrivateKey != "" {
+		t.Errorf("ApplePrivateKey = %q, want empty", cfg.ApplePrivateKey)
+	}
+}
+
 func TestConfigAddr(t *testing.T) {
 	cfg := &Config{Port: 3000}
 	if got := cfg.Addr(); got != ":3000" {

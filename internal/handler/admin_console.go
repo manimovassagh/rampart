@@ -25,6 +25,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
+	"github.com/manimovassagh/rampart/internal/social"
 )
 
 //go:embed templates/admin/*.html templates/admin/partials/*.html
@@ -59,6 +60,7 @@ const (
 	navClients       = "clients"
 	navSessions      = "sessions"
 	navEvents        = "events"
+	navSocial        = "social"
 
 	// Redirect paths
 	pathAdminUsers     = "/admin/users"
@@ -188,14 +190,22 @@ type AdminConsoleSessionStore interface {
 	DeleteAll(ctx context.Context) error
 }
 
+// SocialProviderInfo holds display data for a social provider on the admin page.
+type SocialProviderInfo struct {
+	Name    string
+	Enabled bool
+	EnvHint string
+}
+
 // AdminConsoleHandler serves SSR admin pages.
 type AdminConsoleHandler struct {
-	store    AdminConsoleStore
-	sessions AdminConsoleSessionStore
-	audit    *audit.Logger
-	logger   *slog.Logger
-	issuer   string
-	pages    map[string]*template.Template
+	store          AdminConsoleStore
+	sessions       AdminConsoleSessionStore
+	audit          *audit.Logger
+	logger         *slog.Logger
+	issuer         string
+	pages          map[string]*template.Template
+	socialRegistry *social.Registry
 }
 
 var adminFuncMap = template.FuncMap{
@@ -224,37 +234,39 @@ func parseAdminPage(pageFile string) *template.Template {
 }
 
 // NewAdminConsoleHandler creates a handler for SSR admin pages.
-func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger) *AdminConsoleHandler {
+func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger, socialReg *social.Registry) *AdminConsoleHandler {
 	pages := map[string]*template.Template{
-		"dashboard":     parseAdminPage("dashboard.html"),
-		"users_list":    parseAdminPage("users_list.html"),
-		"user_create":   parseAdminPage("user_create.html"),
-		"user_detail":   parseAdminPage("user_detail.html"),
-		"orgs_list":     parseAdminPage("orgs_list.html"),
-		"org_create":    parseAdminPage("org_create.html"),
-		"org_detail":    parseAdminPage("org_detail.html"),
-		"clients_list":  parseAdminPage("clients_list.html"),
-		"client_create": parseAdminPage("client_create.html"),
-		"client_detail": parseAdminPage("client_detail.html"),
-		"roles_list":    parseAdminPage("roles_list.html"),
-		"role_create":   parseAdminPage("role_create.html"),
-		"role_detail":   parseAdminPage("role_detail.html"),
-		"events_list":   parseAdminPage("events_list.html"),
-		"sessions_list": parseAdminPage("sessions_list.html"),
-		"groups_list":   parseAdminPage("groups_list.html"),
-		"group_create":  parseAdminPage("group_create.html"),
-		"group_detail":  parseAdminPage("group_detail.html"),
-		"org_import":    parseAdminPage("org_import.html"),
-		"oidc":          parseAdminPage("oidc.html"),
+		"dashboard":        parseAdminPage("dashboard.html"),
+		"users_list":       parseAdminPage("users_list.html"),
+		"user_create":      parseAdminPage("user_create.html"),
+		"user_detail":      parseAdminPage("user_detail.html"),
+		"orgs_list":        parseAdminPage("orgs_list.html"),
+		"org_create":       parseAdminPage("org_create.html"),
+		"org_detail":       parseAdminPage("org_detail.html"),
+		"clients_list":     parseAdminPage("clients_list.html"),
+		"client_create":    parseAdminPage("client_create.html"),
+		"client_detail":    parseAdminPage("client_detail.html"),
+		"roles_list":       parseAdminPage("roles_list.html"),
+		"role_create":      parseAdminPage("role_create.html"),
+		"role_detail":      parseAdminPage("role_detail.html"),
+		"events_list":      parseAdminPage("events_list.html"),
+		"sessions_list":    parseAdminPage("sessions_list.html"),
+		"groups_list":      parseAdminPage("groups_list.html"),
+		"group_create":     parseAdminPage("group_create.html"),
+		"group_detail":     parseAdminPage("group_detail.html"),
+		"org_import":       parseAdminPage("org_import.html"),
+		"oidc":             parseAdminPage("oidc.html"),
+		"social_providers": parseAdminPage("social_providers.html"),
 	}
 
 	return &AdminConsoleHandler{
-		store:    store,
-		sessions: sessions,
-		audit:    auditLogger,
-		logger:   logger,
-		issuer:   issuer,
-		pages:    pages,
+		store:          store,
+		sessions:       sessions,
+		audit:          auditLogger,
+		logger:         logger,
+		issuer:         issuer,
+		pages:          pages,
+		socialRegistry: socialReg,
 	}
 }
 
@@ -268,33 +280,34 @@ type pageData struct {
 	Error     string
 
 	// Page-specific data
-	Stats          *model.DashboardStats
-	Users          []*model.AdminUserResponse
-	UserDetail     *model.AdminUserResponse
-	Sessions       []*session.Session
-	Orgs           []*model.OrgResponse
-	OrgDetail      *model.Organization
-	OrgSettings    *model.OrgSettingsResponse
-	Clients        []*model.AdminClientResponse
-	ClientDetail   *model.AdminClientResponse
-	ClientSecret   string
-	Roles          []*model.RoleResponse
-	RoleDetail     *model.RoleResponse
-	RoleUsers      []*model.UserRoleAssignment
-	UserRoles      []*model.Role
-	AllRoles       []*model.Role
-	Events         []*model.AuditEvent
-	EventFilter    string
-	StatusFilter   string
-	GlobalSessions []*session.WithUser
-	Groups         []*model.GroupResponse
-	GroupDetail    *model.GroupResponse
-	GroupMembers   []*model.GroupMember
-	GroupRoles     []*model.GroupRoleAssignment
-	UserGroups     []*model.Group
-	OIDC           *DiscoveryResponse
-	Search         string
-	Pagination     *paginationData
+	Stats           *model.DashboardStats
+	Users           []*model.AdminUserResponse
+	UserDetail      *model.AdminUserResponse
+	Sessions        []*session.Session
+	Orgs            []*model.OrgResponse
+	OrgDetail       *model.Organization
+	OrgSettings     *model.OrgSettingsResponse
+	Clients         []*model.AdminClientResponse
+	ClientDetail    *model.AdminClientResponse
+	ClientSecret    string
+	Roles           []*model.RoleResponse
+	RoleDetail      *model.RoleResponse
+	RoleUsers       []*model.UserRoleAssignment
+	UserRoles       []*model.Role
+	AllRoles        []*model.Role
+	Events          []*model.AuditEvent
+	EventFilter     string
+	StatusFilter    string
+	GlobalSessions  []*session.WithUser
+	Groups          []*model.GroupResponse
+	GroupDetail     *model.GroupResponse
+	GroupMembers    []*model.GroupMember
+	GroupRoles      []*model.GroupRoleAssignment
+	UserGroups      []*model.Group
+	OIDC            *DiscoveryResponse
+	SocialProviders []SocialProviderInfo
+	Search          string
+	Pagination      *paginationData
 }
 
 type paginationData struct {
@@ -919,6 +932,35 @@ func (h *AdminConsoleHandler) OIDCPage(w http.ResponseWriter, r *http.Request) {
 		Title:     "OIDC Configuration",
 		ActiveNav: "oidc",
 		OIDC:      oidc,
+	})
+}
+
+// SocialProvidersPage handles GET /admin/social
+func (h *AdminConsoleHandler) SocialProvidersPage(w http.ResponseWriter, r *http.Request) {
+	type providerDef struct {
+		name    string
+		envHint string
+	}
+	allProviders := []providerDef{
+		{"google", "RAMPART_GOOGLE_CLIENT_ID, RAMPART_GOOGLE_CLIENT_SECRET"},
+		{"github", "RAMPART_GITHUB_CLIENT_ID, RAMPART_GITHUB_CLIENT_SECRET"},
+		{"apple", "RAMPART_APPLE_CLIENT_ID, RAMPART_APPLE_TEAM_ID, RAMPART_APPLE_KEY_ID"},
+	}
+
+	providers := make([]SocialProviderInfo, 0, len(allProviders))
+	for _, p := range allProviders {
+		_, enabled := h.socialRegistry.Get(p.name)
+		providers = append(providers, SocialProviderInfo{
+			Name:    p.name,
+			Enabled: enabled,
+			EnvHint: p.envHint,
+		})
+	}
+
+	h.render(w, r, "social_providers", &pageData{
+		Title:           "Social Providers",
+		ActiveNav:       navSocial,
+		SocialProviders: providers,
 	})
 }
 
