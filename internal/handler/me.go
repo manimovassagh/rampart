@@ -1,26 +1,45 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/middleware"
+	"github.com/manimovassagh/rampart/internal/model"
 )
+
+// MeStore defines the database operations required by the /me handler.
+type MeStore interface {
+	GetSocialAccountsByUserID(ctx context.Context, userID uuid.UUID) ([]*model.SocialAccount, error)
+}
 
 // MeResponse is the JSON response for GET /me.
 type MeResponse struct {
-	ID                string `json:"id"`
-	OrgID             string `json:"org_id"`
-	PreferredUsername string `json:"preferred_username"`
-	Email             string `json:"email"`
-	EmailVerified     bool   `json:"email_verified"`
-	GivenName         string `json:"given_name,omitempty"`
-	FamilyName        string `json:"family_name,omitempty"`
+	ID                string                        `json:"id"`
+	OrgID             string                        `json:"org_id"`
+	PreferredUsername string                        `json:"preferred_username"`
+	Email             string                        `json:"email"`
+	EmailVerified     bool                          `json:"email_verified"`
+	GivenName         string                        `json:"given_name,omitempty"`
+	FamilyName        string                        `json:"family_name,omitempty"`
+	SocialAccounts    []model.SocialAccountResponse `json:"social_accounts,omitempty"`
+}
+
+// MeHandler handles the /me endpoint.
+type MeHandler struct {
+	store MeStore
+}
+
+// NewMeHandler creates a new MeHandler.
+func NewMeHandler(store MeStore) *MeHandler {
+	return &MeHandler{store: store}
 }
 
 // Me handles GET /me — returns the authenticated user's identity from the JWT.
-func Me(w http.ResponseWriter, r *http.Request) {
+func (h *MeHandler) Me(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetAuthenticatedUser(r.Context())
 	if user == nil {
 		apierror.Unauthorized(w, "Not authenticated.")
@@ -35,6 +54,14 @@ func Me(w http.ResponseWriter, r *http.Request) {
 		EmailVerified:     user.EmailVerified,
 		GivenName:         user.GivenName,
 		FamilyName:        user.FamilyName,
+	}
+
+	accounts, err := h.store.GetSocialAccountsByUserID(r.Context(), user.UserID)
+	if err == nil && len(accounts) > 0 {
+		resp.SocialAccounts = make([]model.SocialAccountResponse, len(accounts))
+		for i, a := range accounts {
+			resp.SocialAccounts[i] = *a.ToResponse()
+		}
 	}
 
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)

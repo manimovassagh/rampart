@@ -22,10 +22,11 @@ type DiscoveryResponse struct {
 	ScopesSupported                  []string `json:"scopes_supported"`
 	ClaimsSupported                  []string `json:"claims_supported"`
 	CodeChallengeMethodsSupported    []string `json:"code_challenge_methods_supported"`
+	SocialProvidersSupported         []string `json:"social_providers_supported,omitempty"`
 }
 
 // DiscoveryHandler returns the OIDC Discovery metadata JSON.
-func DiscoveryHandler(issuer string, logger *slog.Logger) http.HandlerFunc {
+func DiscoveryHandler(issuer string, logger *slog.Logger, socialProviders ...string) http.HandlerFunc {
 	resp := DiscoveryResponse{
 		Issuer:                           issuer,
 		AuthorizationEndpoint:            issuer + "/oauth/authorize",
@@ -43,6 +44,10 @@ func DiscoveryHandler(issuer string, logger *slog.Logger) http.HandlerFunc {
 			"given_name", "family_name", "org_id", "roles",
 		},
 		CodeChallengeMethodsSupported: []string{"S256"},
+	}
+
+	if len(socialProviders) > 0 {
+		resp.SocialProvidersSupported = socialProviders
 	}
 
 	data, err := json.Marshal(resp)

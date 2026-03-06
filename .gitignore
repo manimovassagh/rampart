@@ -56,6 +56,7 @@ samples/**/dist/
 
 # Screenshots (dev testing artifacts)
 *.png
+!docs/images/*.png
 
 # Docker
 docker-compose.override.yml

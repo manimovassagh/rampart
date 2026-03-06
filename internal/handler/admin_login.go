@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -156,7 +157,7 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	storedState := parts[0]
 	codeVerifier := parts[1]
 
-	if state != storedState {
+	if subtle.ConstantTimeCompare([]byte(state), []byte(storedState)) != 1 {
 		h.logger.Warn("admin callback state mismatch")
 		http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 		return

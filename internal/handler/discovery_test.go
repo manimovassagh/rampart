@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -101,6 +102,44 @@ func TestDiscoveryClaimsSupported(t *testing.T) {
 		if !claimSet[claim] {
 			t.Errorf("missing required claim: %s", claim)
 		}
+	}
+}
+
+func TestDiscoverySocialProvidersOmittedWhenEmpty(t *testing.T) {
+	h := DiscoveryHandler("http://localhost:8080", noopLogger())
+
+	req := httptest.NewRequest(http.MethodGet, "/.well-known/openid-configuration", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	body := w.Body.String()
+	if strings.Contains(body, "social_providers_supported") {
+		t.Error("social_providers_supported should be omitted when no providers are configured")
+	}
+}
+
+func TestDiscoverySocialProvidersIncluded(t *testing.T) {
+	h := DiscoveryHandler("http://localhost:8080", noopLogger(), "google", "github")
+
+	req := httptest.NewRequest(http.MethodGet, "/.well-known/openid-configuration", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	var resp DiscoveryResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if len(resp.SocialProvidersSupported) != 2 {
+		t.Fatalf("expected 2 social providers, got %d", len(resp.SocialProvidersSupported))
+	}
+	if resp.SocialProvidersSupported[0] != "google" {
+		t.Errorf("expected first provider to be google, got %s", resp.SocialProvidersSupported[0])
+	}
+	if resp.SocialProvidersSupported[1] != "github" {
+		t.Errorf("expected second provider to be github, got %s", resp.SocialProvidersSupported[1])
 	}
 }
 

@@ -26,6 +26,16 @@ type Config struct {
 	Issuer          string
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
+
+	// Social login providers
+	GoogleClientID     string
+	GoogleClientSecret string
+	GitHubClientID     string
+	GitHubClientSecret string
+	AppleClientID      string
+	AppleTeamID        string
+	AppleKeyID         string
+	ApplePrivateKey    string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -102,6 +112,16 @@ func Load() (*Config, error) {
 		}
 		cfg.RefreshTokenTTL = time.Duration(secs) * time.Second
 	}
+
+	// Social login providers
+	cfg.GoogleClientID = os.Getenv("RAMPART_GOOGLE_CLIENT_ID")
+	cfg.GoogleClientSecret = os.Getenv("RAMPART_GOOGLE_CLIENT_SECRET")
+	cfg.GitHubClientID = os.Getenv("RAMPART_GITHUB_CLIENT_ID")
+	cfg.GitHubClientSecret = os.Getenv("RAMPART_GITHUB_CLIENT_SECRET")
+	cfg.AppleClientID = os.Getenv("RAMPART_APPLE_CLIENT_ID")
+	cfg.AppleTeamID = os.Getenv("RAMPART_APPLE_TEAM_ID")
+	cfg.AppleKeyID = os.Getenv("RAMPART_APPLE_KEY_ID")
+	cfg.ApplePrivateKey = os.Getenv("RAMPART_APPLE_PRIVATE_KEY")
 
 	return cfg, nil
 }
