@@ -58,9 +58,11 @@ CLAUDE.md
 # Internal plans (local only)
 plans/
 
-# Screenshots (dev testing artifacts)
+# Screenshots and snapshots (dev testing artifacts)
 *.png
 !docs/images/*.png
+repo-snapshot.md
+SECURITY_AUDIT.md
 
 # Docker
 docker-compose.override.yml

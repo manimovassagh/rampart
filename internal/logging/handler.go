@@ -53,7 +53,7 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 	defer h.mu.Unlock()
 
 	// Time | Level | Message
-	fmt.Fprintf(h.w, "%s%s%s %s%-5s%s %s%s%s",
+	_, _ = fmt.Fprintf(h.w, "%s%s%s %s%-5s%s %s%s%s",
 		gray, timeStr, reset,
 		levelColor, levelStr, reset,
 		white, r.Message, reset,
@@ -61,14 +61,14 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 
 	// Attributes
 	r.Attrs(func(a slog.Attr) bool {
-		fmt.Fprintf(h.w, " %s%s%s=%s%s%s",
+		_, _ = fmt.Fprintf(h.w, " %s%s%s=%s%s%s",
 			cyan, a.Key, reset,
 			colorForValue(a.Key, a.Value), a.Value.String(), reset,
 		)
 		return true
 	})
 
-	fmt.Fprintln(h.w)
+	_, _ = fmt.Fprintln(h.w)
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (h *PrettyHandler) WithGroup(name string) slog.Handler {
 	return h
 }
 
-func formatLevel(level slog.Level) (string, string) {
+func formatLevel(level slog.Level) (label string, color string) {
 	switch {
 	case level >= slog.LevelError:
 		return "ERROR", red

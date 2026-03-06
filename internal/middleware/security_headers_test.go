@@ -12,7 +12,7 @@ func TestSecurityHeadersDefaultHeaders(t *testing.T) {
 	}))
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	handler.ServeHTTP(rr, req)
 
 	expected := map[string]string{
@@ -42,7 +42,7 @@ func TestSecurityHeadersHSTSEnabled(t *testing.T) {
 	}))
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	handler.ServeHTTP(rr, req)
 
 	want := "max-age=31536000; includeSubDomains"
@@ -58,7 +58,7 @@ func TestSecurityHeadersHSTSDisabled(t *testing.T) {
 	}))
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	handler.ServeHTTP(rr, req)
 
 	if hsts := rr.Header().Get("Strict-Transport-Security"); hsts != "" {
@@ -74,7 +74,7 @@ func TestSecurityHeadersCallsNext(t *testing.T) {
 	}))
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	handler.ServeHTTP(rr, req)
 
 	if !called {

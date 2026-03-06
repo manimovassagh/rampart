@@ -238,10 +238,10 @@ func GenerateCSRFToken() (string, error) {
 }
 
 // SetOAuthCSRFCookie sets a CSRF cookie scoped to /oauth/ for the login form.
-func SetOAuthCSRFCookie(w http.ResponseWriter, token string) {
+func SetOAuthCSRFCookie(w http.ResponseWriter, csrfToken string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     OAuthCSRFCookieName,
-		Value:    token,
+		Value:    csrfToken,
 		Path:     "/oauth/",
 		MaxAge:   600, // 10 minutes
 		HttpOnly: true,
