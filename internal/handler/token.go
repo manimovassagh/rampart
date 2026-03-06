@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
+	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
 	"github.com/manimovassagh/rampart/internal/session"
@@ -215,15 +216,19 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// writeOAuthError writes an OAuth 2.0 error response per RFC 6749 §5.2.
+// writeOAuthError writes an OAuth 2.0 error response per RFC 6749 §5.2,
+// extended with status and request_id for consistency with other API errors.
 func (h *TokenHandler) writeOAuthError(w http.ResponseWriter, status int, code, description string) {
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 	w.Header().Set("Cache-Control", cacheNoStore)
 	w.WriteHeader(status)
 
-	resp := map[string]string{
+	reqID := w.Header().Get(middleware.HeaderRequestID)
+	resp := map[string]interface{}{
 		"error":             code,
 		"error_description": description,
+		"status":            status,
+		"request_id":        reqID,
 	}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Error("failed to encode oauth error response", "error", err)

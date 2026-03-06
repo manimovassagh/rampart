@@ -10,19 +10,20 @@ import (
 
 // DiscoveryResponse is the OIDC Discovery metadata (RFC 8414).
 type DiscoveryResponse struct {
-	Issuer                           string   `json:"issuer"`
-	AuthorizationEndpoint            string   `json:"authorization_endpoint"`
-	TokenEndpoint                    string   `json:"token_endpoint"`
-	UserinfoEndpoint                 string   `json:"userinfo_endpoint"`
-	JWKSURI                          string   `json:"jwks_uri"`
-	ResponseTypesSupported           []string `json:"response_types_supported"`
-	GrantTypesSupported              []string `json:"grant_types_supported"`
-	SubjectTypesSupported            []string `json:"subject_types_supported"`
-	IDTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
-	ScopesSupported                  []string `json:"scopes_supported"`
-	ClaimsSupported                  []string `json:"claims_supported"`
-	CodeChallengeMethodsSupported    []string `json:"code_challenge_methods_supported"`
-	SocialProvidersSupported         []string `json:"social_providers_supported,omitempty"`
+	Issuer                            string   `json:"issuer"`
+	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
+	TokenEndpoint                     string   `json:"token_endpoint"`
+	UserinfoEndpoint                  string   `json:"userinfo_endpoint"`
+	JWKSURI                           string   `json:"jwks_uri"`
+	ResponseTypesSupported            []string `json:"response_types_supported"`
+	GrantTypesSupported               []string `json:"grant_types_supported"`
+	SubjectTypesSupported             []string `json:"subject_types_supported"`
+	IDTokenSigningAlgValuesSupported  []string `json:"id_token_signing_alg_values_supported"`
+	ScopesSupported                   []string `json:"scopes_supported"`
+	ClaimsSupported                   []string `json:"claims_supported"`
+	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported"`
+	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
+	SocialProvidersSupported          []string `json:"social_providers_supported,omitempty"`
 }
 
 // DiscoveryHandler returns the OIDC Discovery metadata JSON.
@@ -43,7 +44,8 @@ func DiscoveryHandler(issuer string, logger *slog.Logger, socialProviders ...str
 			"preferred_username", "email", "email_verified",
 			"given_name", "family_name", "org_id", "roles",
 		},
-		CodeChallengeMethodsSupported: []string{"S256"},
+		CodeChallengeMethodsSupported:     []string{"S256"},
+		TokenEndpointAuthMethodsSupported: []string{"none"},
 	}
 
 	if len(socialProviders) > 0 {
