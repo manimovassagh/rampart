@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -483,5 +484,457 @@ func TestAdminRevokeSessionsSuccess(t *testing.T) {
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusNoContent)
+	}
+}
+
+func TestAdminStatsNoAuth(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	// No auth context set
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h.Stats(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestAdminStatsCountUsersError(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAdminUserStore{
+		countUsersErr: fmt.Errorf("db error"),
+	}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.Stats(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminStatsCountActiveSessionsError(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAdminUserStore{countUsers: 10}
+	sessions := &mockAdminSessionStore{countActiveErr: fmt.Errorf("redis down")}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.Stats(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminStatsCountRecentUsersError(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAdminUserStore{countUsers: 10, countRecentErr: fmt.Errorf("db error")}
+	sessions := &mockAdminSessionStore{countActive: 5}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.Stats(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminStatsCountOrgsError(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAdminUserStore{countUsers: 10, countRecent: 2, countOrgsErr: fmt.Errorf("db error")}
+	sessions := &mockAdminSessionStore{countActive: 5}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.Stats(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminListUsersNoAuth(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h.ListUsers(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestAdminListUsersStoreError(t *testing.T) {
+	store := &mockAdminUserStore{listErr: fmt.Errorf("db error")}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: uuid.New()}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users?page=1&limit=20", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.ListUsers(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminCreateUserNoAuth(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	body := []byte(`{"username":"newuser","email":"new@test.com","password":"Str0ng!Pass","given_name":"New","family_name":"User","enabled":true}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.CreateUser(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestAdminCreateUserInvalidJSON(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users", bytes.NewReader([]byte("not json")))
+	w := httptest.NewRecorder()
+
+	h.CreateUser(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAdminCreateUserDuplicateUsername(t *testing.T) {
+	existing := newAdminTestUser()
+	store := &mockAdminUserStore{
+		usernameUser: existing,
+	}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: existing.OrgID}
+	body := []byte(`{"username":"testuser","email":"other@test.com","password":"Str0ng!Pass","given_name":"A","family_name":"B","enabled":true}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users", bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.CreateUser(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusConflict)
+	}
+}
+
+func TestAdminUpdateUserInvalidJSON(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Put("/api/v1/admin/users/{id}", h.UpdateUser)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+uuid.New().String(), bytes.NewReader([]byte("not json")))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAdminUpdateUserNotFound(t *testing.T) {
+	store := &mockAdminUserStore{updatedUser: nil} // not found
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Put("/api/v1/admin/users/{id}", h.UpdateUser)
+
+	body := []byte(`{"username":"updated","email":"updated@test.com","given_name":"Up","family_name":"Dated","enabled":true}`)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+uuid.New().String(), bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestAdminUpdateUserStoreError(t *testing.T) {
+	store := &mockAdminUserStore{updateErr: fmt.Errorf("db error")}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Put("/api/v1/admin/users/{id}", h.UpdateUser)
+
+	body := []byte(`{"username":"updated","email":"updated@test.com","given_name":"Up","family_name":"Dated","enabled":true}`)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+uuid.New().String(), bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminDeleteUserNoAuth(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Delete("/api/v1/admin/users/{id}", h.DeleteUser)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+uuid.New().String(), http.NoBody)
+	// No auth context set — should proceed without self-deletion check
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNoContent)
+	}
+}
+
+func TestAdminDeleteUserSessionDeleteError(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{deleteErr: fmt.Errorf("session delete failed")}
+	h := newTestAdminHandler(store, sessions)
+
+	callerID := uuid.New()
+	authUser := &middleware.AuthenticatedUser{UserID: callerID, OrgID: uuid.New()}
+
+	r := chi.NewRouter()
+	r.Delete("/api/v1/admin/users/{id}", h.DeleteUser)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+uuid.New().String(), http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminDeleteUserStoreError(t *testing.T) {
+	store := &mockAdminUserStore{deleteErr: fmt.Errorf("db error")}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	callerID := uuid.New()
+	authUser := &middleware.AuthenticatedUser{UserID: callerID, OrgID: uuid.New()}
+
+	r := chi.NewRouter()
+	r.Delete("/api/v1/admin/users/{id}", h.DeleteUser)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+uuid.New().String(), http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminResetPasswordNotFound(t *testing.T) {
+	store := &mockAdminUserStore{userByID: nil}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Post("/api/v1/admin/users/{id}/reset-password", h.ResetPassword)
+
+	body := []byte(`{"password":"NewStr0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/"+uuid.New().String()+"/reset-password", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestAdminResetPasswordInvalidJSON(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Post("/api/v1/admin/users/{id}/reset-password", h.ResetPassword)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/"+uuid.New().String()+"/reset-password", bytes.NewReader([]byte("not json")))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAdminResetPasswordUpdateError(t *testing.T) {
+	user := newAdminTestUser()
+	store := &mockAdminUserStore{userByID: user, updatePwErr: fmt.Errorf("db error")}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Post("/api/v1/admin/users/{id}/reset-password", h.ResetPassword)
+
+	body := []byte(`{"password":"NewStr0ng!Pass"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/"+user.ID.String()+"/reset-password", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminGetUserStoreError(t *testing.T) {
+	store := &mockAdminUserStore{userByIDErr: fmt.Errorf("db error")}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Get("/api/v1/admin/users/{id}", h.GetUser)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+uuid.New().String(), http.NoBody)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminListSessionsError(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{listErr: fmt.Errorf("db error")}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Get("/api/v1/admin/users/{id}/sessions", h.ListSessions)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+uuid.New().String()+"/sessions", http.NoBody)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminRevokeSessionsError(t *testing.T) {
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{deleteErr: fmt.Errorf("session store down")}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Delete("/api/v1/admin/users/{id}/sessions", h.RevokeSessions)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+uuid.New().String()+"/sessions", http.NoBody)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminResolveOrgIDWithHeader(t *testing.T) {
+	orgID := uuid.New()
+	headerOrgID := uuid.New()
+	store := &mockAdminUserStore{countUsers: 5, countRecent: 1, countOrgs: 1}
+	sessions := &mockAdminSessionStore{countActive: 2}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	req.Header.Set("X-Org-Context", headerOrgID.String())
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.Stats(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestAdminListUsersWithPaginationLimits(t *testing.T) {
+	store := &mockAdminUserStore{
+		listUsers: []*model.User{},
+		listTotal: 0,
+	}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: uuid.New()}
+
+	// Test with limit exceeding max
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users?page=1&limit=200", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.ListUsers(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp model.ListUsersResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.Limit != maxPageLimit {
+		t.Errorf("limit = %d, want %d (clamped to max)", resp.Limit, maxPageLimit)
 	}
 }
