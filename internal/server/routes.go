@@ -83,6 +83,7 @@ type AdminEndpoints interface {
 func RegisterAdminRoutes(r *chi.Mux, pubKey *rsa.PublicKey, admin AdminEndpoints) {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
+		r.Use(middleware.RequireRole("admin"))
 
 		r.Get("/api/v1/admin/stats", admin.Stats)
 		r.Get("/api/v1/admin/users", admin.ListUsers)
@@ -111,6 +112,7 @@ type OrgEndpoints interface {
 func RegisterOrgRoutes(r *chi.Mux, pubKey *rsa.PublicKey, org OrgEndpoints) {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
+		r.Use(middleware.RequireRole("admin"))
 
 		r.Get("/api/v1/admin/organizations", org.ListOrgs)
 		r.Post("/api/v1/admin/organizations", org.CreateOrg)
@@ -126,6 +128,7 @@ func RegisterOrgRoutes(r *chi.Mux, pubKey *rsa.PublicKey, org OrgEndpoints) {
 func RegisterExportImportRoutes(r *chi.Mux, pubKey *rsa.PublicKey, exportHandler, importHandler http.HandlerFunc) {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
+		r.Use(middleware.RequireRole("admin"))
 
 		r.Get("/api/v1/admin/organizations/{id}/export", exportHandler)
 		r.Post("/api/v1/admin/organizations/{id}/import", importHandler)
@@ -227,9 +230,10 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 	r.Get("/admin/login", login.Login)
 	r.Get("/admin/callback", login.Callback)
 
-	// Protected admin routes (session cookie required)
+	// Protected admin routes (session cookie required + admin role)
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AdminSession(pubKey, hmacKey))
+		r.Use(middleware.RequireAdminSession())
 		r.Use(middleware.CSRFProtect())
 
 		r.Get("/admin/", console.Dashboard)

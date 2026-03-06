@@ -353,6 +353,110 @@ func TestGenerateHMACKey(t *testing.T) {
 	}
 }
 
+func generateTestTokenWithRolesAdmin(t *testing.T, roles ...string) string {
+	t.Helper()
+	tok, err := token.GenerateAccessToken(
+		testPrivKey, testKID, testIssuer, 15*time.Minute,
+		uuid.New(), uuid.New(),
+		"testuser", "test@test.com", true, "Test", "User",
+		roles...,
+	)
+	if err != nil {
+		t.Fatalf("failed to generate test token: %v", err)
+	}
+	return tok
+}
+
+func TestRequireAdminSessionAllowsAdmin(t *testing.T) {
+	tok := generateTestTokenWithRolesAdmin(t, "admin")
+	signed := signCookie(tok, testHMACKey)
+
+	called := false
+	handler := AdminSession(testPubKey, testHMACKey)(
+		RequireAdminSession()(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: signed})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	if !called {
+		t.Error("expected handler to be called for admin user")
+	}
+}
+
+func TestRequireAdminSessionBlocksRegularUser(t *testing.T) {
+	tok := generateTestTokenWithRolesAdmin(t, "viewer")
+	signed := signCookie(tok, testHMACKey)
+
+	handler := AdminSession(testPubKey, testHMACKey)(
+		RequireAdminSession()(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Error("handler should not be called for non-admin user")
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: signed})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
+	}
+}
+
+func TestRequireAdminSessionBlocksUserWithNoRoles(t *testing.T) {
+	tok := generateTestTokenWithRolesAdmin(t)
+	signed := signCookie(tok, testHMACKey)
+
+	handler := AdminSession(testPubKey, testHMACKey)(
+		RequireAdminSession()(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Error("handler should not be called for user with no roles")
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: signed})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
+	}
+}
+
+func TestRequireAdminSessionNoUserRedirects(t *testing.T) {
+	handler := RequireAdminSession()(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Error("handler should not be called")
+		}),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/", http.NoBody)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusFound)
+	}
+	loc := w.Header().Get("Location")
+	if loc != AdminLoginPath {
+		t.Errorf("redirect location = %q, want %q", loc, AdminLoginPath)
+	}
+}
+
 func TestCSRFProtectAllowsGET(t *testing.T) {
 	called := false
 	handler := CSRFProtect()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
