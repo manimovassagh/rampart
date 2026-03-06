@@ -284,8 +284,37 @@ func TestLoginEmptyCredentials(t *testing.T) {
 
 	h.Login(w, req)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestLoginEmptyBody(t *testing.T) {
+	store := &mockLoginStore{defaultOrgID: uuid.New()}
+	sessions := &mockSessionStore{}
+	h := newTestLoginHandler(store, sessions)
+
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"emptyJSON", `{}`},
+		{"missingPassword", `{"identifier":"admin@rampart.local"}`},
+		{"missingIdentifier", `{"password":"Str0ng!Pass"}`},
+		{"whitespaceIdentifier", `{"identifier":"  ","password":"Str0ng!Pass"}`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader([]byte(tc.body)))
+			w := httptest.NewRecorder()
+
+			h.Login(w, req)
+
+			if w.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+			}
+		})
 	}
 }
 

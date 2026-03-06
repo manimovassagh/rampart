@@ -115,7 +115,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	req.Identifier = strings.TrimSpace(req.Identifier)
 	req.OrgSlug = strings.ToLower(strings.TrimSpace(req.OrgSlug))
 	if req.Identifier == "" || req.Password == "" {
-		apierror.Unauthorized(w, invalidCredentialsMsg)
+		apierror.BadRequest(w, "Identifier and password are required.")
 		return
 	}
 
