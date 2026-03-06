@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/auth"
+	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 )
 
@@ -172,6 +173,20 @@ func TestAuthorizeGetRendersLoginPage(t *testing.T) {
 	}
 }
 
+// newPostRequestWithCSRF creates a POST request with a matching CSRF cookie and form token.
+func newPostRequestWithCSRF(t *testing.T, target string, form url.Values) *http.Request {
+	t.Helper()
+	csrfToken, err := middleware.GenerateCSRFToken()
+	if err != nil {
+		t.Fatalf("failed to generate CSRF token: %v", err)
+	}
+	form.Set("csrf_token", csrfToken)
+	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: middleware.OAuthCSRFCookieName, Value: csrfToken})
+	return req
+}
+
 func TestAuthorizePostBadCredentials(t *testing.T) {
 	orgID := uuid.New()
 	store := &mockAuthorizeStore{
@@ -193,8 +208,7 @@ func TestAuthorizePostBadCredentials(t *testing.T) {
 		"password":              {"badpass"},
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req := newPostRequestWithCSRF(t, "/oauth/authorize", form)
 	w := httptest.NewRecorder()
 
 	h.Authorize(w, req)
@@ -237,8 +251,7 @@ func TestAuthorizePostValidCredentialsRedirects(t *testing.T) {
 		"password":              {"Str0ng!Pass"},
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req := newPostRequestWithCSRF(t, "/oauth/authorize", form)
 	w := httptest.NewRecorder()
 
 	h.Authorize(w, req)
@@ -257,6 +270,163 @@ func TestAuthorizePostValidCredentialsRedirects(t *testing.T) {
 
 	if !store.storedCode {
 		t.Error("expected authorization code to be stored")
+	}
+}
+
+func TestAuthorizeGetRendersCSRFToken(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc123&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h.Authorize(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "csrf_token") {
+		t.Error("expected csrf_token hidden field in login page")
+	}
+
+	// Verify the CSRF cookie is set
+	cookies := w.Result().Cookies()
+	var csrfCookie *http.Cookie
+	for _, c := range cookies {
+		if c.Name == middleware.OAuthCSRFCookieName {
+			csrfCookie = c
+			break
+		}
+	}
+	if csrfCookie == nil {
+		t.Fatal("expected OAuth CSRF cookie to be set")
+	}
+	if !csrfCookie.HttpOnly {
+		t.Error("expected CSRF cookie to be HttpOnly")
+	}
+	if csrfCookie.Value == "" {
+		t.Error("expected non-empty CSRF cookie value")
+	}
+}
+
+func TestAuthorizePostMissingCSRFToken(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":             {"test-client"},
+		"redirect_uri":          {"http://localhost:3002/callback"},
+		"scope":                 {"openid"},
+		"state":                 {"abc"},
+		"code_challenge":        {"xyz"},
+		"code_challenge_method": {"S256"},
+		"identifier":            {"admin"},
+		"password":              {"secret"},
+	}
+
+	// POST without CSRF cookie or token
+	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Authorize(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
+	}
+	if !strings.Contains(w.Body.String(), "CSRF") {
+		t.Error("expected CSRF error message")
+	}
+}
+
+func TestAuthorizePostMismatchedCSRFToken(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":             {"test-client"},
+		"redirect_uri":          {"http://localhost:3002/callback"},
+		"scope":                 {"openid"},
+		"state":                 {"abc"},
+		"code_challenge":        {"xyz"},
+		"code_challenge_method": {"S256"},
+		"identifier":            {"admin"},
+		"password":              {"secret"},
+		"csrf_token":            {"wrong-token"},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: middleware.OAuthCSRFCookieName, Value: "correct-token"})
+	w := httptest.NewRecorder()
+
+	h.Authorize(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
+	}
+}
+
+func TestAuthorizePostReRenderIncludesCSRFToken(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient:  newTestOAuthClient(orgID),
+		emailUser:    nil,
+		usernameUser: nil,
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":             {"test-client"},
+		"redirect_uri":          {"http://localhost:3002/callback"},
+		"scope":                 {"openid"},
+		"state":                 {"abc"},
+		"code_challenge":        {"xyz"},
+		"code_challenge_method": {"S256"},
+		"identifier":            {"baduser"},
+		"password":              {"badpass"},
+	}
+
+	req := newPostRequestWithCSRF(t, "/oauth/authorize", form)
+	w := httptest.NewRecorder()
+
+	h.Authorize(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	// The re-rendered page should contain a fresh CSRF token
+	body := w.Body.String()
+	if !strings.Contains(body, "csrf_token") {
+		t.Error("expected csrf_token in re-rendered login page")
+	}
+
+	// Check that a new CSRF cookie was set
+	cookies := w.Result().Cookies()
+	var csrfCookie *http.Cookie
+	for _, c := range cookies {
+		if c.Name == middleware.OAuthCSRFCookieName {
+			csrfCookie = c
+			break
+		}
+	}
+	if csrfCookie == nil {
+		t.Fatal("expected new OAuth CSRF cookie on re-render")
+	}
+	if csrfCookie.Value == "" {
+		t.Error("expected non-empty CSRF cookie value on re-render")
 	}
 }
 
