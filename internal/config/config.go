@@ -35,7 +35,18 @@ const (
 	defaultRefreshTokenTTL = 604800 // 7 days
 	defaultSigningKeyPath  = "rampart-signing-key.pem"
 	defaultIssuer          = "http://localhost:8080"
+
+	defaultLoginRateLimit    = 10 // requests per minute
+	defaultRegisterRateLimit = 5  // requests per minute
+	defaultTokenRateLimit    = 10 // requests per minute
 )
+
+// RateLimitConfig holds rate limiting settings for auth endpoints.
+type RateLimitConfig struct {
+	LoginPerMinute    int
+	RegisterPerMinute int
+	TokenPerMinute    int
+}
 
 // Config holds all server configuration loaded from environment variables.
 type Config struct {
@@ -52,6 +63,9 @@ type Config struct {
 
 	// Security
 	HSTSEnabled bool
+
+	// Rate limiting (requests per minute per IP)
+	RateLimit RateLimitConfig
 
 	// Social login providers
 	GoogleClientID     string
@@ -159,6 +173,46 @@ func Load() (*Config, error) {
 	// Security
 	if v := os.Getenv("RAMPART_HSTS_ENABLED"); strings.EqualFold(v, "true") || v == "1" {
 		cfg.HSTSEnabled = true
+	}
+
+	// Rate limiting
+	cfg.RateLimit = RateLimitConfig{
+		LoginPerMinute:    defaultLoginRateLimit,
+		RegisterPerMinute: defaultRegisterRateLimit,
+		TokenPerMinute:    defaultTokenRateLimit,
+	}
+
+	if v := os.Getenv("RAMPART_RATE_LIMIT_LOGIN"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid RAMPART_RATE_LIMIT_LOGIN %q: %w", v, err)
+		}
+		if n < 1 {
+			return nil, fmt.Errorf("RAMPART_RATE_LIMIT_LOGIN must be positive")
+		}
+		cfg.RateLimit.LoginPerMinute = n
+	}
+
+	if v := os.Getenv("RAMPART_RATE_LIMIT_REGISTER"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid RAMPART_RATE_LIMIT_REGISTER %q: %w", v, err)
+		}
+		if n < 1 {
+			return nil, fmt.Errorf("RAMPART_RATE_LIMIT_REGISTER must be positive")
+		}
+		cfg.RateLimit.RegisterPerMinute = n
+	}
+
+	if v := os.Getenv("RAMPART_RATE_LIMIT_TOKEN"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid RAMPART_RATE_LIMIT_TOKEN %q: %w", v, err)
+		}
+		if n < 1 {
+			return nil, fmt.Errorf("RAMPART_RATE_LIMIT_TOKEN must be positive")
+		}
+		cfg.RateLimit.TokenPerMinute = n
 	}
 
 	// Social login providers
