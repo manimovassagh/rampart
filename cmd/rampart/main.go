@@ -105,21 +105,21 @@ func run(_ *slog.Logger) error {
 	orgHandler := handler.NewOrgHandler(db, db, logger)
 	server.RegisterOrgRoutes(router, kp.PublicKey, orgHandler)
 
-	// Social login providers
+	// Social login providers — load from env vars first, then override with DB configs
 	socialRegistry := social.NewRegistry()
 	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
 		socialRegistry.Register(&social.GoogleProvider{
 			ClientID:     cfg.GoogleClientID,
 			ClientSecret: cfg.GoogleClientSecret,
 		})
-		logger.Info("social provider registered", "provider", "google")
+		logger.Info("social provider registered", "provider", "google", "source", "env")
 	}
 	if cfg.GitHubClientID != "" && cfg.GitHubClientSecret != "" {
 		socialRegistry.Register(&social.GitHubProvider{
 			ClientID:     cfg.GitHubClientID,
 			ClientSecret: cfg.GitHubClientSecret,
 		})
-		logger.Info("social provider registered", "provider", "github")
+		logger.Info("social provider registered", "provider", "github", "source", "env")
 	}
 	if cfg.AppleClientID != "" {
 		socialRegistry.Register(&social.AppleProvider{
@@ -127,7 +127,43 @@ func run(_ *slog.Logger) error {
 			TeamID:   cfg.AppleTeamID,
 			KeyID:    cfg.AppleKeyID,
 		})
-		logger.Info("social provider registered", "provider", "apple")
+		logger.Info("social provider registered", "provider", "apple", "source", "env")
+	}
+
+	// Load social provider configs from database (admin dashboard settings)
+	defaultOrgID, err := db.GetDefaultOrganizationID(context.Background())
+	if err != nil {
+		logger.Warn("failed to get default org for social provider loading", "error", err)
+	} else {
+		dbConfigs, err := db.ListSocialProviderConfigs(context.Background(), defaultOrgID)
+		if err != nil {
+			logger.Warn("failed to load social provider configs from database", "error", err)
+		} else {
+			for _, sc := range dbConfigs {
+				if !sc.Enabled || sc.ClientID == "" || sc.ClientSecret == "" {
+					continue
+				}
+				switch sc.Provider {
+				case "google":
+					socialRegistry.Register(&social.GoogleProvider{
+						ClientID:     sc.ClientID,
+						ClientSecret: sc.ClientSecret,
+					})
+				case "github":
+					socialRegistry.Register(&social.GitHubProvider{
+						ClientID:     sc.ClientID,
+						ClientSecret: sc.ClientSecret,
+					})
+				case "apple":
+					socialRegistry.Register(&social.AppleProvider{
+						ClientID: sc.ClientID,
+						TeamID:   sc.ExtraConfig["team_id"],
+						KeyID:    sc.ExtraConfig["key_id"],
+					})
+				}
+				logger.Info("social provider registered", "provider", sc.Provider, "source", "database")
+			}
+		}
 	}
 
 	// OAuth 2.0 Authorization Code + PKCE endpoints

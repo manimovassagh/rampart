@@ -809,8 +809,8 @@ func TestLoginOnlyPasswordEmpty(t *testing.T) {
 
 	h.Login(w, req)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
 
@@ -825,8 +825,8 @@ func TestLoginOnlyIdentifierEmpty(t *testing.T) {
 
 	h.Login(w, req)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
 
