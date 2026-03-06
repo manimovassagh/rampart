@@ -73,7 +73,7 @@ jobs:
           sha256sum "$output" > "${output}.sha256"
 
       - name: Upload release asset
-        uses: actions/upload-artifact@ea165f8d65b6db9a6b7c67862cd61e8cbc4d760b # v4.6.2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
