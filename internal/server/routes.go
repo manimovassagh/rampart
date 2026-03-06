@@ -53,9 +53,9 @@ func RegisterHealthRoutes(r *chi.Mux, healthHandler, readyHandler http.HandlerFu
 // If rl is non-nil, it is applied as rate limiting middleware.
 func RegisterAuthRoutes(r *chi.Mux, registerHandler http.HandlerFunc, rl *middleware.RateLimiter) {
 	if rl != nil {
-		r.With(rl.Middleware()).Post("/register", registerHandler)
+		r.With(middleware.RequireJSON, rl.Middleware()).Post("/register", registerHandler)
 	} else {
-		r.Post("/register", registerHandler)
+		r.With(middleware.RequireJSON).Post("/register", registerHandler)
 	}
 }
 
@@ -63,12 +63,12 @@ func RegisterAuthRoutes(r *chi.Mux, registerHandler http.HandlerFunc, rl *middle
 // If rl is non-nil, it is applied as rate limiting middleware to /login.
 func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler http.HandlerFunc, rl *middleware.RateLimiter) {
 	if rl != nil {
-		r.With(rl.Middleware()).Post("/login", loginHandler)
+		r.With(middleware.RequireJSON, rl.Middleware()).Post("/login", loginHandler)
 	} else {
-		r.Post("/login", loginHandler)
+		r.With(middleware.RequireJSON).Post("/login", loginHandler)
 	}
-	r.Post("/token/refresh", refreshHandler)
-	r.Post("/logout", logoutHandler)
+	r.With(middleware.RequireJSON).Post("/token/refresh", refreshHandler)
+	r.With(middleware.RequireJSON).Post("/logout", logoutHandler)
 }
 
 // RegisterProtectedRoutes mounts endpoints that require authentication.
@@ -97,6 +97,7 @@ func RegisterAdminRoutes(r *chi.Mux, pubKey *rsa.PublicKey, admin AdminEndpoints
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
 		r.Use(middleware.RequireRole("admin"))
+		r.Use(middleware.RequireJSON)
 
 		r.Get("/api/v1/admin/stats", admin.Stats)
 		r.Get("/api/v1/admin/users", admin.ListUsers)
@@ -126,6 +127,7 @@ func RegisterOrgRoutes(r *chi.Mux, pubKey *rsa.PublicKey, org OrgEndpoints) {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
 		r.Use(middleware.RequireRole("admin"))
+		r.Use(middleware.RequireJSON)
 
 		r.Get("/api/v1/admin/organizations", org.ListOrgs)
 		r.Post("/api/v1/admin/organizations", org.CreateOrg)
