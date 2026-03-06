@@ -50,6 +50,9 @@ type Config struct {
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
 
+	// Security
+	HSTSEnabled bool
+
 	// Social login providers
 	GoogleClientID     string
 	GoogleClientSecret string
@@ -151,6 +154,11 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("RAMPART_REFRESH_TOKEN_TTL must be positive")
 		}
 		cfg.RefreshTokenTTL = time.Duration(secs) * time.Second
+	}
+
+	// Security
+	if v := os.Getenv("RAMPART_HSTS_ENABLED"); strings.EqualFold(v, "true") || v == "1" {
+		cfg.HSTSEnabled = true
 	}
 
 	// Social login providers
