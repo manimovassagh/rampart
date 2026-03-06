@@ -12,6 +12,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/config"
 	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/handler"
+	"github.com/manimovassagh/rampart/internal/logging"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/server"
 	"github.com/manimovassagh/rampart/internal/session"
@@ -34,10 +35,18 @@ func run(_ *slog.Logger) error {
 		return err
 	}
 
-	// Reconfigure logger with the loaded log level
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: parseLogLevel(cfg.LogLevel),
-	}))
+	// Reconfigure logger with the loaded log level and format
+	logOpts := &slog.HandlerOptions{Level: parseLogLevel(string(cfg.LogLevel))}
+	var logHandler slog.Handler
+	switch cfg.LogFormat {
+	case config.LogFormatJSON:
+		logHandler = slog.NewJSONHandler(os.Stdout, logOpts)
+	case config.LogFormatText:
+		logHandler = slog.NewTextHandler(os.Stdout, logOpts)
+	case config.LogFormatPretty:
+		logHandler = logging.NewPrettyHandler(os.Stdout, logOpts)
+	}
+	logger := slog.New(logHandler)
 	slog.SetDefault(logger)
 
 	// Load or generate RSA signing key pair
