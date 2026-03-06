@@ -26,6 +26,17 @@ type AuthenticatedUser struct {
 	EmailVerified     bool
 	GivenName         string
 	FamilyName        string
+	Roles             []string
+}
+
+// HasRole returns true if the user has the given role.
+func (u *AuthenticatedUser) HasRole(role string) bool {
+	for _, r := range u.Roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
 }
 
 // Auth returns middleware that verifies RS256 Bearer tokens and stores the user in context.
@@ -64,10 +75,30 @@ func Auth(pubKey *rsa.PublicKey) func(http.Handler) http.Handler {
 				EmailVerified:     claims.EmailVerified,
 				GivenName:         claims.GivenName,
 				FamilyName:        claims.FamilyName,
+				Roles:             claims.Roles,
 			}
 
 			ctx := context.WithValue(r.Context(), authenticatedUserKey, authUser)
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RequireRole returns middleware that checks the authenticated user has the specified role.
+// Must be used after Auth middleware. Returns 403 Forbidden if the role is missing.
+func RequireRole(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := GetAuthenticatedUser(r.Context())
+			if user == nil {
+				writeAuthError(w, "Missing authorization header.")
+				return
+			}
+			if !user.HasRole(role) {
+				writeForbiddenError(w, "Insufficient permissions. Required role: "+role+".")
+				return
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }
@@ -90,6 +121,16 @@ func GetAuthenticatedUser(ctx context.Context) *AuthenticatedUser {
 
 // writeAuthError writes a 401 JSON error response without importing apierror (to avoid import cycles).
 func writeAuthError(w http.ResponseWriter, description string) {
+	writeErrorResponse(w, "unauthorized", description, http.StatusUnauthorized)
+}
+
+// writeForbiddenError writes a 403 JSON error response.
+func writeForbiddenError(w http.ResponseWriter, description string) {
+	writeErrorResponse(w, "forbidden", description, http.StatusForbidden)
+}
+
+// writeErrorResponse writes a JSON error response with the given code and status.
+func writeErrorResponse(w http.ResponseWriter, code, description string, status int) {
 	reqID := w.Header().Get(HeaderRequestID)
 	resp := struct {
 		Code        string `json:"error"`
@@ -97,15 +138,15 @@ func writeAuthError(w http.ResponseWriter, description string) {
 		Status      int    `json:"status"`
 		RequestID   string `json:"request_id,omitempty"`
 	}{
-		Code:        "unauthorized",
+		Code:        code,
 		Description: description,
-		Status:      http.StatusUnauthorized,
+		Status:      status,
 		RequestID:   reqID,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		slog.Error("failed to encode auth error response", "error", err)
+		slog.Error("failed to encode error response", "error", err)
 	}
 }
