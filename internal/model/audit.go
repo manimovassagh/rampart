@@ -29,6 +29,9 @@ const (
 	EventOrgSettingsUpdated      = "org.settings_updated"
 	EventSessionRevoked          = "session.revoked"
 	EventSessionsRevokedAll      = "session.revoked_all"
+	EventSocialLogin             = "social_login"
+	EventSocialLoginFailed       = "social_login_failed"
+	EventSocialAccountLinked     = "social_account_linked"
 )
 
 // AuditEvent represents a row in the audit_events table.
