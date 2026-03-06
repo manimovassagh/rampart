@@ -37,6 +37,7 @@ func NewPrettyHandler(w io.Writer, opts *slog.HandlerOptions) *PrettyHandler {
 	return &PrettyHandler{opts: *opts, w: w}
 }
 
+// Enabled reports whether the handler handles records at the given level.
 func (h *PrettyHandler) Enabled(_ context.Context, level slog.Level) bool {
 	minLevel := slog.LevelInfo
 	if h.opts.Level != nil {
@@ -45,6 +46,7 @@ func (h *PrettyHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= minLevel
 }
 
+// Handle formats and writes a log record with ANSI colors.
 func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 	timeStr := r.Time.Format(time.DateTime)
 	levelStr, levelColor := formatLevel(r.Level)
@@ -72,15 +74,17 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 	return nil
 }
 
+// WithAttrs returns the handler unchanged (attributes are not accumulated).
 func (h *PrettyHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return h
 }
 
+// WithGroup returns the handler unchanged (groups are not supported).
 func (h *PrettyHandler) WithGroup(name string) slog.Handler {
 	return h
 }
 
-func formatLevel(level slog.Level) (label string, color string) {
+func formatLevel(level slog.Level) (label, color string) {
 	switch {
 	case level >= slog.LevelError:
 		return "ERROR", red
