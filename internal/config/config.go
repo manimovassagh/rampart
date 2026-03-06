@@ -64,6 +64,10 @@ type Config struct {
 	// Security
 	HSTSEnabled bool
 
+	// SecureCookies enables the Secure flag on all cookies.
+	// MUST be true in production (requires HTTPS). Defaults to false for development.
+	SecureCookies bool
+
 	// Rate limiting (requests per minute per IP)
 	RateLimit RateLimitConfig
 
@@ -213,6 +217,17 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("RAMPART_RATE_LIMIT_TOKEN must be positive")
 		}
 		cfg.RateLimit.TokenPerMinute = n
+	}
+
+	if v := os.Getenv("RAMPART_SECURE_COOKIES"); v != "" {
+		switch strings.ToLower(v) {
+		case "true", "1", "yes":
+			cfg.SecureCookies = true
+		case "false", "0", "no":
+			cfg.SecureCookies = false
+		default:
+			return nil, fmt.Errorf("invalid RAMPART_SECURE_COOKIES %q (valid: true, false)", v)
+		}
 	}
 
 	// Social login providers

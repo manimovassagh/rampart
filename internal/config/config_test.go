@@ -240,6 +240,80 @@ func TestLoadSocialProviderConfigEmpty(t *testing.T) {
 	}
 }
 
+func TestLoadSecureCookiesTrue(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("RAMPART_SECURE_COOKIES", "true")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.SecureCookies {
+		t.Error("SecureCookies = false, want true")
+	}
+}
+
+func TestLoadSecureCookiesFalse(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("RAMPART_SECURE_COOKIES", "false")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.SecureCookies {
+		t.Error("SecureCookies = true, want false")
+	}
+}
+
+func TestLoadSecureCookiesDefaultFalse(t *testing.T) {
+	setRequiredEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.SecureCookies {
+		t.Error("SecureCookies should default to false")
+	}
+}
+
+func TestLoadSecureCookiesInvalid(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("RAMPART_SECURE_COOKIES", "maybe")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid RAMPART_SECURE_COOKIES value")
+	}
+}
+
+func TestLoadSecureCookiesAlternateValues(t *testing.T) {
+	setRequiredEnv(t)
+
+	for _, val := range []string{"1", "yes", "YES"} {
+		t.Setenv("RAMPART_SECURE_COOKIES", val)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error for %q: %v", val, err)
+		}
+		if !cfg.SecureCookies {
+			t.Errorf("SecureCookies = false for %q, want true", val)
+		}
+	}
+
+	for _, val := range []string{"0", "no", "NO"} {
+		t.Setenv("RAMPART_SECURE_COOKIES", val)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error for %q: %v", val, err)
+		}
+		if cfg.SecureCookies {
+			t.Errorf("SecureCookies = true for %q, want false", val)
+		}
+	}
+}
+
 func TestConfigAddr(t *testing.T) {
 	cfg := &Config{Port: 3000}
 	if got := cfg.Addr(); got != ":3000" {
