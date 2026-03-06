@@ -124,7 +124,7 @@ func run(_ *slog.Logger) error {
 		kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer,
 		cfg.AccessTokenTTL, cfg.RefreshTokenTTL, hmacKey,
 	)
-	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger, socialRegistry)
+	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger, socialRegistry, nil)
 	server.RegisterAdminConsoleRoutes(router, kp.PublicKey, hmacKey, handler.StaticHandler(), adminLoginHandler, adminConsoleHandler)
 
 	// Social login handler

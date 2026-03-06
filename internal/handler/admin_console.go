@@ -201,6 +201,7 @@ type SocialProviderInfo struct {
 type AdminConsoleHandler struct {
 	store          AdminConsoleStore
 	sessions       AdminConsoleSessionStore
+	webhookStore   WebhookStore
 	audit          *audit.Logger
 	logger         *slog.Logger
 	issuer         string
@@ -220,6 +221,7 @@ var adminFuncMap = template.FuncMap{
 		}
 		return s[start:end]
 	},
+	"join": strings.Join,
 }
 
 // parseAdminPage builds a template set for a single page: base + partials + page.
@@ -234,7 +236,7 @@ func parseAdminPage(pageFile string) *template.Template {
 }
 
 // NewAdminConsoleHandler creates a handler for SSR admin pages.
-func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger, socialReg *social.Registry) *AdminConsoleHandler {
+func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger, socialReg *social.Registry, webhooks WebhookStore) *AdminConsoleHandler {
 	pages := map[string]*template.Template{
 		"dashboard":        parseAdminPage("dashboard.html"),
 		"users_list":       parseAdminPage("users_list.html"),
@@ -257,11 +259,15 @@ func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessio
 		"org_import":       parseAdminPage("org_import.html"),
 		"oidc":             parseAdminPage("oidc.html"),
 		"social_providers": parseAdminPage("social_providers.html"),
+		"webhooks_list":    parseAdminPage("webhooks_list.html"),
+		"webhook_create":   parseAdminPage("webhook_create.html"),
+		"webhook_detail":   parseAdminPage("webhook_detail.html"),
 	}
 
 	return &AdminConsoleHandler{
 		store:          store,
 		sessions:       sessions,
+		webhookStore:   webhooks,
 		audit:          auditLogger,
 		logger:         logger,
 		issuer:         issuer,
@@ -304,8 +310,13 @@ type pageData struct {
 	GroupMembers    []*model.GroupMember
 	GroupRoles      []*model.GroupRoleAssignment
 	UserGroups      []*model.Group
-	OIDC            *DiscoveryResponse
-	SocialProviders []SocialProviderInfo
+	OIDC              *DiscoveryResponse
+	SocialProviders   []SocialProviderInfo
+	Webhooks          []*model.WebhookResponse
+	WebhookDetail     *model.WebhookResponse
+	WebhookDeliveries []*model.WebhookDelivery
+	WebhookEvents     []string
+	AvailableEvents   []string
 	Search          string
 	Pagination      *paginationData
 }

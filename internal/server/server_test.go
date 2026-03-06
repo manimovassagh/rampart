@@ -730,6 +730,27 @@ func (s *stubAdminConsoleEndpoints) OIDCPage(w http.ResponseWriter, _ *http.Requ
 func (s *stubAdminConsoleEndpoints) SocialProvidersPage(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
+func (s *stubAdminConsoleEndpoints) WebhooksPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) WebhookDetailPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) WebhookCreatePage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) WebhookCreate(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) WebhookDelete(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) WebhookToggle(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) WebhookTest(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 
 func TestRegisterAdminConsoleRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
@@ -773,6 +794,7 @@ func TestRegisterAdminConsoleRoutes(t *testing.T) {
 		{http.MethodGet, "/admin/clients"},
 		{http.MethodGet, "/admin/groups"},
 		{http.MethodGet, "/admin/oidc"},
+		{http.MethodGet, "/admin/webhooks"},
 	}
 
 	for _, tt := range protectedPaths {

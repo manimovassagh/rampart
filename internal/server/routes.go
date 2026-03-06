@@ -132,6 +132,32 @@ func RegisterExportImportRoutes(r *chi.Mux, pubKey *rsa.PublicKey, exportHandler
 	})
 }
 
+// WebhookEndpoints groups the handler methods needed by RegisterWebhookRoutes.
+type WebhookEndpoints interface {
+	Create(w http.ResponseWriter, r *http.Request)
+	List(w http.ResponseWriter, r *http.Request)
+	Get(w http.ResponseWriter, r *http.Request)
+	Update(w http.ResponseWriter, r *http.Request)
+	Delete(w http.ResponseWriter, r *http.Request)
+	Deliveries(w http.ResponseWriter, r *http.Request)
+	Test(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterWebhookRoutes mounts webhook management endpoints under /api/v1/admin/webhooks.
+func RegisterWebhookRoutes(r *chi.Mux, pubKey *rsa.PublicKey, wh WebhookEndpoints) {
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(pubKey))
+
+		r.Post("/api/v1/admin/webhooks", wh.Create)
+		r.Get("/api/v1/admin/webhooks", wh.List)
+		r.Get("/api/v1/admin/webhooks/{id}", wh.Get)
+		r.Put("/api/v1/admin/webhooks/{id}", wh.Update)
+		r.Delete("/api/v1/admin/webhooks/{id}", wh.Delete)
+		r.Get("/api/v1/admin/webhooks/{id}/deliveries", wh.Deliveries)
+		r.Post("/api/v1/admin/webhooks/{id}/test", wh.Test)
+	})
+}
+
 // RegisterOAuthRoutes mounts the OAuth 2.0 authorization and token endpoints.
 func RegisterOAuthRoutes(r *chi.Mux, authorize, token http.HandlerFunc) {
 	r.Get("/oauth/authorize", authorize)
@@ -203,6 +229,13 @@ type AdminConsoleEndpoints interface {
 	ImportOrgAction(w http.ResponseWriter, r *http.Request)
 	OIDCPage(w http.ResponseWriter, r *http.Request)
 	SocialProvidersPage(w http.ResponseWriter, r *http.Request)
+	WebhooksPage(w http.ResponseWriter, r *http.Request)
+	WebhookDetailPage(w http.ResponseWriter, r *http.Request)
+	WebhookCreatePage(w http.ResponseWriter, r *http.Request)
+	WebhookCreate(w http.ResponseWriter, r *http.Request)
+	WebhookDelete(w http.ResponseWriter, r *http.Request)
+	WebhookToggle(w http.ResponseWriter, r *http.Request)
+	WebhookTest(w http.ResponseWriter, r *http.Request)
 }
 
 // AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
@@ -302,5 +335,14 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 
 		// Social Providers
 		r.Get("/admin/social", console.SocialProvidersPage)
+
+		// Webhooks
+		r.Get("/admin/webhooks", console.WebhooksPage)
+		r.Get("/admin/webhooks/new", console.WebhookCreatePage)
+		r.Post("/admin/webhooks", console.WebhookCreate)
+		r.Get("/admin/webhooks/{id}", console.WebhookDetailPage)
+		r.Post("/admin/webhooks/{id}/delete", console.WebhookDelete)
+		r.Post("/admin/webhooks/{id}/toggle", console.WebhookToggle)
+		r.Post("/admin/webhooks/{id}/test", console.WebhookTest)
 	})
 }
