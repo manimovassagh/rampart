@@ -231,6 +231,7 @@ func TestRegisterAuthRoutes(t *testing.T) {
 	}, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/register", http.NoBody)
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -274,6 +275,7 @@ func TestRegisterLoginRoutes(t *testing.T) {
 
 	for _, tt := range tests {
 		req := httptest.NewRequest(tt.method, tt.path, http.NoBody)
+		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
