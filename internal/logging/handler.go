@@ -47,7 +47,7 @@ func (h *PrettyHandler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 // Handle formats and writes a log record with ANSI colors.
-func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
+func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error { //nolint:gocritic // slog.Handler interface requires value receiver
 	timeStr := r.Time.Format(time.DateTime)
 	levelStr, levelColor := formatLevel(r.Level)
 
