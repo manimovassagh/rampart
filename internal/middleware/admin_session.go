@@ -28,6 +28,21 @@ const (
 	AdminCookiePath = "/admin/"
 )
 
+// secureCookies controls whether cookies are sent with the Secure flag.
+// Must be true in production (requires HTTPS). Defaults to false for development.
+var secureCookies bool
+
+// SetSecureCookies configures whether all cookies should have the Secure flag set.
+// Call this at startup before serving requests.
+func SetSecureCookies(secure bool) {
+	secureCookies = secure
+}
+
+// SecureCookiesEnabled returns whether cookies should have the Secure flag set.
+func SecureCookiesEnabled() bool {
+	return secureCookies
+}
+
 // AdminSession returns middleware that validates admin session cookies.
 // Unauthenticated requests are redirected to the admin login page.
 func AdminSession(pubKey *rsa.PublicKey, hmacKey []byte) func(http.Handler) http.Handler {
@@ -146,7 +161,7 @@ func SetAdminSession(w http.ResponseWriter, accessToken string, hmacKey []byte, 
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   false, // Set true in production via config
+		Secure:   secureCookies,
 	})
 }
 
@@ -158,6 +173,8 @@ func ClearAdminSession(w http.ResponseWriter) {
 		Path:     AdminCookiePath,
 		MaxAge:   -1,
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secureCookies,
 	})
 }
 
@@ -170,6 +187,7 @@ func SetFlash(w http.ResponseWriter, message string) {
 		MaxAge:   10,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
+		Secure:   secureCookies,
 	})
 }
 
@@ -187,6 +205,8 @@ func GetFlash(w http.ResponseWriter, r *http.Request) string {
 		Path:     AdminCookiePath,
 		MaxAge:   -1,
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secureCookies,
 	})
 
 	decoded, err := base64.URLEncoding.DecodeString(cookie.Value)
@@ -203,6 +223,41 @@ func GetCSRFToken(r *http.Request) string {
 		return ""
 	}
 	return cookie.Value
+}
+
+// OAuthCSRFCookieName is the cookie name for CSRF on the OAuth login form.
+const OAuthCSRFCookieName = "rampart_oauth_csrf"
+
+// GenerateCSRFToken creates a new random CSRF token string.
+func GenerateCSRFToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generating CSRF token: %w", err)
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// SetOAuthCSRFCookie sets a CSRF cookie scoped to /oauth/ for the login form.
+func SetOAuthCSRFCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     OAuthCSRFCookieName,
+		Value:    token,
+		Path:     "/oauth/",
+		MaxAge:   600, // 10 minutes
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   secureCookies,
+	})
+}
+
+// ValidateOAuthCSRF checks the CSRF token from the form against the cookie.
+// Returns true if the tokens match.
+func ValidateOAuthCSRF(r *http.Request, formToken string) bool {
+	cookie, err := r.Cookie(OAuthCSRFCookieName)
+	if err != nil || cookie.Value == "" || formToken == "" {
+		return false
+	}
+	return hmac.Equal([]byte(cookie.Value), []byte(formToken))
 }
 
 // GenerateHMACKey creates a random 32-byte HMAC key.
@@ -230,6 +285,7 @@ func ensureCSRFCookie(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   3600,
 		HttpOnly: false, // Must be readable by forms via template
 		SameSite: http.SameSiteLaxMode,
+		Secure:   secureCookies,
 	})
 }
 
