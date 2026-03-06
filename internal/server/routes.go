@@ -14,14 +14,17 @@ import (
 )
 
 // NewRouter creates and configures the chi router with middleware chain.
-// Middleware order: RequestID → RealIP → Recovery → CORS → Logging
-func NewRouter(logger *slog.Logger, allowedOrigins []string) *chi.Mux {
+// Middleware order: RequestID → RealIP → Recovery → SecurityHeaders → CORS → Logging
+func NewRouter(logger *slog.Logger, allowedOrigins []string, hstsEnabled bool) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware chain — order matters
 	r.Use(middleware.RequestID)
 	r.Use(chimw.RealIP)
 	r.Use(middleware.Recovery(logger))
+	r.Use(middleware.SecurityHeaders(middleware.SecurityHeadersConfig{
+		HSTSEnabled: hstsEnabled,
+	}))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
