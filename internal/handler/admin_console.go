@@ -275,6 +275,7 @@ type pageData struct {
 	Title     string
 	ActiveNav string
 	User      *middleware.AuthenticatedUser
+	OrgName   string
 	CSRFToken string
 	Flash     string
 	Error     string
@@ -324,6 +325,12 @@ type paginationData struct {
 func (h *AdminConsoleHandler) render(w http.ResponseWriter, r *http.Request, pageName string, data *pageData) {
 	data.User = middleware.GetAuthenticatedUser(r.Context())
 	data.CSRFToken = middleware.GetCSRFToken(r)
+
+	if data.User != nil && data.OrgName == "" {
+		if org, err := h.store.GetOrganizationByID(r.Context(), data.User.OrgID); err == nil && org != nil {
+			data.OrgName = org.Name
+		}
+	}
 
 	flash := middleware.GetFlash(w, r)
 	if flash != "" {
