@@ -8,6 +8,28 @@ import (
 	"time"
 )
 
+// LogFormat defines the output format for structured logging.
+type LogFormat string
+
+const (
+	// LogFormatPretty outputs colorized human-friendly logs (default).
+	LogFormatPretty LogFormat = "pretty"
+	// LogFormatText outputs plain key=value logs.
+	LogFormatText LogFormat = "text"
+	// LogFormatJSON outputs machine-readable JSON logs.
+	LogFormatJSON LogFormat = "json"
+)
+
+// LogLevel defines the minimum severity for log output.
+type LogLevel string
+
+const (
+	LogLevelDebug LogLevel = "debug"
+	LogLevelInfo  LogLevel = "info"
+	LogLevelWarn  LogLevel = "warn"
+	LogLevelError LogLevel = "error"
+)
+
 const (
 	defaultAccessTokenTTL  = 900    // 15 minutes
 	defaultRefreshTokenTTL = 604800 // 7 days
@@ -20,7 +42,8 @@ type Config struct {
 	Port            int
 	DatabaseURL     string
 	RedisURL        string
-	LogLevel        string
+	LogLevel        LogLevel
+	LogFormat       LogFormat
 	AllowedOrigins  []string
 	SigningKeyPath  string
 	Issuer          string
@@ -43,7 +66,8 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Port:           8080,
 		RedisURL:       "redis://localhost:6379/0",
-		LogLevel:       "info",
+		LogLevel:       LogLevelInfo,
+		LogFormat:      LogFormatPretty,
 		SigningKeyPath: defaultSigningKeyPath,
 		Issuer:         defaultIssuer,
 	}
@@ -66,7 +90,23 @@ func Load() (*Config, error) {
 	}
 
 	if v := os.Getenv("RAMPART_LOG_LEVEL"); v != "" {
-		cfg.LogLevel = v
+		level := LogLevel(strings.ToLower(v))
+		switch level {
+		case LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError:
+			cfg.LogLevel = level
+		default:
+			return nil, fmt.Errorf("invalid RAMPART_LOG_LEVEL %q (valid: debug, info, warn, error)", v)
+		}
+	}
+
+	if v := os.Getenv("RAMPART_LOG_FORMAT"); v != "" {
+		format := LogFormat(strings.ToLower(v))
+		switch format {
+		case LogFormatPretty, LogFormatText, LogFormatJSON:
+			cfg.LogFormat = format
+		default:
+			return nil, fmt.Errorf("invalid RAMPART_LOG_FORMAT %q (valid: pretty, text, json)", v)
+		}
 	}
 
 	if v := os.Getenv("RAMPART_ALLOWED_ORIGINS"); v != "" {

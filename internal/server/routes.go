@@ -203,6 +203,7 @@ type AdminConsoleEndpoints interface {
 	ImportOrgAction(w http.ResponseWriter, r *http.Request)
 	OIDCPage(w http.ResponseWriter, r *http.Request)
 	SocialProvidersPage(w http.ResponseWriter, r *http.Request)
+	UpdateSocialProviderAction(w http.ResponseWriter, r *http.Request)
 }
 
 // AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
@@ -302,5 +303,6 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 
 		// Social Providers
 		r.Get("/admin/social", console.SocialProvidersPage)
+		r.Post("/admin/social/{provider}", console.UpdateSocialProviderAction)
 	})
 }
