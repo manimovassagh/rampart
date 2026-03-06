@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -12,7 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
+	"github.com/manimovassagh/rampart/internal/handler"
 	"github.com/manimovassagh/rampart/internal/middleware"
+	"github.com/manimovassagh/rampart/internal/model"
 )
 
 // testRSAKeyPEM is a 2048-bit RSA key used only in tests.
@@ -732,6 +737,58 @@ func (s *stubAdminConsoleEndpoints) SocialProvidersPage(w http.ResponseWriter, _
 }
 func (s *stubAdminConsoleEndpoints) UpdateSocialProviderAction(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+// stubMFAStore implements handler.MFAStore for route registration tests.
+type stubMFAStore struct{}
+
+func (s *stubMFAStore) GetTOTPDevicesByUserID(_ context.Context, _ uuid.UUID) ([]*model.TOTPDevice, error) {
+	return nil, nil
+}
+func (s *stubMFAStore) CreateTOTPDevice(_ context.Context, d *model.TOTPDevice) (*model.TOTPDevice, error) {
+	return d, nil
+}
+func (s *stubMFAStore) VerifyTOTPDevice(_ context.Context, _ uuid.UUID) error  { return nil }
+func (s *stubMFAStore) DeleteTOTPDevice(_ context.Context, _ uuid.UUID) error  { return nil }
+func (s *stubMFAStore) UpdateTOTPDeviceLastUsed(_ context.Context, _ uuid.UUID) error { return nil }
+func (s *stubMFAStore) CreateRecoveryCodes(_ context.Context, _ uuid.UUID, _ []*model.RecoveryCode) error {
+	return nil
+}
+func (s *stubMFAStore) GetUnusedRecoveryCodes(_ context.Context, _ uuid.UUID) ([]*model.RecoveryCode, error) {
+	return nil, nil
+}
+func (s *stubMFAStore) UseRecoveryCode(_ context.Context, _ uuid.UUID) error { return nil }
+func (s *stubMFAStore) SetUserMFAEnabled(_ context.Context, _ uuid.UUID, _ bool) error { return nil }
+
+func TestRegisterMFARoutes(t *testing.T) {
+	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+	r := NewRouter(logger, []string{"*"})
+
+	mfaH := handler.NewMFAHandler(&stubMFAStore{}, logger)
+	RegisterMFARoutes(r, testPubKey, mfaH)
+
+	paths := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPost, "/api/v1/mfa/totp/enroll"},
+		{http.MethodPost, "/api/v1/mfa/totp/verify"},
+		{http.MethodPost, "/api/v1/mfa/totp/validate"},
+		{http.MethodDelete, "/api/v1/mfa/totp/" + uuid.New().String()},
+		{http.MethodGet, "/api/v1/mfa/devices"},
+		{http.MethodGet, "/api/v1/mfa/recovery-codes"},
+		{http.MethodPost, "/api/v1/mfa/recovery-codes/regenerate"},
+	}
+
+	for _, tt := range paths {
+		req := httptest.NewRequest(tt.method, tt.path, http.NoBody)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("%s %s: status = %d, want %d", tt.method, tt.path, w.Code, http.StatusUnauthorized)
+		}
+	}
 }
 
 func TestRegisterAdminConsoleRoutes(t *testing.T) {
