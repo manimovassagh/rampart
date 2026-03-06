@@ -55,6 +55,9 @@ CLAUDE.md
 .claude/
 .mcp.json
 
+# Internal plans (local only)
+plans/
+
 # Screenshots (dev testing artifacts)
 *.png
 !docs/images/*.png
