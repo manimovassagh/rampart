@@ -42,7 +42,7 @@ func (m *mockWebhookStore) CreateWebhook(_ context.Context, wh *model.Webhook) (
 	return wh, nil
 }
 
-func (m *mockWebhookStore) GetWebhook(_ context.Context, id uuid.UUID) (*model.Webhook, error) {
+func (m *mockWebhookStore) GetWebhookByID(_ context.Context, id uuid.UUID) (*model.Webhook, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}
@@ -54,14 +54,14 @@ func (m *mockWebhookStore) GetWebhook(_ context.Context, id uuid.UUID) (*model.W
 	return nil, nil
 }
 
-func (m *mockWebhookStore) ListWebhooks(_ context.Context, _ uuid.UUID) ([]*model.Webhook, error) {
+func (m *mockWebhookStore) ListWebhooks(_ context.Context, _ uuid.UUID, _, _ int) ([]*model.Webhook, int, error) {
 	if m.listErr != nil {
-		return nil, m.listErr
+		return nil, 0, m.listErr
 	}
-	return m.webhooks, nil
+	return m.webhooks, len(m.webhooks), nil
 }
 
-func (m *mockWebhookStore) UpdateWebhook(_ context.Context, _ *model.Webhook) error {
+func (m *mockWebhookStore) UpdateWebhookEnabled(_ context.Context, _ uuid.UUID, _ bool) error {
 	return m.updateErr
 }
 
@@ -69,11 +69,11 @@ func (m *mockWebhookStore) DeleteWebhook(_ context.Context, _ uuid.UUID) error {
 	return m.deleteErr
 }
 
-func (m *mockWebhookStore) GetWebhookDeliveries(_ context.Context, _ uuid.UUID, _ int) ([]*model.WebhookDelivery, error) {
+func (m *mockWebhookStore) ListWebhookDeliveries(_ context.Context, _ uuid.UUID, _, _ int) ([]*model.WebhookDelivery, int, error) {
 	if m.deliverErr != nil {
-		return nil, m.deliverErr
+		return nil, 0, m.deliverErr
 	}
-	return m.deliveries, nil
+	return m.deliveries, len(m.deliveries), nil
 }
 
 // mockDispatcherStore implements webhook.Store for creating a real dispatcher.
@@ -290,26 +290,5 @@ func TestWebhookCreateNoAuth(t *testing.T) {
 
 	if rr.Code != http.StatusUnauthorized {
 		t.Errorf("expected status 401, got %d", rr.Code)
-	}
-}
-
-func TestMaskSecret(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{name: "ShortSecret", input: "abcd", expected: "****"},
-		{name: "ExactlyEight", input: "abcdefgh", expected: "****"},
-		{name: "LongSecret", input: "abcd1234efgh5678", expected: "abcd****5678"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result := maskSecret(tc.input)
-			if result != tc.expected {
-				t.Errorf("maskSecret(%q) = %q, want %q", tc.input, result, tc.expected)
-			}
-		})
 	}
 }

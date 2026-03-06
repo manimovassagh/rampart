@@ -1,15 +1,12 @@
 package handler
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
-
-	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/middleware"
@@ -21,16 +18,6 @@ const (
 	hmacSecretBytes      = 32
 	defaultDeliveryLimit = 50
 )
-
-// WebhookStore defines the database operations for webhook management.
-type WebhookStore interface {
-	CreateWebhook(ctx context.Context, wh *model.Webhook) (*model.Webhook, error)
-	GetWebhook(ctx context.Context, id uuid.UUID) (*model.Webhook, error)
-	ListWebhooks(ctx context.Context, orgID uuid.UUID) ([]*model.Webhook, error)
-	UpdateWebhook(ctx context.Context, wh *model.Webhook) error
-	DeleteWebhook(ctx context.Context, id uuid.UUID) error
-	GetWebhookDeliveries(ctx context.Context, webhookID uuid.UUID, limit int) ([]*model.WebhookDelivery, error)
-}
 
 // WebhookHandler handles admin webhook API endpoints.
 type WebhookHandler struct {
@@ -105,19 +92,20 @@ func (h *WebhookHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	orgID := resolveOrgID(r, authUser)
 
-	webhooks, err := h.store.ListWebhooks(r.Context(), orgID)
+	webhooks, _, err := h.store.ListWebhooks(r.Context(), orgID, maxPageLimit, 0)
 	if err != nil {
 		h.logger.Error("failed to list webhooks", "error", err)
 		apierror.InternalError(w)
 		return
 	}
 
-	// Mask secrets in list response.
-	for _, wh := range webhooks {
-		wh.Secret = maskSecret(wh.Secret)
+	// Return responses without secrets.
+	responses := make([]*model.WebhookResponse, len(webhooks))
+	for i, wh := range webhooks {
+		responses[i] = wh.ToResponse()
 	}
 
-	writeJSON(w, http.StatusOK, webhooks, h.logger)
+	writeJSON(w, http.StatusOK, responses, h.logger)
 }
 
 // Get handles GET /api/v1/admin/webhooks/{id}.
@@ -127,7 +115,7 @@ func (h *WebhookHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wh, err := h.store.GetWebhook(r.Context(), webhookID)
+	wh, err := h.store.GetWebhookByID(r.Context(), webhookID)
 	if err != nil {
 		h.logger.Error("failed to get webhook", "error", err)
 		apierror.InternalError(w)
@@ -138,11 +126,10 @@ func (h *WebhookHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wh.Secret = maskSecret(wh.Secret)
-	writeJSON(w, http.StatusOK, wh, h.logger)
+	writeJSON(w, http.StatusOK, wh.ToResponse(), h.logger)
 }
 
-// Update handles PUT /api/v1/admin/webhooks/{id}.
+// Update handles PUT /api/v1/admin/webhooks/{id} (toggle enabled).
 func (h *WebhookHandler) Update(w http.ResponseWriter, r *http.Request) {
 	webhookID, ok := parseUUIDParam(w, r)
 	if !ok {
@@ -151,45 +138,21 @@ func (h *WebhookHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 
-	var req model.UpdateWebhookRequest
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apierror.BadRequest(w, msgInvalidJSON)
 		return
 	}
 
-	if req.URL == "" {
-		apierror.BadRequest(w, "Webhook URL is required.")
-		return
-	}
-	if len(req.Events) == 0 {
-		apierror.BadRequest(w, "At least one event type is required.")
-		return
-	}
-
-	existing, err := h.store.GetWebhook(r.Context(), webhookID)
-	if err != nil {
-		h.logger.Error("failed to get webhook", "error", err)
-		apierror.InternalError(w)
-		return
-	}
-	if existing == nil {
-		apierror.NotFound(w)
-		return
-	}
-
-	existing.URL = req.URL
-	existing.Events = req.Events
-	existing.Enabled = req.Enabled
-	existing.Description = req.Description
-
-	if err := h.store.UpdateWebhook(r.Context(), existing); err != nil {
+	if err := h.store.UpdateWebhookEnabled(r.Context(), webhookID, req.Enabled); err != nil {
 		h.logger.Error("failed to update webhook", "error", err)
 		apierror.InternalError(w)
 		return
 	}
 
-	existing.Secret = maskSecret(existing.Secret)
-	writeJSON(w, http.StatusOK, existing, h.logger)
+	writeJSON(w, http.StatusOK, map[string]bool{"enabled": req.Enabled}, h.logger)
 }
 
 // Delete handles DELETE /api/v1/admin/webhooks/{id}.
@@ -220,7 +183,7 @@ func (h *WebhookHandler) Deliveries(w http.ResponseWriter, r *http.Request) {
 		limit = maxPageLimit
 	}
 
-	deliveries, err := h.store.GetWebhookDeliveries(r.Context(), webhookID, limit)
+	deliveries, _, err := h.store.ListWebhookDeliveries(r.Context(), webhookID, limit, 0)
 	if err != nil {
 		h.logger.Error("failed to get webhook deliveries", "error", err)
 		apierror.InternalError(w)
@@ -237,7 +200,7 @@ func (h *WebhookHandler) Test(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wh, err := h.store.GetWebhook(r.Context(), webhookID)
+	wh, err := h.store.GetWebhookByID(r.Context(), webhookID)
 	if err != nil {
 		h.logger.Error("failed to get webhook", "error", err)
 		apierror.InternalError(w)
@@ -265,11 +228,4 @@ func generateHMACSecret() (string, error) {
 		return "", fmt.Errorf("generating random bytes: %w", err)
 	}
 	return hex.EncodeToString(b), nil
-}
-
-func maskSecret(secret string) string {
-	if len(secret) <= 8 {
-		return "****"
-	}
-	return secret[:4] + "****" + secret[len(secret)-4:]
 }

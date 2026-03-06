@@ -19,6 +19,30 @@ type Webhook struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// WebhookResponse is the admin-facing representation (secret omitted).
+type WebhookResponse struct {
+	ID          uuid.UUID `json:"id"`
+	URL         string    `json:"url"`
+	Events      []string  `json:"events"`
+	Enabled     bool      `json:"enabled"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// ToResponse converts a Webhook to its admin response representation.
+func (w *Webhook) ToResponse() *WebhookResponse {
+	return &WebhookResponse{
+		ID:          w.ID,
+		URL:         w.URL,
+		Events:      w.Events,
+		Enabled:     w.Enabled,
+		Description: w.Description,
+		CreatedAt:   w.CreatedAt,
+		UpdatedAt:   w.UpdatedAt,
+	}
+}
+
 // WebhookDelivery represents a row in the webhook_deliveries table.
 type WebhookDelivery struct {
 	ID             uuid.UUID  `json:"id"`

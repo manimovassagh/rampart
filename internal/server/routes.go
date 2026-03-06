@@ -229,6 +229,13 @@ type AdminConsoleEndpoints interface {
 	ImportOrgAction(w http.ResponseWriter, r *http.Request)
 	OIDCPage(w http.ResponseWriter, r *http.Request)
 	SocialProvidersPage(w http.ResponseWriter, r *http.Request)
+	WebhooksPage(w http.ResponseWriter, r *http.Request)
+	WebhookDetailPage(w http.ResponseWriter, r *http.Request)
+	WebhookCreatePage(w http.ResponseWriter, r *http.Request)
+	WebhookCreate(w http.ResponseWriter, r *http.Request)
+	WebhookDelete(w http.ResponseWriter, r *http.Request)
+	WebhookToggle(w http.ResponseWriter, r *http.Request)
+	WebhookTest(w http.ResponseWriter, r *http.Request)
 }
 
 // AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
@@ -328,5 +335,14 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 
 		// Social Providers
 		r.Get("/admin/social", console.SocialProvidersPage)
+
+		// Webhooks
+		r.Get("/admin/webhooks", console.WebhooksPage)
+		r.Get("/admin/webhooks/new", console.WebhookCreatePage)
+		r.Post("/admin/webhooks", console.WebhookCreate)
+		r.Get("/admin/webhooks/{id}", console.WebhookDetailPage)
+		r.Post("/admin/webhooks/{id}/delete", console.WebhookDelete)
+		r.Post("/admin/webhooks/{id}/toggle", console.WebhookToggle)
+		r.Post("/admin/webhooks/{id}/test", console.WebhookTest)
 	})
 }
