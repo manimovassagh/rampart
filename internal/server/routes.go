@@ -9,6 +9,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/middleware"
 )
 
@@ -30,6 +31,11 @@ func NewRouter(logger *slog.Logger, allowedOrigins []string) *chi.Mux {
 		MaxAge:           300,
 	}))
 	r.Use(middleware.Logging(logger))
+
+	// Custom 404 handler — return JSON instead of plain text
+	r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+		apierror.NotFound(w)
+	})
 
 	return r
 }
@@ -208,6 +214,11 @@ type AdminLoginEndpoints interface {
 
 // RegisterAdminConsoleRoutes mounts SSR admin console routes under /admin/.
 func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byte, staticHandler http.Handler, login AdminLoginEndpoints, console AdminConsoleEndpoints) {
+	// Redirect /admin to /admin/ so the dashboard is reachable without trailing slash
+	r.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/admin/", http.StatusMovedPermanently)
+	})
+
 	// Static assets (CSS, JS) — no auth required, long cache
 	r.Handle("/static/*", http.StripPrefix("/static/", staticHandler))
 
