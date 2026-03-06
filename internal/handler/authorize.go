@@ -83,20 +83,22 @@ func NewAuthorizeHandler(store AuthorizeStore, logger *slog.Logger, auditLogger 
 }
 
 type loginPageData struct {
-	ClientID         string
-	ClientName       string
-	RedirectURI      string
-	Scope            string
-	State            string
-	CodeChallenge    string
-	Error            string
-	LogoURL          string
-	PrimaryColor     string
-	BackgroundColor  string
-	LoginPageTitle   string
-	LoginPageMessage string
-	Theme            string
-	SocialProviders  []string
+	ClientID               string
+	ClientName             string
+	RedirectURI            string
+	Scope                  string
+	State                  string
+	CodeChallenge          string
+	Error                  string
+	LogoURL                string
+	PrimaryColor           string
+	BackgroundColor        string
+	LoginPageTitle         string
+	LoginPageMessage       string
+	Theme                  string
+	SocialProviders        []string
+	ForgotPasswordEnabled  bool
+	RegistrationEnabled    bool
 }
 
 // Authorize handles both GET (render login) and POST (authenticate + redirect).
@@ -332,6 +334,8 @@ func (h *AuthorizeHandler) applyOrgSettings(ctx context.Context, orgID uuid.UUID
 	data.BackgroundColor = settings.BackgroundColor
 	data.LoginPageTitle = settings.LoginPageTitle
 	data.LoginPageMessage = settings.LoginPageMessage
+	data.ForgotPasswordEnabled = settings.ForgotPasswordEnabled
+	data.RegistrationEnabled = settings.SelfRegistrationEnabled
 
 	theme := settings.LoginTheme
 	if !validThemes[theme] {
