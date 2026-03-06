@@ -655,6 +655,135 @@ func TestCSRFProtectBlocksDELETE(t *testing.T) {
 	}
 }
 
+func TestGenerateCSRFToken(t *testing.T) {
+	tok, err := GenerateCSRFToken()
+	if err != nil {
+		t.Fatalf("GenerateCSRFToken error: %v", err)
+	}
+	if len(tok) != 64 { // 32 bytes hex-encoded = 64 chars
+		t.Errorf("token length = %d, want 64", len(tok))
+	}
+
+	// Two tokens should differ
+	tok2, err := GenerateCSRFToken()
+	if err != nil {
+		t.Fatalf("GenerateCSRFToken error: %v", err)
+	}
+	if tok == tok2 {
+		t.Error("two generated CSRF tokens should differ")
+	}
+}
+
+func TestSetOAuthCSRFCookie(t *testing.T) {
+	w := httptest.NewRecorder()
+	SetOAuthCSRFCookie(w, "test-csrf-value")
+
+	cookies := w.Result().Cookies()
+	var found *http.Cookie
+	for _, c := range cookies {
+		if c.Name == OAuthCSRFCookieName {
+			found = c
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("expected OAuth CSRF cookie to be set")
+	}
+	if found.Value != "test-csrf-value" {
+		t.Errorf("cookie value = %q, want test-csrf-value", found.Value)
+	}
+	if !found.HttpOnly {
+		t.Error("expected HttpOnly flag on OAuth CSRF cookie")
+	}
+	if found.Path != "/oauth/" {
+		t.Errorf("cookie path = %q, want /oauth/", found.Path)
+	}
+	if found.SameSite != http.SameSiteStrictMode {
+		t.Errorf("cookie SameSite = %v, want Strict", found.SameSite)
+	}
+}
+
+func TestValidateOAuthCSRFValid(t *testing.T) {
+	tok := "matching-csrf-token"
+	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: OAuthCSRFCookieName, Value: tok})
+
+	if !ValidateOAuthCSRF(req, tok) {
+		t.Error("expected validation to pass for matching tokens")
+	}
+}
+
+func TestValidateOAuthCSRFMismatch(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: OAuthCSRFCookieName, Value: "cookie-value"})
+
+	if ValidateOAuthCSRF(req, "form-value") {
+		t.Error("expected validation to fail for mismatched tokens")
+	}
+}
+
+func TestValidateOAuthCSRFNoCookie(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", http.NoBody)
+
+	if ValidateOAuthCSRF(req, "some-token") {
+		t.Error("expected validation to fail when cookie is missing")
+	}
+}
+
+func TestValidateOAuthCSRFEmptyFormToken(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: OAuthCSRFCookieName, Value: "some-value"})
+
+	if ValidateOAuthCSRF(req, "") {
+		t.Error("expected validation to fail for empty form token")
+	}
+}
+
+func TestValidateOAuthCSRFEmptyCookieValue(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/oauth/authorize", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: OAuthCSRFCookieName, Value: ""})
+
+	if ValidateOAuthCSRF(req, "some-token") {
+		t.Error("expected validation to fail for empty cookie value")
+	}
+}
+
+func TestSetSecureCookiesToggle(t *testing.T) {
+	// Save original value and restore after test
+	original := SecureCookiesEnabled()
+	defer SetSecureCookies(original)
+
+	SetSecureCookies(true)
+	if !SecureCookiesEnabled() {
+		t.Error("expected SecureCookiesEnabled() = true after SetSecureCookies(true)")
+	}
+
+	SetSecureCookies(false)
+	if SecureCookiesEnabled() {
+		t.Error("expected SecureCookiesEnabled() = false after SetSecureCookies(false)")
+	}
+}
+
+func TestSetAdminSessionSecureFlagFollowsConfig(t *testing.T) {
+	original := SecureCookiesEnabled()
+	defer SetSecureCookies(original)
+
+	SetSecureCookies(true)
+	w := httptest.NewRecorder()
+	SetAdminSession(w, "test-token", testHMACKey, 3600)
+
+	cookies := w.Result().Cookies()
+	for _, c := range cookies {
+		if c.Name == sessionCookieName {
+			if !c.Secure {
+				t.Error("expected Secure flag when SecureCookies is true")
+			}
+			return
+		}
+	}
+	t.Fatal("session cookie not found")
+}
+
 func TestCSRFProtectBlocksPUT(t *testing.T) {
 	handler := CSRFProtect()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Error("handler should not be called")

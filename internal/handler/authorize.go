@@ -15,6 +15,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/database"
+	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
 	"github.com/manimovassagh/rampart/internal/social"
@@ -99,6 +100,7 @@ type loginPageData struct {
 	SocialProviders        []string
 	ForgotPasswordEnabled  bool
 	RegistrationEnabled    bool
+	CSRFToken              string
 }
 
 // Authorize handles both GET (render login) and POST (authenticate + redirect).
@@ -164,6 +166,13 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		scope = scopeOpenID
 	}
 
+	csrfToken, err := middleware.GenerateCSRFToken()
+	if err != nil {
+		h.logger.Error("failed to generate CSRF token", "error", err)
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
+		return
+	}
+
 	data := &loginPageData{
 		ClientID:      clientID,
 		ClientName:    client.Name,
@@ -171,11 +180,13 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		Scope:         scope,
 		State:         state,
 		CodeChallenge: codeChallenge,
+		CSRFToken:     csrfToken,
 	}
 	if h.socialRegistry != nil {
 		data.SocialProviders = h.socialRegistry.Names()
 	}
 	h.applyOrgSettings(r.Context(), client.OrgID, data)
+	middleware.SetOAuthCSRFCookie(w, csrfToken)
 	h.renderLoginPage(w, data)
 }
 
@@ -190,6 +201,13 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	if err := r.ParseForm(); err != nil {
 		apierror.BadRequest(w, "Invalid form data.")
+		return
+	}
+
+	// Validate CSRF token before processing credentials
+	csrfFormToken := r.FormValue("csrf_token")
+	if !middleware.ValidateOAuthCSRF(r, csrfFormToken) {
+		h.renderError(w, http.StatusForbidden, "CSRF validation failed. Please reload the login page and try again.")
 		return
 	}
 
@@ -237,6 +255,12 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		pageData.SocialProviders = h.socialRegistry.Names()
 	}
 	h.applyOrgSettings(ctx, client.OrgID, &pageData)
+
+	// Generate a fresh CSRF token for any re-render of the login page
+	if newCSRF, csrfErr := middleware.GenerateCSRFToken(); csrfErr == nil {
+		pageData.CSRFToken = newCSRF
+		middleware.SetOAuthCSRFCookie(w, newCSRF)
+	}
 
 	if identifier == "" || password == "" {
 		pageData.Error = "Username/email and password are required."

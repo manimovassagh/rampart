@@ -107,6 +107,7 @@ func (h *AdminLoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   600, // 10 minutes
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
+		Secure:   middleware.SecureCookiesEnabled(),
 	})
 
 	redirectURI := h.issuer + "/admin/callback"
@@ -144,6 +145,8 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		Path:     middleware.AdminCookiePath,
 		MaxAge:   -1,
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   middleware.SecureCookiesEnabled(),
 	})
 
 	// Parse state.verifier
