@@ -36,6 +36,9 @@ func run(_ *slog.Logger) error {
 		return err
 	}
 
+	// Configure cookie security based on environment
+	middleware.SetSecureCookies(cfg.SecureCookies)
+
 	// Reconfigure logger with the loaded log level and format
 	logOpts := &slog.HandlerOptions{Level: parseLogLevel(string(cfg.LogLevel))}
 	var logHandler slog.Handler
