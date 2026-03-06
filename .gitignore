@@ -50,9 +50,10 @@ samples/**/dist/
 # Playwright MCP
 .playwright-mcp/
 
-# Claude Code local settings
-.claude/settings.local.json
+# AI tooling config (local only)
+.claude/
 .mcp.json
+CLAUDE.md
 
 # Screenshots (dev testing artifacts)
 *.png
