@@ -16,12 +16,12 @@ func TestSecurityHeadersDefaultHeaders(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	expected := map[string]string{
-		"X-Content-Type-Options": "nosniff",
-		"X-Frame-Options":       "DENY",
-		"X-Xss-Protection":      "1; mode=block",
-		"Referrer-Policy":       "strict-origin-when-cross-origin",
+		"X-Content-Type-Options":  "nosniff",
+		"X-Frame-Options":         "DENY",
+		"X-Xss-Protection":        "1; mode=block",
+		"Referrer-Policy":         "strict-origin-when-cross-origin",
 		"Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
-		"Permissions-Policy":    "camera=(), microphone=(), geolocation=()",
+		"Permissions-Policy":      "camera=(), microphone=(), geolocation=()",
 	}
 
 	for header, want := range expected {

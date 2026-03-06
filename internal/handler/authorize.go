@@ -84,23 +84,23 @@ func NewAuthorizeHandler(store AuthorizeStore, logger *slog.Logger, auditLogger 
 }
 
 type loginPageData struct {
-	ClientID               string
-	ClientName             string
-	RedirectURI            string
-	Scope                  string
-	State                  string
-	CodeChallenge          string
-	Error                  string
-	LogoURL                string
-	PrimaryColor           string
-	BackgroundColor        string
-	LoginPageTitle         string
-	LoginPageMessage       string
-	Theme                  string
-	SocialProviders        []string
-	ForgotPasswordEnabled  bool
-	RegistrationEnabled    bool
-	CSRFToken              string
+	ClientID              string
+	ClientName            string
+	RedirectURI           string
+	Scope                 string
+	State                 string
+	CodeChallenge         string
+	Error                 string
+	LogoURL               string
+	PrimaryColor          string
+	BackgroundColor       string
+	LoginPageTitle        string
+	LoginPageMessage      string
+	Theme                 string
+	SocialProviders       []string
+	ForgotPasswordEnabled bool
+	RegistrationEnabled   bool
+	CSRFToken             string
 }
 
 // Authorize handles both GET (render login) and POST (authenticate + redirect).
