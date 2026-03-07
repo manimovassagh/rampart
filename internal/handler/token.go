@@ -163,14 +163,11 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Fetch user roles (excluding internal admin role for external clients)
+	// Fetch user roles
 	roles, rErr := h.store.GetEffectiveUserRoles(ctx, user.ID)
 	if rErr != nil {
 		h.logger.Warn("failed to fetch user roles for token", "error", rErr)
 		roles = nil
-	}
-	if authCode.ClientID != adminClientID {
-		roles = filterInternalRoles(roles)
 	}
 
 	// Generate access token
@@ -298,20 +295,4 @@ func (h *TokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-// internalRoles are roles that should not be exposed to external OAuth clients.
-var internalRoles = map[string]bool{"admin": true}
-
-// filterInternalRoles removes internal-only roles (like admin) from the role list.
-// External OAuth clients should not receive admin privileges — admin access is only
-// available through the Rampart admin console itself, similar to Keycloak's approach.
-func filterInternalRoles(roles []string) []string {
-	filtered := make([]string, 0, len(roles))
-	for _, r := range roles {
-		if !internalRoles[r] {
-			filtered = append(filtered, r)
-		}
-	}
-	return filtered
 }

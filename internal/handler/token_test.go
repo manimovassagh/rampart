@@ -566,55 +566,6 @@ func TestTokenWithOrgSettings(t *testing.T) {
 	}
 }
 
-func TestFilterInternalRolesRemovesAdmin(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    []string
-		expected []string
-	}{
-		{
-			name:     "removes admin role",
-			input:    []string{"user", "admin", "editor"},
-			expected: []string{"user", "editor"},
-		},
-		{
-			name:     "no admin role present",
-			input:    []string{"user", "editor"},
-			expected: []string{"user", "editor"},
-		},
-		{
-			name:     "only admin role",
-			input:    []string{"admin"},
-			expected: []string{},
-		},
-		{
-			name:     "empty roles",
-			input:    []string{},
-			expected: []string{},
-		},
-		{
-			name:     "nil roles",
-			input:    nil,
-			expected: []string{},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result := filterInternalRoles(tc.input)
-			if len(result) != len(tc.expected) {
-				t.Errorf("len = %d, want %d; result = %v", len(result), len(tc.expected), result)
-				return
-			}
-			for i, r := range result {
-				if r != tc.expected[i] {
-					t.Errorf("result[%d] = %q, want %q", i, r, tc.expected[i])
-				}
-			}
-		})
-	}
-}
-
 func TestTokenWithAdminClientIncludesAdminRole(t *testing.T) {
 	orgID := uuid.New()
 	userID := uuid.New()

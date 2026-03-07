@@ -36,9 +36,11 @@ export async function generateCodeChallenge(verifier) {
 export async function login() {
   const verifier = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
+  const state = generateCodeVerifier(); // random state for CSRF protection
 
-  // Store verifier so we can use it in the callback
+  // Store verifier and state so we can use them in the callback
   sessionStorage.setItem("pkce_code_verifier", verifier);
+  sessionStorage.setItem("oauth_state", state);
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -47,6 +49,7 @@ export async function login() {
     code_challenge: challenge,
     code_challenge_method: "S256",
     scope: "openid profile email",
+    state,
   });
 
   window.location.href = `${RAMPART_URL}/oauth/authorize?${params.toString()}`;
@@ -63,6 +66,13 @@ export async function handleCallback() {
 
   if (!code) {
     throw new Error("No authorization code found in callback URL");
+  }
+
+  // Validate state to prevent CSRF
+  const returnedState = params.get("state");
+  const savedState = sessionStorage.getItem("oauth_state");
+  if (!returnedState || returnedState !== savedState) {
+    throw new Error("State mismatch — possible CSRF attack");
   }
 
   const verifier = sessionStorage.getItem("pkce_code_verifier");
@@ -98,6 +108,7 @@ export async function handleCallback() {
   }
 
   sessionStorage.removeItem("pkce_code_verifier");
+  sessionStorage.removeItem("oauth_state");
 
   return tokens;
 }
