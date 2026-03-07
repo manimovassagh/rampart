@@ -76,6 +76,33 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID)
 	return &u, nil
 }
 
+// FindUserByEmail finds a user by email across all organizations.
+// Used for password reset where org context is not available.
+func (db *DB) FindUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	query := `
+		SELECT id, org_id, username, email, email_verified, given_name, family_name,
+		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
+		       created_at, updated_at
+		FROM users
+		WHERE email = $1
+		LIMIT 1`
+
+	var u model.User
+	err := db.Pool.QueryRow(ctx, query, email).Scan(
+		&u.ID, &u.OrgID, &u.Username, &u.Email, &u.EmailVerified,
+		&u.GivenName, &u.FamilyName, &u.Enabled, &u.MFAEnabled,
+		&u.PasswordHash, &u.FailedLoginAttempts, &u.LockedUntil,
+		&u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("querying user by email: %w", err)
+	}
+	return &u, nil
+}
+
 // GetUserByID finds a user by their UUID.
 func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	query := `

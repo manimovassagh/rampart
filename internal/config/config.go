@@ -76,6 +76,13 @@ type Config struct {
 	// If empty, secrets are stored in plaintext (backwards compatible).
 	EncryptionKey string
 
+	// SMTP settings for transactional emails (password reset, etc.)
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+
 	// Social login providers
 	GoogleClientID     string
 	GoogleClientSecret string
@@ -236,6 +243,20 @@ func Load() (*Config, error) {
 	}
 
 	cfg.EncryptionKey = os.Getenv("RAMPART_ENCRYPTION_KEY")
+
+	// SMTP
+	cfg.SMTPHost = os.Getenv("RAMPART_SMTP_HOST")
+	cfg.SMTPPort = 587 // default TLS port
+	if v := os.Getenv("RAMPART_SMTP_PORT"); v != "" {
+		p, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid RAMPART_SMTP_PORT %q: %w", v, err)
+		}
+		cfg.SMTPPort = p
+	}
+	cfg.SMTPUsername = os.Getenv("RAMPART_SMTP_USERNAME")
+	cfg.SMTPPassword = os.Getenv("RAMPART_SMTP_PASSWORD")
+	cfg.SMTPFrom = os.Getenv("RAMPART_SMTP_FROM")
 
 	// Social login providers
 	cfg.GoogleClientID = os.Getenv("RAMPART_GOOGLE_CLIENT_ID")

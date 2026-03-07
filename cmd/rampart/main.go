@@ -15,6 +15,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/config"
 	"github.com/manimovassagh/rampart/internal/crypto"
 	"github.com/manimovassagh/rampart/internal/database"
+	"github.com/manimovassagh/rampart/internal/email"
 	"github.com/manimovassagh/rampart/internal/handler"
 	"github.com/manimovassagh/rampart/internal/logging"
 	"github.com/manimovassagh/rampart/internal/middleware"
@@ -112,6 +113,24 @@ func run(_ *slog.Logger) error {
 	auditLogger := audit.NewLogger(db, logger)
 	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout, loginRL)
+
+	// Password reset (forgot-password / reset-password)
+	var emailSender handler.EmailSender
+	if cfg.SMTPHost != "" && cfg.SMTPFrom != "" {
+		emailSender = email.NewSender(email.Config{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
+		})
+		logger.Info("SMTP configured for transactional emails", "host", cfg.SMTPHost)
+	} else {
+		emailSender = &email.NoOpSender{}
+		logger.Warn("SMTP not configured — password reset tokens will be logged instead of emailed")
+	}
+	resetHandler := handler.NewPasswordResetHandler(db, emailSender, logger, cfg.Issuer)
+	server.RegisterPasswordResetRoutes(router, resetHandler.ForgotPassword, resetHandler.ResetPassword, loginRL)
 
 	meHandler := handler.NewMeHandler(db)
 	server.RegisterProtectedRoutes(router, kp.PublicKey, meHandler.Me)
@@ -225,6 +244,11 @@ func run(_ *slog.Logger) error {
 					logger.Warn("failed to clean up expired auth codes", "error", err)
 				} else if n > 0 {
 					logger.Info("cleaned up expired authorization codes", "count", n)
+				}
+				if n, err := db.DeleteExpiredPasswordResetTokens(cleanupCtx); err != nil {
+					logger.Warn("failed to clean up expired reset tokens", "error", err)
+				} else if n > 0 {
+					logger.Info("cleaned up expired password reset tokens", "count", n)
 				}
 			}
 		}

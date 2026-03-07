@@ -72,6 +72,18 @@ func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler
 	r.With(jsonMW).Post("/logout", logoutHandler)
 }
 
+// RegisterPasswordResetRoutes mounts forgot-password and reset-password endpoints.
+// If rl is non-nil, it is applied as rate limiting middleware.
+func RegisterPasswordResetRoutes(r *chi.Mux, forgotHandler, resetHandler http.HandlerFunc, rl *middleware.RateLimiter) {
+	jsonMW := middleware.RequireJSON
+	if rl != nil {
+		r.With(jsonMW, rl.Middleware()).Post("/forgot-password", forgotHandler)
+	} else {
+		r.With(jsonMW).Post("/forgot-password", forgotHandler)
+	}
+	r.With(jsonMW).Post("/reset-password", resetHandler)
+}
+
 // RegisterProtectedRoutes mounts endpoints that require authentication.
 func RegisterProtectedRoutes(r *chi.Mux, pubKey *rsa.PublicKey, meHandler http.HandlerFunc) {
 	r.Group(func(r chi.Router) {
