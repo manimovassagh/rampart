@@ -27,8 +27,13 @@ func (db *DB) UpsertSocialProviderConfig(ctx context.Context, cfg *model.SocialP
 			updated_at = now()
 		RETURNING id, created_at, updated_at`
 
+	encSecret, encErr := db.encryptToken(cfg.ClientSecret)
+	if encErr != nil {
+		return fmt.Errorf("encrypting client secret: %w", encErr)
+	}
+
 	return db.Pool.QueryRow(ctx, query,
-		cfg.OrgID, cfg.Provider, cfg.Enabled, cfg.ClientID, cfg.ClientSecret, extra,
+		cfg.OrgID, cfg.Provider, cfg.Enabled, cfg.ClientID, encSecret, extra,
 	).Scan(&cfg.ID, &cfg.CreatedAt, &cfg.UpdatedAt)
 }
 
@@ -52,6 +57,9 @@ func (db *DB) GetSocialProviderConfig(ctx context.Context, orgID uuid.UUID, prov
 
 	if err := json.Unmarshal(extraJSON, &cfg.ExtraConfig); err != nil {
 		return nil, fmt.Errorf("unmarshalling extra_config: %w", err)
+	}
+	if cfg.ClientSecret, err = db.decryptToken(cfg.ClientSecret); err != nil {
+		return nil, fmt.Errorf("decrypting client secret: %w", err)
 	}
 	return &cfg, nil
 }
@@ -83,6 +91,9 @@ func (db *DB) ListSocialProviderConfigs(ctx context.Context, orgID uuid.UUID) ([
 		}
 		if err := json.Unmarshal(extraJSON, &cfg.ExtraConfig); err != nil {
 			return nil, fmt.Errorf("unmarshalling extra_config: %w", err)
+		}
+		if cfg.ClientSecret, err = db.decryptToken(cfg.ClientSecret); err != nil {
+			return nil, fmt.Errorf("decrypting client secret: %w", err)
 		}
 		configs = append(configs, &cfg)
 	}

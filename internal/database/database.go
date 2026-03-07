@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/manimovassagh/rampart/internal/crypto"
 )
 
 const (
@@ -16,7 +18,8 @@ const (
 
 // DB wraps a pgx connection pool.
 type DB struct {
-	Pool *pgxpool.Pool
+	Pool      *pgxpool.Pool
+	Encryptor *crypto.Encryptor // nil means no encryption (plaintext fallback)
 }
 
 // Connect creates a new connection pool and verifies connectivity.

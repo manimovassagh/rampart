@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/config"
+	"github.com/manimovassagh/rampart/internal/crypto"
 	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/handler"
 	"github.com/manimovassagh/rampart/internal/logging"
@@ -66,6 +69,20 @@ func run(_ *slog.Logger) error {
 		return err
 	}
 	defer db.Close()
+
+	// Set up encryption for secrets at rest (social tokens, client secrets)
+	if cfg.EncryptionKey != "" {
+		keyBytes, err := hex.DecodeString(cfg.EncryptionKey)
+		if err != nil {
+			return fmt.Errorf("RAMPART_ENCRYPTION_KEY must be valid hex: %w", err)
+		}
+		enc, err := crypto.NewEncryptor(keyBytes)
+		if err != nil {
+			return fmt.Errorf("invalid encryption key: %w", err)
+		}
+		db.Encryptor = enc
+		logger.Info("encryption at rest enabled for social tokens and secrets")
+	}
 
 	if err := database.RunMigrations(cfg.DatabaseURL, "migrations", logger); err != nil {
 		return err

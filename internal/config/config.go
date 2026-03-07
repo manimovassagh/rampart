@@ -72,6 +72,10 @@ type Config struct {
 	// Rate limiting (requests per minute per IP)
 	RateLimit RateLimitConfig
 
+	// EncryptionKey is a hex-encoded 32-byte key for encrypting secrets at rest.
+	// If empty, secrets are stored in plaintext (backwards compatible).
+	EncryptionKey string
+
 	// Social login providers
 	GoogleClientID     string
 	GoogleClientSecret string
@@ -230,6 +234,8 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("invalid RAMPART_SECURE_COOKIES %q (valid: true, false)", v)
 		}
 	}
+
+	cfg.EncryptionKey = os.Getenv("RAMPART_ENCRYPTION_KEY")
 
 	// Social login providers
 	cfg.GoogleClientID = os.Getenv("RAMPART_GOOGLE_CLIENT_ID")
