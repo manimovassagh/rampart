@@ -4,8 +4,8 @@
 // against a Rampart IAM server.
 
 const RAMPART_URL = "http://localhost:8080";
-const CLIENT_ID = "demo-react-app";
-const REDIRECT_URI = "http://localhost:5173/callback";
+const CLIENT_ID = "sample-react-app";
+const REDIRECT_URI = "http://localhost:3002/callback";
 
 // --- PKCE helpers (Web Crypto API) ---
 
@@ -121,6 +121,96 @@ export function logout() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("id_token");
+}
+
+// --- Social Login ---
+
+export async function socialLogin(provider) {
+  const verifier = generateCodeVerifier();
+  const challenge = await generateCodeChallenge(verifier);
+  const state = generateCodeVerifier();
+
+  sessionStorage.setItem("pkce_code_verifier", verifier);
+  sessionStorage.setItem("oauth_state", state);
+
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    scope: "openid profile email",
+    state,
+    code_challenge: challenge,
+    nonce: generateCodeVerifier(),
+  });
+
+  window.location.href = `${RAMPART_URL}/oauth/social/${provider}?${params.toString()}`;
+}
+
+// --- Password Reset ---
+
+export async function forgotPassword(email) {
+  const response = await fetch(`${RAMPART_URL}/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  return response.json();
+}
+
+export async function resetPassword(token, newPassword) {
+  const response = await fetch(`${RAMPART_URL}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error_description || "Reset failed");
+  }
+  return response.json();
+}
+
+// --- MFA ---
+
+export async function verifyMFA(mfaToken, code) {
+  const response = await fetch(`${RAMPART_URL}/mfa/totp/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mfa_token: mfaToken, code }),
+  });
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error_description || "MFA verification failed");
+  }
+  const tokens = await response.json();
+  localStorage.setItem("access_token", tokens.access_token);
+  if (tokens.refresh_token) {
+    localStorage.setItem("refresh_token", tokens.refresh_token);
+  }
+  return tokens;
+}
+
+// --- Direct Login (for MFA flow) ---
+
+export async function directLogin(identifier, password) {
+  const response = await fetch(`${RAMPART_URL}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error_description || "Login failed");
+  }
+  // If MFA required, return the mfa_token
+  if (data.mfa_required) {
+    return { mfaRequired: true, mfaToken: data.mfa_token };
+  }
+  // Normal login — store tokens
+  localStorage.setItem("access_token", data.access_token);
+  if (data.refresh_token) {
+    localStorage.setItem("refresh_token", data.refresh_token);
+  }
+  return { mfaRequired: false };
 }
 
 // --- JWT helpers (client-side decode, no signature verification) ---
