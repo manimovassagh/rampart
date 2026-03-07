@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-600">
                 OpenID Connect Discovery metadata for this Rampart instance. These endpoints are publicly accessible.
             </p>
-            <button onclick="copyFullJSON()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-800 text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
+            <button data-copy-json class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-800 text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                 <span id="copy-json-label">Copy Full JSON</span>
             </button>
@@ -16,7 +16,7 @@
                 <span class="text-sm font-medium text-gray-700">Issuer</span>
                 <div class="col-span-2 flex items-center gap-2">
                     <span class="text-sm text-gray-600 font-mono flex-1" data-copy>{{.OIDC.Issuer}}</span>
-                    <button onclick="copyFromSibling(this)" class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
+                    <button data-copy-sibling class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
                         <svg class="w-4 h-4 text-gray-400 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <svg class="w-4 h-4 text-green-500 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </button>
@@ -26,7 +26,7 @@
                 <span class="text-sm font-medium text-gray-700">Authorization Endpoint</span>
                 <div class="col-span-2 flex items-center gap-2">
                     <span class="text-sm text-gray-600 font-mono flex-1" data-copy>{{.OIDC.AuthorizationEndpoint}}</span>
-                    <button onclick="copyFromSibling(this)" class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
+                    <button data-copy-sibling class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
                         <svg class="w-4 h-4 text-gray-400 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <svg class="w-4 h-4 text-green-500 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </button>
@@ -36,7 +36,7 @@
                 <span class="text-sm font-medium text-gray-700">Token Endpoint</span>
                 <div class="col-span-2 flex items-center gap-2">
                     <span class="text-sm text-gray-600 font-mono flex-1" data-copy>{{.OIDC.TokenEndpoint}}</span>
-                    <button onclick="copyFromSibling(this)" class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
+                    <button data-copy-sibling class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
                         <svg class="w-4 h-4 text-gray-400 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <svg class="w-4 h-4 text-green-500 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </button>
@@ -46,7 +46,7 @@
                 <span class="text-sm font-medium text-gray-700">UserInfo Endpoint</span>
                 <div class="col-span-2 flex items-center gap-2">
                     <span class="text-sm text-gray-600 font-mono flex-1" data-copy>{{.OIDC.UserinfoEndpoint}}</span>
-                    <button onclick="copyFromSibling(this)" class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
+                    <button data-copy-sibling class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
                         <svg class="w-4 h-4 text-gray-400 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <svg class="w-4 h-4 text-green-500 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </button>
@@ -56,7 +56,7 @@
                 <span class="text-sm font-medium text-gray-700">JWKS URI</span>
                 <div class="col-span-2 flex items-center gap-2">
                     <span class="text-sm text-gray-600 font-mono flex-1" data-copy>{{.OIDC.JWKSURI}}</span>
-                    <button onclick="copyFromSibling(this)" class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
+                    <button data-copy-sibling class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
                         <svg class="w-4 h-4 text-gray-400 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <svg class="w-4 h-4 text-green-500 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </button>
@@ -82,7 +82,7 @@
                 <span class="text-sm font-medium text-gray-700">Signing Algorithm</span>
                 <div class="col-span-2 flex items-center gap-2">
                     <span class="text-sm text-gray-600 font-mono flex-1" data-copy>RS256</span>
-                    <button onclick="copyFromSibling(this)" class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
+                    <button data-copy-sibling class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
                         <svg class="w-4 h-4 text-gray-400 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <svg class="w-4 h-4 text-green-500 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </button>
@@ -92,7 +92,7 @@
                 <span class="text-sm font-medium text-gray-700">Code Challenge Methods</span>
                 <div class="col-span-2 flex items-center gap-2">
                     <span class="text-sm text-gray-600 font-mono flex-1" data-copy>S256</span>
-                    <button onclick="copyFromSibling(this)" class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
+                    <button data-copy-sibling class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors copy-btn" title="Copy">
                         <svg class="w-4 h-4 text-gray-400 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <svg class="w-4 h-4 text-green-500 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </button>
@@ -108,39 +108,18 @@
     </div>
 </div>
 
-<script>
-function copyFromSibling(btn) {
-    var text = btn.parentElement.querySelector('[data-copy]').textContent.trim();
-    navigator.clipboard.writeText(text).then(function() {
-        var icon = btn.querySelector('.copy-icon');
-        var check = btn.querySelector('.check-icon');
-        icon.classList.add('hidden');
-        check.classList.remove('hidden');
-        setTimeout(function() {
-            icon.classList.remove('hidden');
-            check.classList.add('hidden');
-        }, 1500);
-    });
-}
-
-function copyFullJSON() {
-    var doc = {
-        issuer: "{{.OIDC.Issuer}}",
-        authorization_endpoint: "{{.OIDC.AuthorizationEndpoint}}",
-        token_endpoint: "{{.OIDC.TokenEndpoint}}",
-        userinfo_endpoint: "{{.OIDC.UserinfoEndpoint}}",
-        jwks_uri: "{{.OIDC.JWKSURI}}",
-        scopes_supported: [{{range $i, $s := .OIDC.ScopesSupported}}{{if $i}}, {{end}}"{{$s}}"{{end}}],
-        grant_types_supported: [{{range $i, $g := .OIDC.GrantTypesSupported}}{{if $i}}, {{end}}"{{$g}}"{{end}}],
-        response_types_supported: ["code"],
-        id_token_signing_alg_values_supported: ["RS256"],
-        code_challenge_methods_supported: ["S256"]
-    };
-    navigator.clipboard.writeText(JSON.stringify(doc, null, 2)).then(function() {
-        var label = document.getElementById('copy-json-label');
-        label.textContent = 'Copied!';
-        setTimeout(function() { label.textContent = 'Copy Full JSON'; }, 1500);
-    });
+<script id="oidc-json-data" type="application/json">
+{
+    "issuer": "{{.OIDC.Issuer}}",
+    "authorization_endpoint": "{{.OIDC.AuthorizationEndpoint}}",
+    "token_endpoint": "{{.OIDC.TokenEndpoint}}",
+    "userinfo_endpoint": "{{.OIDC.UserinfoEndpoint}}",
+    "jwks_uri": "{{.OIDC.JWKSURI}}",
+    "scopes_supported": [{{range $i, $s := .OIDC.ScopesSupported}}{{if $i}}, {{end}}"{{$s}}"{{end}}],
+    "grant_types_supported": [{{range $i, $g := .OIDC.GrantTypesSupported}}{{if $i}}, {{end}}"{{$g}}"{{end}}],
+    "response_types_supported": ["code"],
+    "id_token_signing_alg_values_supported": ["RS256"],
+    "code_challenge_methods_supported": ["S256"]
 }
 </script>
 {{end}}

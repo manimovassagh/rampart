@@ -16,7 +16,7 @@ const (
 	valueDeny              = "DENY"
 	valueXSSBlock          = "1; mode=block"
 	valueReferrerPolicy    = "strict-origin-when-cross-origin"
-	valueCSP               = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+	valueCSP               = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
 	valuePermissionsPolicy = "camera=(), microphone=(), geolocation=()"
 	valueHSTS              = "max-age=31536000; includeSubDomains"
 )

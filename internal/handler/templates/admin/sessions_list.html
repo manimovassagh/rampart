@@ -12,7 +12,7 @@
     <form method="POST" action="/admin/sessions/revoke-all">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button type="submit" class="ml-4 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
-                onclick="return confirm('Are you sure you want to revoke ALL active sessions? All users will be logged out.')">
+                data-confirm='Are you sure you want to revoke ALL active sessions? All users will be logged out.'>
             Revoke All
         </button>
     </form>
@@ -53,7 +53,7 @@
                     <form method="POST" action="/admin/sessions/{{.ID}}/delete" class="inline">
                         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                         <button type="submit" class="text-sm text-red-600 hover:text-red-800"
-                                onclick="return confirm('Revoke this session?')">Revoke</button>
+                                data-confirm='Revoke this session?'>Revoke</button>
                     </form>
                 </td>
             </tr>
