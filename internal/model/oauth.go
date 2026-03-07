@@ -74,6 +74,7 @@ type AuthorizationCode struct {
 	RedirectURI   string    `json:"redirect_uri"`
 	CodeChallenge string    `json:"code_challenge"`
 	Scope         string    `json:"scope"`
+	Nonce         string    `json:"nonce"`
 	Used          bool      `json:"used"`
 	ExpiresAt     time.Time `json:"expires_at"`
 	CreatedAt     time.Time `json:"created_at"`

@@ -180,6 +180,117 @@ func TestVerifyAccessTokenMalformed(t *testing.T) {
 	}
 }
 
+func TestGenerateIDToken(t *testing.T) {
+	userID := uuid.New()
+	orgID := uuid.New()
+	ttl := 15 * time.Minute
+	audience := "test-client"
+	nonce := "test-nonce-abc"
+
+	accessToken := "fake-access-token-for-at-hash"
+
+	signed, err := GenerateIDToken(testPrivKey, testKID, testIssuer, audience, ttl, userID, orgID, "admin", "admin@test.com", true, "Admin", "User", nonce, accessToken)
+	if err != nil {
+		t.Fatalf("GenerateIDToken error: %v", err)
+	}
+	if signed == "" {
+		t.Fatal("expected non-empty id token")
+	}
+
+	// Parse and verify the ID token
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
+	tok, err := parser.ParseWithClaims(signed, &IDTokenClaims{}, func(_ *jwt.Token) (any, error) {
+		return testPubKey, nil
+	})
+	if err != nil {
+		t.Fatalf("failed to parse id token: %v", err)
+	}
+
+	claims, ok := tok.Claims.(*IDTokenClaims)
+	if !ok || !tok.Valid {
+		t.Fatal("invalid token claims")
+	}
+
+	if claims.Subject != userID.String() {
+		t.Errorf("sub = %q, want %q", claims.Subject, userID.String())
+	}
+	if claims.Issuer != testIssuer {
+		t.Errorf("iss = %q, want %q", claims.Issuer, testIssuer)
+	}
+	aud, _ := claims.GetAudience()
+	if len(aud) != 1 || aud[0] != audience {
+		t.Errorf("aud = %v, want [%s]", aud, audience)
+	}
+	if claims.Nonce != nonce {
+		t.Errorf("nonce = %q, want %q", claims.Nonce, nonce)
+	}
+	if claims.AtHash == "" {
+		t.Error("expected non-empty at_hash")
+	}
+	if claims.PreferredUsername != "admin" {
+		t.Errorf("preferred_username = %q, want admin", claims.PreferredUsername)
+	}
+	if claims.Email != "admin@test.com" {
+		t.Errorf("email = %q, want admin@test.com", claims.Email)
+	}
+	if claims.OrgID != orgID {
+		t.Errorf("org_id = %v, want %v", claims.OrgID, orgID)
+	}
+}
+
+func TestGenerateIDTokenWithoutNonce(t *testing.T) {
+	userID := uuid.New()
+	orgID := uuid.New()
+
+	signed, err := GenerateIDToken(testPrivKey, testKID, testIssuer, "test-client", 15*time.Minute, userID, orgID, "admin", "admin@test.com", true, "", "", "", "some-access-token")
+	if err != nil {
+		t.Fatalf("GenerateIDToken error: %v", err)
+	}
+
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
+	tok, err := parser.ParseWithClaims(signed, &IDTokenClaims{}, func(_ *jwt.Token) (any, error) {
+		return testPubKey, nil
+	})
+	if err != nil {
+		t.Fatalf("failed to parse id token: %v", err)
+	}
+
+	claims := tok.Claims.(*IDTokenClaims)
+	if claims.Nonce != "" {
+		t.Errorf("nonce = %q, want empty (omitted)", claims.Nonce)
+	}
+}
+
+func TestComputeAtHash(t *testing.T) {
+	// Use a known access token and verify at_hash is deterministic and non-empty
+	accessToken := "test-access-token-value"
+
+	hash1 := computeAtHash(accessToken)
+	if hash1 == "" {
+		t.Fatal("expected non-empty at_hash")
+	}
+
+	// Same input should produce same output
+	hash2 := computeAtHash(accessToken)
+	if hash1 != hash2 {
+		t.Errorf("at_hash not deterministic: %q != %q", hash1, hash2)
+	}
+
+	// Different input should produce different output
+	hash3 := computeAtHash("different-token")
+	if hash1 == hash3 {
+		t.Errorf("different tokens should produce different at_hash values")
+	}
+
+	// Verify it does not contain padding characters
+	for _, c := range hash1 {
+		if c == '=' {
+			t.Errorf("at_hash should not contain padding: %q", hash1)
+			break
+		}
+	}
+}
+
 func TestGenerateRefreshToken(t *testing.T) {
 	tok1, err := GenerateRefreshToken()
 	if err != nil {

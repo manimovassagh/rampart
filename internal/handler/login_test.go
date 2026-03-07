@@ -117,6 +117,14 @@ func (m *mockLoginStore) GetEffectiveUserRoles(_ context.Context, _ uuid.UUID) (
 	return nil, nil
 }
 
+func (m *mockLoginStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
+	return nil
+}
+
+func (m *mockLoginStore) ResetFailedLogins(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
+
 // mockSessionStore implements session.Store for testing.
 type mockSessionStore struct {
 	created   *session.Session

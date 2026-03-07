@@ -48,7 +48,7 @@ func (m *mockAuthorizeStore) GetUserByUsername(_ context.Context, _ string, _ uu
 	return m.usernameUser, m.usernameErr
 }
 
-func (m *mockAuthorizeStore) StoreAuthorizationCode(_ context.Context, _, _ string, _, _ uuid.UUID, _, _, _ string, _ time.Time) error {
+func (m *mockAuthorizeStore) StoreAuthorizationCode(_ context.Context, _, _ string, _, _ uuid.UUID, _, _, _, _ string, _ time.Time) error {
 	m.storedCode = true
 	return m.storeErr
 }
@@ -59,6 +59,14 @@ func (m *mockAuthorizeStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) e
 
 func (m *mockAuthorizeStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {
 	return m.orgSettings, m.orgSettErr
+}
+
+func (m *mockAuthorizeStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
+	return nil
+}
+
+func (m *mockAuthorizeStore) ResetFailedLogins(_ context.Context, _ uuid.UUID) error {
+	return nil
 }
 
 func newTestOAuthClient(orgID uuid.UUID) *model.OAuthClient {

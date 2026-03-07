@@ -14,6 +14,7 @@ type DiscoveryResponse struct {
 	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
 	TokenEndpoint                     string   `json:"token_endpoint"`
 	UserinfoEndpoint                  string   `json:"userinfo_endpoint"`
+	RevocationEndpoint                string   `json:"revocation_endpoint"`
 	JWKSURI                           string   `json:"jwks_uri"`
 	ResponseTypesSupported            []string `json:"response_types_supported"`
 	GrantTypesSupported               []string `json:"grant_types_supported"`
@@ -23,6 +24,7 @@ type DiscoveryResponse struct {
 	ClaimsSupported                   []string `json:"claims_supported"`
 	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported"`
 	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
+	RevocationEndpointAuthMethodsSupported []string `json:"revocation_endpoint_auth_methods_supported,omitempty"`
 	SocialProvidersSupported          []string `json:"social_providers_supported,omitempty"`
 }
 
@@ -33,6 +35,7 @@ func DiscoveryHandler(issuer string, logger *slog.Logger, socialProviders ...str
 		AuthorizationEndpoint:            issuer + "/oauth/authorize",
 		TokenEndpoint:                    issuer + "/oauth/token",
 		UserinfoEndpoint:                 issuer + "/me",
+		RevocationEndpoint:              issuer + "/oauth/revoke",
 		JWKSURI:                          issuer + "/.well-known/jwks.json",
 		ResponseTypesSupported:           []string{"code"},
 		GrantTypesSupported:              []string{"authorization_code", "refresh_token"},
@@ -45,7 +48,8 @@ func DiscoveryHandler(issuer string, logger *slog.Logger, socialProviders ...str
 			"given_name", "family_name", "org_id", "roles",
 		},
 		CodeChallengeMethodsSupported:     []string{"S256"},
-		TokenEndpointAuthMethodsSupported: []string{"none"},
+		TokenEndpointAuthMethodsSupported:      []string{"none"},
+		RevocationEndpointAuthMethodsSupported: []string{"none"},
 	}
 
 	if len(socialProviders) > 0 {

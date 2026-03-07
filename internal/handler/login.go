@@ -19,7 +19,26 @@ import (
 	"github.com/manimovassagh/rampart/internal/token"
 )
 
-const invalidCredentialsMsg = "Invalid credentials."
+const (
+	invalidCredentialsMsg      = "Invalid credentials."
+	defaultMaxFailedAttempts   = 5
+	defaultLockoutDurationMins = 15
+)
+
+// defaultLockoutPolicy returns the lockout policy from org settings, or defaults.
+func defaultLockoutPolicy(settings *model.OrgSettings) (maxAttempts int, lockoutDuration time.Duration) {
+	maxAttempts = defaultMaxFailedAttempts
+	lockoutDuration = defaultLockoutDurationMins * time.Minute
+	if settings != nil {
+		if settings.MaxFailedLoginAttempts > 0 {
+			maxAttempts = settings.MaxFailedLoginAttempts
+		}
+		if settings.LockoutDuration > 0 {
+			lockoutDuration = settings.LockoutDuration
+		}
+	}
+	return
+}
 
 // LoginRequest is the expected JSON body for POST /login.
 type LoginRequest struct {
@@ -64,6 +83,8 @@ type LoginStore interface {
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
 	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
 	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
+	IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error
+	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
 }
 
 // LoginHandler handles authentication endpoints.
@@ -163,6 +184,21 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check account lockout
+	if user.IsLocked() {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_locked"})
+		apierror.Unauthorized(w, "Account is temporarily locked. Please try again later.")
+		return
+	}
+
+	// Fetch org settings early — needed for lockout policy and TTLs
+	var settings *model.OrgSettings
+	if s, sErr := h.store.GetOrgSettings(ctx, orgID); sErr != nil {
+		h.logger.Warn("failed to fetch org settings, using defaults", "error", sErr)
+	} else {
+		settings = s
+	}
+
 	ok, err := auth.VerifyPassword(req.Password, string(user.PasswordHash))
 	if err != nil {
 		h.logger.Error("failed to verify password", "error", err)
@@ -171,16 +207,28 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if !ok {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_password"})
+		// Increment failed login counter with lockout policy
+		maxAttempts, lockoutDur := defaultLockoutPolicy(settings)
+		if maxAttempts > 0 {
+			if lErr := h.store.IncrementFailedLogins(ctx, user.ID, maxAttempts, lockoutDur); lErr != nil {
+				h.logger.Warn("failed to increment failed logins", "error", lErr)
+			}
+		}
 		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
+	}
+
+	// Reset failed login counter on success
+	if user.FailedLoginAttempts > 0 {
+		if lErr := h.store.ResetFailedLogins(ctx, user.ID); lErr != nil {
+			h.logger.Warn("failed to reset failed logins", "error", lErr)
+		}
 	}
 
 	// Resolve per-org session TTLs (fall back to server defaults).
 	accessTTL := h.accessTTL
 	refreshTTL := h.refreshTTL
-	if settings, sErr := h.store.GetOrgSettings(ctx, orgID); sErr != nil {
-		h.logger.Warn("failed to fetch org settings for TTLs, using defaults", "error", sErr)
-	} else if settings != nil {
+	if settings != nil {
 		if settings.AccessTokenTTL > 0 {
 			accessTTL = settings.AccessTokenTTL
 		}

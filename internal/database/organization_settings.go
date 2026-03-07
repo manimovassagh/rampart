@@ -23,6 +23,7 @@ func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSe
 		       self_registration_enabled, email_verification_required,
 		       forgot_password_enabled, remember_me_enabled,
 		       login_page_title, login_page_message, login_theme,
+		       max_failed_login_attempts, lockout_duration_seconds,
 		       created_at, updated_at
 		FROM organization_settings
 		WHERE org_id = $1`
@@ -31,6 +32,7 @@ func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSe
 	var logoURL, primaryColor, bgColor *string
 	var loginTitle, loginMessage, loginTheme *string
 	var accessTTL, refreshTTL time.Duration
+	var lockoutDurationSecs int
 
 	err := db.Pool.QueryRow(ctx, query, orgID).Scan(
 		&s.ID, &s.OrgID,
@@ -41,6 +43,7 @@ func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSe
 		&s.SelfRegistrationEnabled, &s.EmailVerificationRequired,
 		&s.ForgotPasswordEnabled, &s.RememberMeEnabled,
 		&loginTitle, &loginMessage, &loginTheme,
+		&s.MaxFailedLoginAttempts, &lockoutDurationSecs,
 		&s.CreatedAt, &s.UpdatedAt,
 	)
 	if err != nil {
@@ -52,6 +55,7 @@ func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSe
 
 	s.AccessTokenTTL = accessTTL
 	s.RefreshTokenTTL = refreshTTL
+	s.LockoutDuration = time.Duration(lockoutDurationSecs) * time.Second
 	if logoURL != nil {
 		s.LogoURL = *logoURL
 	}

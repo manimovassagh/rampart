@@ -39,7 +39,7 @@ type SocialStore interface {
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
 	CreateSocialAccount(ctx context.Context, account *model.SocialAccount) (*model.SocialAccount, error)
 	GetSocialAccount(ctx context.Context, provider, providerUserID string) (*model.SocialAccount, error)
-	StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope string, expiresAt time.Time) error
+	StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope, nonce string, expiresAt time.Time) error
 	GetOAuthClient(ctx context.Context, clientID string) (*model.OAuthClient, error)
 	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
 }
@@ -251,7 +251,7 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expiresAt := time.Now().Add(authCodeTTL)
-	if err := h.store.StoreAuthorizationCode(ctx, authCode, payload.ClientID, user.ID, orgID, payload.RedirectURI, payload.CodeChallenge, payload.Scope, expiresAt); err != nil {
+	if err := h.store.StoreAuthorizationCode(ctx, authCode, payload.ClientID, user.ID, orgID, payload.RedirectURI, payload.CodeChallenge, payload.Scope, "", expiresAt); err != nil {
 		h.logger.Error("failed to store authorization code", "error", err)
 		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
 		return

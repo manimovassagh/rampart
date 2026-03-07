@@ -39,6 +39,8 @@ type OrgSettings struct {
 	LoginPageTitle            string        `json:"login_page_title"`
 	LoginPageMessage          string        `json:"login_page_message"`
 	LoginTheme                string        `json:"login_theme"`
+	MaxFailedLoginAttempts    int           `json:"max_failed_login_attempts"`
+	LockoutDuration           time.Duration `json:"lockout_duration"`
 	CreatedAt                 time.Time     `json:"created_at"`
 	UpdatedAt                 time.Time     `json:"updated_at"`
 }

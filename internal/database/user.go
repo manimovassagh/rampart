@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -54,7 +55,8 @@ func (db *DB) CreateUser(ctx context.Context, user *model.User) (*model.User, er
 func (db *DB) GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error) {
 	query := `
 		SELECT id, org_id, username, email, email_verified, given_name, family_name,
-		       enabled, mfa_enabled, password_hash, created_at, updated_at
+		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
+		       created_at, updated_at
 		FROM users
 		WHERE email = $1 AND org_id = $2`
 
@@ -62,7 +64,8 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID)
 	err := db.Pool.QueryRow(ctx, query, email, orgID).Scan(
 		&u.ID, &u.OrgID, &u.Username, &u.Email, &u.EmailVerified,
 		&u.GivenName, &u.FamilyName, &u.Enabled, &u.MFAEnabled,
-		&u.PasswordHash, &u.CreatedAt, &u.UpdatedAt,
+		&u.PasswordHash, &u.FailedLoginAttempts, &u.LockedUntil,
+		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -77,7 +80,8 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID)
 func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	query := `
 		SELECT id, org_id, username, email, email_verified, given_name, family_name,
-		       enabled, mfa_enabled, password_hash, last_login_at, created_at, updated_at
+		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
+		       last_login_at, created_at, updated_at
 		FROM users
 		WHERE id = $1`
 
@@ -85,7 +89,8 @@ func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error
 	err := db.Pool.QueryRow(ctx, query, id).Scan(
 		&u.ID, &u.OrgID, &u.Username, &u.Email, &u.EmailVerified,
 		&u.GivenName, &u.FamilyName, &u.Enabled, &u.MFAEnabled,
-		&u.PasswordHash, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+		&u.PasswordHash, &u.FailedLoginAttempts, &u.LockedUntil,
+		&u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -105,11 +110,39 @@ func (db *DB) UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error {
 	return nil
 }
 
+// IncrementFailedLogins increments the failed login counter and optionally locks the account.
+func (db *DB) IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error {
+	query := `
+		UPDATE users
+		SET failed_login_attempts = failed_login_attempts + 1,
+		    locked_until = CASE
+		        WHEN failed_login_attempts + 1 >= $2 THEN now() + $3::interval
+		        ELSE locked_until
+		    END
+		WHERE id = $1`
+	_, err := db.Pool.Exec(ctx, query, userID, maxAttempts, lockoutDuration.String())
+	if err != nil {
+		return fmt.Errorf("incrementing failed logins: %w", err)
+	}
+	return nil
+}
+
+// ResetFailedLogins clears the failed login counter and lock on successful login.
+func (db *DB) ResetFailedLogins(ctx context.Context, userID uuid.UUID) error {
+	_, err := db.Pool.Exec(ctx,
+		"UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("resetting failed logins: %w", err)
+	}
+	return nil
+}
+
 // GetUserByUsername finds a user by username within an organization.
 func (db *DB) GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error) {
 	query := `
 		SELECT id, org_id, username, email, email_verified, given_name, family_name,
-		       enabled, mfa_enabled, password_hash, created_at, updated_at
+		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
+		       created_at, updated_at
 		FROM users
 		WHERE username = $1 AND org_id = $2`
 
@@ -117,7 +150,8 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string, orgID uuid
 	err := db.Pool.QueryRow(ctx, query, username, orgID).Scan(
 		&u.ID, &u.OrgID, &u.Username, &u.Email, &u.EmailVerified,
 		&u.GivenName, &u.FamilyName, &u.Enabled, &u.MFAEnabled,
-		&u.PasswordHash, &u.CreatedAt, &u.UpdatedAt,
+		&u.PasswordHash, &u.FailedLoginAttempts, &u.LockedUntil,
+		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

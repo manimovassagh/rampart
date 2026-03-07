@@ -10,6 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"strings"
+
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
@@ -57,6 +59,7 @@ func NewTokenHandler(store TokenStore, sessions session.Store, logger *slog.Logg
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token,omitempty"`
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int    `json:"expires_in"`
 }
@@ -192,6 +195,23 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate ID token if scope includes "openid" (OIDC compliance)
+	var idToken string
+	if strings.Contains(authCode.Scope, scopeOpenID) {
+		idToken, err = token.GenerateIDToken(
+			h.privateKey, h.kid, h.issuer, authCode.ClientID, accessTTL,
+			user.ID, user.OrgID,
+			user.Username, user.Email, user.EmailVerified,
+			user.GivenName, user.FamilyName,
+			authCode.Nonce, accessToken,
+		)
+		if err != nil {
+			h.logger.Error("failed to generate id token", "error", err)
+			h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
+			return
+		}
+	}
+
 	// Store session
 	expiresAt := time.Now().Add(refreshTTL)
 	if _, err := h.sessions.Create(ctx, user.ID, refreshToken, expiresAt); err != nil {
@@ -203,6 +223,7 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	resp := TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		IDToken:      idToken,
 		TokenType:    tokenTypeBearer,
 		ExpiresIn:    int(accessTTL.Seconds()),
 	}
@@ -233,6 +254,50 @@ func (h *TokenHandler) writeOAuthError(w http.ResponseWriter, status int, code, 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Error("failed to encode oauth error response", "error", err)
 	}
+}
+
+// Revoke handles POST /oauth/revoke per RFC 7009.
+// Accepts application/x-www-form-urlencoded with "token" and optional "token_type_hint".
+// Always returns 200 OK regardless of whether the token was valid (per spec).
+func (h *TokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		apierror.Write(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method not allowed.")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		h.writeOAuthError(w, http.StatusBadRequest, "invalid_request", "Invalid form data.")
+		return
+	}
+
+	tokenValue := r.FormValue("token")
+	if tokenValue == "" {
+		// Per RFC 7009 §2.1: invalid tokens do not cause an error response.
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// We only support revoking refresh tokens (which are opaque hex strings).
+	// Access tokens are short-lived JWTs and cannot be revoked server-side.
+	ctx := r.Context()
+	sess, err := h.sessions.FindByRefreshToken(ctx, tokenValue)
+	if err != nil {
+		h.logger.Error("failed to find session for revocation", "error", err)
+		// Per RFC 7009: respond 200 even on server errors for the token lookup.
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if sess == nil {
+		// Token not found or already expired — that's fine per spec.
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if err := h.sessions.Delete(ctx, sess.ID); err != nil {
+		h.logger.Error("failed to delete session for revocation", "error", err)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // internalRoles are roles that should not be exposed to external OAuth clients.

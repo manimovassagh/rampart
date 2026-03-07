@@ -21,9 +21,16 @@ type User struct {
 	PasswordHash        []byte     `json:"-"`
 	Enabled             bool       `json:"enabled"`
 	MFAEnabled          bool       `json:"mfa_enabled"`
+	FailedLoginAttempts int        `json:"failed_login_attempts"`
+	LockedUntil         *time.Time `json:"locked_until,omitempty"`
 	LastLoginAt         *time.Time `json:"last_login_at,omitempty"`
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
+}
+
+// IsLocked returns true if the user account is currently locked out.
+func (u *User) IsLocked() bool {
+	return u.LockedUntil != nil && u.LockedUntil.After(time.Now())
 }
 
 // RegistrationRequest is the expected JSON body for POST /register.

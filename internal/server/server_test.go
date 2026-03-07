@@ -289,12 +289,16 @@ func TestRegisterOAuthRoutes(t *testing.T) {
 
 	authorizeCall := 0
 	tokenCall := 0
+	revokeCall := 0
 
 	RegisterOAuthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		authorizeCall++
 		w.WriteHeader(http.StatusOK)
 	}, func(w http.ResponseWriter, _ *http.Request) {
 		tokenCall++
+		w.WriteHeader(http.StatusOK)
+	}, func(w http.ResponseWriter, _ *http.Request) {
+		revokeCall++
 		w.WriteHeader(http.StatusOK)
 	}, nil)
 
@@ -320,6 +324,14 @@ func TestRegisterOAuthRoutes(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if tokenCall != 1 {
 		t.Errorf("POST /oauth/token: handler called %d times, want 1", tokenCall)
+	}
+
+	// POST /oauth/revoke
+	req = httptest.NewRequest(http.MethodPost, "/oauth/revoke", http.NoBody)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if revokeCall != 1 {
+		t.Errorf("POST /oauth/revoke: handler called %d times, want 1", revokeCall)
 	}
 }
 

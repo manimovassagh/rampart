@@ -169,7 +169,7 @@ func run(_ *slog.Logger) error {
 	// OAuth 2.0 Authorization Code + PKCE endpoints
 	authorizeHandler := handler.NewAuthorizeHandler(db, logger, auditLogger, socialRegistry)
 	tokenHandler := handler.NewTokenHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
-	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, tokenHandler.Token, tokenRL)
+	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, tokenHandler.Token, tokenHandler.Revoke, tokenRL)
 
 	// OIDC Discovery + JWKS (public endpoints, no auth)
 	discoveryHandler := handler.DiscoveryHandler(cfg.Issuer, logger)
@@ -192,6 +192,26 @@ func run(_ *slog.Logger) error {
 	// Social login handler
 	socialHandler := handler.NewSocialHandler(db, socialRegistry, logger, auditLogger, hmacKey, cfg.Issuer)
 	server.RegisterSocialRoutes(router, socialHandler.InitiateLogin, socialHandler.Callback)
+
+	// Background cleanup for expired authorization codes
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-cleanupCtx.Done():
+				return
+			case <-ticker.C:
+				if n, err := db.DeleteExpiredAuthorizationCodes(cleanupCtx); err != nil {
+					logger.Warn("failed to clean up expired auth codes", "error", err)
+				} else if n > 0 {
+					logger.Info("cleaned up expired authorization codes", "count", n)
+				}
+			}
+		}
+	}()
 
 	srv := server.New(cfg.Addr(), router, logger)
 

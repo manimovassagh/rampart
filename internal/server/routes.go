@@ -53,22 +53,23 @@ func RegisterHealthRoutes(r *chi.Mux, healthHandler, readyHandler http.HandlerFu
 // If rl is non-nil, it is applied as rate limiting middleware.
 func RegisterAuthRoutes(r *chi.Mux, registerHandler http.HandlerFunc, rl *middleware.RateLimiter) {
 	if rl != nil {
-		r.With(rl.Middleware()).Post("/register", registerHandler)
+		r.With(middleware.RequireJSON, rl.Middleware()).Post("/register", registerHandler)
 	} else {
-		r.Post("/register", registerHandler)
+		r.With(middleware.RequireJSON).Post("/register", registerHandler)
 	}
 }
 
 // RegisterLoginRoutes mounts login, token refresh, and logout endpoints.
 // If rl is non-nil, it is applied as rate limiting middleware to /login.
 func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler http.HandlerFunc, rl *middleware.RateLimiter) {
+	jsonMW := middleware.RequireJSON
 	if rl != nil {
-		r.With(rl.Middleware()).Post("/login", loginHandler)
+		r.With(jsonMW, rl.Middleware()).Post("/login", loginHandler)
 	} else {
-		r.Post("/login", loginHandler)
+		r.With(jsonMW).Post("/login", loginHandler)
 	}
-	r.Post("/token/refresh", refreshHandler)
-	r.Post("/logout", logoutHandler)
+	r.With(jsonMW).Post("/token/refresh", refreshHandler)
+	r.With(jsonMW).Post("/logout", logoutHandler)
 }
 
 // RegisterProtectedRoutes mounts endpoints that require authentication.
@@ -150,7 +151,7 @@ func RegisterExportImportRoutes(r *chi.Mux, pubKey *rsa.PublicKey, exportHandler
 
 // RegisterOAuthRoutes mounts the OAuth 2.0 authorization and token endpoints.
 // If rl is non-nil, it is applied as rate limiting middleware to /oauth/token.
-func RegisterOAuthRoutes(r *chi.Mux, authorize, token http.HandlerFunc, rl *middleware.RateLimiter) {
+func RegisterOAuthRoutes(r *chi.Mux, authorize, token, revoke http.HandlerFunc, rl *middleware.RateLimiter) {
 	r.Get("/oauth/authorize", authorize)
 	r.Post("/oauth/authorize", authorize)
 	if rl != nil {
@@ -158,6 +159,7 @@ func RegisterOAuthRoutes(r *chi.Mux, authorize, token http.HandlerFunc, rl *midd
 	} else {
 		r.Post("/oauth/token", token)
 	}
+	r.Post("/oauth/revoke", revoke)
 }
 
 // RegisterSocialRoutes mounts social login initiation and callback endpoints.

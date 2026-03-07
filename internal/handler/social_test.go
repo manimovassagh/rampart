@@ -72,7 +72,7 @@ func (m *mockSocialStore) GetSocialAccount(_ context.Context, _, _ string) (*mod
 	return m.socialAccount, m.socialAccountErr
 }
 
-func (m *mockSocialStore) StoreAuthorizationCode(_ context.Context, _, _ string, _, _ uuid.UUID, _, _, _ string, _ time.Time) error {
+func (m *mockSocialStore) StoreAuthorizationCode(_ context.Context, _, _ string, _, _ uuid.UUID, _, _, _, _ string, _ time.Time) error {
 	m.storedCode = true
 	return m.storeErr
 }

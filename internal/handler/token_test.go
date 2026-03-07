@@ -14,6 +14,7 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
+	"github.com/manimovassagh/rampart/internal/session"
 )
 
 const (
@@ -659,5 +660,127 @@ func TestTokenWithAdminClientIncludesAdminRole(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRevokeValidToken(t *testing.T) {
+	sessID := uuid.New()
+	userID := uuid.New()
+	sessions := &mockSessionStore{
+		found: &session.Session{
+			ID:     sessID,
+			UserID: userID,
+		},
+	}
+	h := NewTokenHandler(&mockTokenStore{}, sessions, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "token=valid-refresh-token"
+	req := httptest.NewRequest(http.MethodPost, "/oauth/revoke", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Revoke(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRevokeInvalidToken(t *testing.T) {
+	sessions := &mockSessionStore{
+		found: nil, // token not found
+	}
+	h := NewTokenHandler(&mockTokenStore{}, sessions, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "token=unknown-refresh-token"
+	req := httptest.NewRequest(http.MethodPost, "/oauth/revoke", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Revoke(w, req)
+
+	// Per RFC 7009: invalid tokens do not cause an error response
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRevokeEmptyToken(t *testing.T) {
+	h := NewTokenHandler(&mockTokenStore{}, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "token="
+	req := httptest.NewRequest(http.MethodPost, "/oauth/revoke", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Revoke(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRevokeMethodNotAllowed(t *testing.T) {
+	h := NewTokenHandler(&mockTokenStore{}, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/revoke", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h.Revoke(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestTokenValidExchangeReturnsIDToken(t *testing.T) {
+	orgID := uuid.New()
+	userID := uuid.New()
+	verifier := testVerifier
+	challenge := oauth.ComputeS256Challenge(verifier)
+
+	user := &model.User{
+		ID:       userID,
+		OrgID:    orgID,
+		Username: "admin",
+		Email:    "admin@test.com",
+		Enabled:  true,
+	}
+
+	store := &mockTokenStore{
+		oauthClient: newTestOAuthClient(orgID),
+		authCode: &model.AuthorizationCode{
+			ID:            uuid.New(),
+			ClientID:      "test-client",
+			UserID:        userID,
+			OrgID:         orgID,
+			RedirectURI:   "http://localhost:3002/callback",
+			CodeChallenge: challenge,
+			Scope:         "openid",
+			ExpiresAt:     time.Now().Add(10 * time.Minute),
+		},
+		userByID: user,
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + verifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	idToken, ok := resp["id_token"].(string)
+	if !ok || idToken == "" {
+		t.Error("expected non-empty id_token in response when scope includes openid")
 	}
 }

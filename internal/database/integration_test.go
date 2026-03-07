@@ -1159,7 +1159,7 @@ func TestAuthorizationCodeStoreAndConsume(t *testing.T) {
 
 	// Store
 	err = db.StoreAuthorizationCode(ctx, code, client.ID, user.ID, org.ID,
-		"http://localhost/cb", "challenge123", "openid", time.Now().Add(5*time.Minute))
+		"http://localhost/cb", "challenge123", "openid", "", time.Now().Add(5*time.Minute))
 	if err != nil {
 		t.Fatalf("StoreAuthorizationCode: %v", err)
 	}
@@ -1208,7 +1208,7 @@ func TestConsumeExpiredCode(t *testing.T) {
 
 	code := "expired-code-" + uuid.New().String()
 	err := db.StoreAuthorizationCode(ctx, code, client.ID, user.ID, org.ID,
-		"http://localhost/cb", "", "openid", time.Now().Add(-1*time.Minute))
+		"http://localhost/cb", "", "openid", "", time.Now().Add(-1*time.Minute))
 	if err != nil {
 		t.Fatalf("StoreAuthorizationCode: %v", err)
 	}

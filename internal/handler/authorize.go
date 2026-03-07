@@ -65,9 +65,11 @@ type AuthorizeStore interface {
 	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
 	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
 	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
-	StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope string, expiresAt time.Time) error
+	StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope, nonce string, expiresAt time.Time) error
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
 	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
+	IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error
+	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
 }
 
 // AuthorizeHandler handles the OAuth 2.0 authorization endpoint.
@@ -90,6 +92,7 @@ type loginPageData struct {
 	Scope                 string
 	State                 string
 	CodeChallenge         string
+	Nonce                 string
 	Error                 string
 	LogoURL               string
 	PrimaryColor          string
@@ -124,6 +127,7 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	state := q.Get("state")
 	codeChallenge := q.Get("code_challenge")
 	codeChallengeMethod := q.Get("code_challenge_method")
+	nonce := q.Get("nonce")
 
 	// Validate required params — show error page, do NOT redirect (RFC 6749 §4.1.2.1)
 	if clientID == "" || redirectURI == "" {
@@ -180,6 +184,7 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		Scope:         scope,
 		State:         state,
 		CodeChallenge: codeChallenge,
+		Nonce:         nonce,
 		CSRFToken:     csrfToken,
 	}
 	if h.socialRegistry != nil {
@@ -216,6 +221,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	scope := r.FormValue("scope")
 	state := r.FormValue("state")
 	codeChallenge := r.FormValue("code_challenge")
+	nonce := r.FormValue("nonce")
 	identifier := strings.TrimSpace(r.FormValue("identifier"))
 	password := r.FormValue("password")
 
@@ -250,6 +256,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		Scope:         scope,
 		State:         state,
 		CodeChallenge: codeChallenge,
+		Nonce:         nonce,
 	}
 	if h.socialRegistry != nil {
 		pageData.SocialProviders = h.socialRegistry.Names()
@@ -301,6 +308,16 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if user.IsLocked() {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_locked", "client_id": clientID})
+		pageData.Error = "Account is temporarily locked. Please try again later."
+		h.renderLoginPage(w, &pageData)
+		return
+	}
+
+	// Fetch org settings for lockout policy
+	authSettings, _ := h.store.GetOrgSettings(ctx, orgID)
+
 	ok, err := auth.VerifyPassword(password, string(user.PasswordHash))
 	if err != nil {
 		h.logger.Error("failed to verify password", "error", err)
@@ -309,9 +326,22 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 	if !ok {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_password", "client_id": clientID})
+		maxAttempts, lockoutDur := defaultLockoutPolicy(authSettings)
+		if maxAttempts > 0 {
+			if lErr := h.store.IncrementFailedLogins(ctx, user.ID, maxAttempts, lockoutDur); lErr != nil {
+				h.logger.Warn("failed to increment failed logins", "error", lErr)
+			}
+		}
 		pageData.Error = msgInvalidLogin
 		h.renderLoginPage(w, &pageData)
 		return
+	}
+
+	// Reset failed login counter on success
+	if user.FailedLoginAttempts > 0 {
+		if lErr := h.store.ResetFailedLogins(ctx, user.ID); lErr != nil {
+			h.logger.Warn("failed to reset failed logins", "error", lErr)
+		}
 	}
 
 	// Generate authorization code
@@ -323,7 +353,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expiresAt := time.Now().Add(authCodeTTL)
-	if err := h.store.StoreAuthorizationCode(ctx, code, clientID, user.ID, orgID, redirectURI, codeChallenge, scope, expiresAt); err != nil {
+	if err := h.store.StoreAuthorizationCode(ctx, code, clientID, user.ID, orgID, redirectURI, codeChallenge, scope, nonce, expiresAt); err != nil {
 		h.logger.Error("failed to store authorization code", "error", err)
 		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
 		return
