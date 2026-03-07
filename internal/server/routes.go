@@ -84,6 +84,33 @@ func RegisterPasswordResetRoutes(r *chi.Mux, forgotHandler, resetHandler http.Ha
 	r.With(jsonMW).Post("/reset-password", resetHandler)
 }
 
+// MFAEndpoints groups the handler methods needed by RegisterMFARoutes.
+type MFAEndpoints interface {
+	EnrollTOTP(w http.ResponseWriter, r *http.Request)
+	VerifyTOTPSetup(w http.ResponseWriter, r *http.Request)
+	DisableTOTP(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterMFARoutes mounts MFA enrollment/management (authenticated) and MFA verify (unauthenticated) endpoints.
+func RegisterMFARoutes(r *chi.Mux, pubKey *rsa.PublicKey, mfaEnroll MFAEndpoints, mfaVerify http.HandlerFunc, rl *middleware.RateLimiter) {
+	jsonMW := middleware.RequireJSON
+
+	// MFA verify during login — unauthenticated (uses MFA token)
+	if rl != nil {
+		r.With(jsonMW, rl.Middleware()).Post("/mfa/totp/verify", mfaVerify)
+	} else {
+		r.With(jsonMW).Post("/mfa/totp/verify", mfaVerify)
+	}
+
+	// MFA enrollment/management — requires authentication
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(pubKey))
+		r.With(jsonMW).Post("/mfa/totp/enroll", mfaEnroll.EnrollTOTP)
+		r.With(jsonMW).Post("/mfa/totp/verify-setup", mfaEnroll.VerifyTOTPSetup)
+		r.With(jsonMW).Post("/mfa/totp/disable", mfaEnroll.DisableTOTP)
+	})
+}
+
 // RegisterProtectedRoutes mounts endpoints that require authentication.
 func RegisterProtectedRoutes(r *chi.Mux, pubKey *rsa.PublicKey, meHandler http.HandlerFunc) {
 	r.Group(func(r chi.Router) {

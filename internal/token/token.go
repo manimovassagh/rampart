@@ -130,6 +130,57 @@ func computeAtHash(accessToken string) string {
 	return strings.TrimRight(base64.URLEncoding.EncodeToString(leftHalf), "=")
 }
 
+// MFAClaims are the JWT claims for short-lived MFA challenge tokens.
+type MFAClaims struct {
+	jwt.RegisteredClaims
+	Purpose string `json:"purpose"`
+}
+
+// GenerateMFAToken creates a short-lived JWT (5 minutes) proving the user passed
+// password authentication and needs to complete MFA verification.
+func GenerateMFAToken(key *rsa.PrivateKey, kid, issuer string, userID uuid.UUID) (string, error) {
+	now := time.Now()
+	claims := MFAClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    issuer,
+			Subject:   userID.String(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
+		},
+		Purpose: "mfa_challenge",
+	}
+
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = kid
+
+	signed, err := tok.SignedString(key)
+	if err != nil {
+		return "", fmt.Errorf("signing MFA token: %w", err)
+	}
+	return signed, nil
+}
+
+// VerifyMFAToken parses and validates an MFA challenge token, returning the user ID.
+func VerifyMFAToken(pubKey *rsa.PublicKey, tokenString string) (uuid.UUID, error) {
+	tok, err := jwt.ParseWithClaims(tokenString, &MFAClaims{}, func(_ *jwt.Token) (any, error) {
+		return pubKey, nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parsing MFA token: %w", err)
+	}
+
+	claims, ok := tok.Claims.(*MFAClaims)
+	if !ok || !tok.Valid || claims.Purpose != "mfa_challenge" {
+		return uuid.Nil, fmt.Errorf("invalid MFA token")
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid MFA token subject: %w", err)
+	}
+	return userID, nil
+}
+
 // GenerateRefreshToken creates a cryptographically random hex string.
 func GenerateRefreshToken() (string, error) {
 	b := make([]byte, 32)

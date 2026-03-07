@@ -132,6 +132,11 @@ func run(_ *slog.Logger) error {
 	resetHandler := handler.NewPasswordResetHandler(db, emailSender, logger, cfg.Issuer)
 	server.RegisterPasswordResetRoutes(router, resetHandler.ForgotPassword, resetHandler.ResetPassword, loginRL)
 
+	// MFA endpoints (enrollment + login verification)
+	mfaHandler := handler.NewMFAHandler(db, logger, cfg.Issuer)
+	mfaVerifyHandler := handler.NewMFAVerifyHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	server.RegisterMFARoutes(router, kp.PublicKey, mfaHandler, mfaVerifyHandler.VerifyTOTP, loginRL)
+
 	meHandler := handler.NewMeHandler(db)
 	server.RegisterProtectedRoutes(router, kp.PublicKey, meHandler.Me)
 

@@ -1,0 +1,27 @@
+#!/bin/sh
+# Pre-commit hook: run golangci-lint on staged Go files.
+# Fails the commit if any lint issues are found.
+
+# Check if there are staged Go files
+STAGED_GO=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
+if [ -z "$STAGED_GO" ]; then
+  exit 0
+fi
+
+echo "Running golangci-lint..."
+
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "ERROR: golangci-lint not found. Install it with: make dev-setup"
+  exit 1
+fi
+
+golangci-lint run ./...
+LINT_EXIT=$?
+
+if [ $LINT_EXIT -ne 0 ]; then
+  echo ""
+  echo "ERROR: Lint checks failed. Fix the issues above before committing."
+  exit 1
+fi
+
+echo "Lint passed."

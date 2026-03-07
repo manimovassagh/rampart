@@ -12,7 +12,7 @@ BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 
 .PHONY: all build run clean test test-cover test-threshold lint fmt vet \
-        security gosec vuln check dev-setup docker-build css help
+        security gosec vuln check dev-setup setup-hooks docker-build css help
 
 ## help: show this help message
 help:
@@ -107,8 +107,14 @@ docker-build:
 clean:
 	rm -rf $(BUILD_DIR) $(COVERAGE_FILE) $(COVERAGE_HTML)
 
-## dev-setup: install development tools
-dev-setup:
+## setup-hooks: install git hooks (lint on commit)
+setup-hooks:
+	@cp scripts/hooks/* .git/hooks/
+	@chmod +x .git/hooks/pre-commit .git/hooks/commit-msg
+	@echo "Git hooks installed (pre-commit, commit-msg)"
+
+## dev-setup: install development tools and git hooks
+dev-setup: setup-hooks
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install github.com/securego/gosec/v2/cmd/gosec@latest

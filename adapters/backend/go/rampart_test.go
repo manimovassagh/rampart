@@ -95,7 +95,9 @@ func dummyHandler() http.Handler {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]string{"sub": claims.Sub})
+		if err := json.NewEncoder(w).Encode(map[string]string{"sub": claims.Sub}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 }
 

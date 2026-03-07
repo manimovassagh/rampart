@@ -6,6 +6,7 @@ package rampart
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -192,9 +193,11 @@ func mapClaims(token jwt.Token) *Claims {
 func writeError(w http.ResponseWriter, status int, errCode string, description string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(ErrorResponse{
+	if err := json.NewEncoder(w).Encode(ErrorResponse{
 		Error:            errCode,
 		ErrorDescription: description,
 		Status:           status,
-	})
+	}); err != nil {
+		slog.Error("failed to encode error response", "error", err)
+	}
 }

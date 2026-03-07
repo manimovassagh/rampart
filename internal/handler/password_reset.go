@@ -81,9 +81,11 @@ func (h *PasswordResetHandler) ForgotPassword(w http.ResponseWriter, r *http.Req
 	// Always return success to prevent email enumeration
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "If an account with that email exists, a password reset link has been sent.",
-	})
+	}); err != nil {
+		h.logger.Error("failed to encode forgot-password response", "error", err)
+	}
 
 	// Process async-style (but synchronously for simplicity)
 	go h.processResetRequest(req.Email)
@@ -178,9 +180,11 @@ func (h *PasswordResetHandler) ResetPassword(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "Password has been reset successfully. You can now log in with your new password.",
-	})
+	}); err != nil {
+		h.logger.Error("failed to encode reset-password response", "error", err)
+	}
 }
 
 func buildResetEmail(name, resetURL string) string {

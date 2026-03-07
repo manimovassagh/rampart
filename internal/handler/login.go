@@ -14,6 +14,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
+	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
 	"github.com/manimovassagh/rampart/internal/token"
@@ -85,6 +86,8 @@ type LoginStore interface {
 	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error
 	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
+	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*database.MFADevice, error)
+	ConsumeBackupCode(ctx context.Context, userID uuid.UUID, codeHash []byte) (bool, error)
 }
 
 // LoginHandler handles authentication endpoints.
@@ -222,6 +225,35 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if user.FailedLoginAttempts > 0 {
 		if lErr := h.store.ResetFailedLogins(ctx, user.ID); lErr != nil {
 			h.logger.Warn("failed to reset failed logins", "error", lErr)
+		}
+	}
+
+	// Check MFA requirement
+	if user.MFAEnabled {
+		device, mfaErr := h.store.GetVerifiedMFADevice(ctx, user.ID)
+		if mfaErr != nil {
+			h.logger.Error("failed to check MFA device", "error", mfaErr)
+			apierror.InternalError(w)
+			return
+		}
+		if device != nil {
+			// Generate a short-lived MFA challenge token
+			mfaToken, tErr := token.GenerateMFAToken(h.privateKey, h.kid, h.issuer, user.ID)
+			if tErr != nil {
+				h.logger.Error("failed to generate MFA token", "error", tErr)
+				apierror.InternalError(w)
+				return
+			}
+			w.Header().Set("Content-Type", apierror.ContentTypeJSON)
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(map[string]any{
+				"mfa_required": true,
+				"mfa_token":    mfaToken,
+				"message":      "MFA verification required. Submit TOTP code to /mfa/totp/verify.",
+			}); err != nil {
+				h.logger.Error("failed to encode MFA challenge response", "error", err)
+			}
+			return
 		}
 	}
 

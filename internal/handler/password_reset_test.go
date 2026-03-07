@@ -97,7 +97,9 @@ func TestResetPasswordSuccess(t *testing.T) {
 	}
 
 	var resp map[string]string
-	json.NewDecoder(rr.Body).Decode(&resp)
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	if resp["message"] == "" {
 		t.Fatal("expected success message")
 	}
@@ -135,8 +137,8 @@ func TestResetPasswordInvalidToken(t *testing.T) {
 	}
 }
 
-var errInvalidToken = &resetErr{"invalid token"}
+var errInvalidToken = &resetError{"invalid token"}
 
-type resetErr struct{ msg string }
+type resetError struct{ msg string }
 
-func (e *resetErr) Error() string { return e.msg }
+func (e *resetError) Error() string { return e.msg }

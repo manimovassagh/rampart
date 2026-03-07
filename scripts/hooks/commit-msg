@@ -1,0 +1,7 @@
+#!/bin/sh
+# Quality gate: reject commits that contain Co-Authored-By: Claude
+if grep -qi "Co-Authored-By.*Claude\|Co-Authored-By.*anthropic\|Co-Authored-By.*noreply@anthropic" "$1"; then
+  echo "ERROR: Commit message contains Co-Authored-By attribution for Claude/Anthropic."
+  echo "This is not allowed. Remove the Co-Authored-By line and try again."
+  exit 1
+fi

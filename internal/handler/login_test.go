@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/auth"
+	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
 )
@@ -123,6 +124,14 @@ func (m *mockLoginStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _
 
 func (m *mockLoginStore) ResetFailedLogins(_ context.Context, _ uuid.UUID) error {
 	return nil
+}
+
+func (m *mockLoginStore) GetVerifiedMFADevice(_ context.Context, _ uuid.UUID) (*database.MFADevice, error) {
+	return nil, nil
+}
+
+func (m *mockLoginStore) ConsumeBackupCode(_ context.Context, _ uuid.UUID, _ []byte) (bool, error) {
+	return false, nil
 }
 
 // mockSessionStore implements session.Store for testing.
