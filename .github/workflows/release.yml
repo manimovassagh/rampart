@@ -27,8 +27,6 @@ jobs:
   security:
     name: Security
     uses: ./.github/workflows/security.yml
-    # Security scans are advisory — don't block the release
-    continue-on-error: true
 
   release-binaries:
     name: Release binaries
