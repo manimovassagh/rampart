@@ -233,6 +233,12 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check email verification requirement (after password check to avoid account enumeration)
+	if !user.EmailVerified && settings != nil && settings.EmailVerificationRequired {
+		apierror.Write(w, http.StatusForbidden, "email_not_verified", "Please verify your email address before logging in.")
+		return
+	}
+
 	// Check MFA requirement
 	if user.MFAEnabled {
 		device, mfaErr := h.store.GetVerifiedMFADevice(ctx, user.ID)

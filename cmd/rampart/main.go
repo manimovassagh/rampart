@@ -133,6 +133,11 @@ func run(_ *slog.Logger) error {
 	resetHandler := handler.NewPasswordResetHandler(db, emailSender, logger, cfg.Issuer)
 	server.RegisterPasswordResetRoutes(router, resetHandler.ForgotPassword, resetHandler.ResetPassword, loginRL)
 
+	// Email verification
+	emailVerifyHandler := handler.NewEmailVerificationHandler(db, emailSender, logger, cfg.Issuer)
+	registerHandler.SetEmailVerifier(emailVerifyHandler)
+	server.RegisterEmailVerificationRoutes(router, emailVerifyHandler.SendVerification, emailVerifyHandler.VerifyEmail, loginRL)
+
 	// MFA endpoints (enrollment + login verification)
 	mfaHandler := handler.NewMFAHandler(db, logger, cfg.Issuer)
 	mfaVerifyHandler := handler.NewMFAVerifyHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
@@ -255,6 +260,11 @@ func run(_ *slog.Logger) error {
 					logger.Warn("failed to clean up expired reset tokens", "error", err)
 				} else if n > 0 {
 					logger.Info("cleaned up expired password reset tokens", "count", n)
+				}
+				if n, err := db.DeleteExpiredEmailVerificationTokens(cleanupCtx); err != nil {
+					logger.Warn("failed to clean up expired verification tokens", "error", err)
+				} else if n > 0 {
+					logger.Info("cleaned up expired email verification tokens", "count", n)
 				}
 			}
 		}

@@ -79,6 +79,18 @@ func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler
 	r.With(jsonMW).Post("/logout", logoutHandler)
 }
 
+// RegisterEmailVerificationRoutes mounts email verification endpoints.
+// If rl is non-nil, it is applied as rate limiting middleware to the send endpoint.
+func RegisterEmailVerificationRoutes(r *chi.Mux, sendHandler, verifyHandler http.HandlerFunc, rl *middleware.RateLimiter) {
+	jsonMW := middleware.RequireJSON
+	if rl != nil {
+		r.With(jsonMW, rl.Middleware()).Post("/verify-email/send", sendHandler)
+	} else {
+		r.With(jsonMW).Post("/verify-email/send", sendHandler)
+	}
+	r.Get("/verify-email", verifyHandler)
+}
+
 // RegisterPasswordResetRoutes mounts forgot-password and reset-password endpoints.
 // If rl is non-nil, it is applied as rate limiting middleware.
 func RegisterPasswordResetRoutes(r *chi.Mux, forgotHandler, resetHandler http.HandlerFunc, rl *middleware.RateLimiter) {

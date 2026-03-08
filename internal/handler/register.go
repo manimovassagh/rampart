@@ -32,13 +32,19 @@ type UserStore interface {
 
 // RegisterHandler handles user self-registration.
 type RegisterHandler struct {
-	store  UserStore
-	logger *slog.Logger
+	store         UserStore
+	logger        *slog.Logger
+	emailVerifier *EmailVerificationHandler // optional, nil if email verification disabled
 }
 
 // NewRegisterHandler creates a handler with a user store dependency.
 func NewRegisterHandler(store UserStore, logger *slog.Logger) *RegisterHandler {
 	return &RegisterHandler{store: store, logger: logger}
+}
+
+// SetEmailVerifier sets the email verification handler for post-registration flows.
+func (h *RegisterHandler) SetEmailVerifier(v *EmailVerificationHandler) {
+	h.emailVerifier = v
 }
 
 // Register handles POST /register.
@@ -165,6 +171,13 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to create user", "error", err)
 		apierror.InternalError(w)
 		return
+	}
+
+	// Send verification email if email verification is required
+	if h.emailVerifier != nil {
+		if settings, sErr := h.store.GetOrgSettings(ctx, orgID); sErr == nil && settings != nil && settings.EmailVerificationRequired {
+			h.emailVerifier.SendVerificationForUser(created)
+		}
 	}
 
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
