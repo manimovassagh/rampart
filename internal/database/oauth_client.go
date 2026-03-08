@@ -19,13 +19,13 @@ func (db *DB) GetOAuthClient(ctx context.Context, clientID string) (*model.OAuth
 	row := db.Pool.QueryRow(ctx, `
 		SELECT id, org_id, name, client_type, redirect_uris,
 		       COALESCE(client_secret_hash, ''::bytea), COALESCE(description, ''),
-		       COALESCE(enabled, true), created_at, updated_at
+		       COALESCE(enabled, true), first_party, created_at, updated_at
 		FROM oauth_clients
 		WHERE id = $1`, clientID)
 
 	var c model.OAuthClient
 	err := row.Scan(&c.ID, &c.OrgID, &c.Name, &c.ClientType, &c.RedirectURIs,
-		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.CreatedAt, &c.UpdatedAt)
+		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.FirstParty, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -72,7 +72,7 @@ func (db *DB) ListOAuthClients(ctx context.Context, orgID uuid.UUID, search stri
 	dataQuery := fmt.Sprintf(`
 		SELECT id, org_id, name, client_type, redirect_uris,
 		       COALESCE(client_secret_hash, ''::bytea), COALESCE(description, ''),
-		       COALESCE(enabled, true), created_at, updated_at
+		       COALESCE(enabled, true), first_party, created_at, updated_at
 		FROM oauth_clients
 		WHERE %s
 		ORDER BY created_at DESC
@@ -89,7 +89,7 @@ func (db *DB) ListOAuthClients(ctx context.Context, orgID uuid.UUID, search stri
 	for rows.Next() {
 		var c model.OAuthClient
 		if err := rows.Scan(&c.ID, &c.OrgID, &c.Name, &c.ClientType, &c.RedirectURIs,
-			&c.ClientSecretHash, &c.Description, &c.Enabled, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			&c.ClientSecretHash, &c.Description, &c.Enabled, &c.FirstParty, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scanning oauth client row: %w", err)
 		}
 		clients = append(clients, &c)
@@ -108,18 +108,18 @@ func (db *DB) CreateOAuthClient(ctx context.Context, client *model.OAuthClient) 
 	}
 
 	query := `
-		INSERT INTO oauth_clients (id, org_id, name, client_type, redirect_uris, client_secret_hash, description, enabled)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO oauth_clients (id, org_id, name, client_type, redirect_uris, client_secret_hash, description, enabled, first_party)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, org_id, name, client_type, redirect_uris,
 		          COALESCE(client_secret_hash, ''::bytea), COALESCE(description, ''),
-		          enabled, created_at, updated_at`
+		          enabled, first_party, created_at, updated_at`
 
 	var c model.OAuthClient
 	err := db.Pool.QueryRow(ctx, query,
 		client.ID, client.OrgID, client.Name, client.ClientType,
-		client.RedirectURIs, client.ClientSecretHash, client.Description, client.Enabled,
+		client.RedirectURIs, client.ClientSecretHash, client.Description, client.Enabled, client.FirstParty,
 	).Scan(&c.ID, &c.OrgID, &c.Name, &c.ClientType, &c.RedirectURIs,
-		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.CreatedAt, &c.UpdatedAt)
+		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.FirstParty, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("inserting oauth client: %w", err)
 	}
@@ -140,12 +140,12 @@ func (db *DB) UpdateOAuthClient(ctx context.Context, clientID string, req *model
 		WHERE id = $1
 		RETURNING id, org_id, name, client_type, redirect_uris,
 		          COALESCE(client_secret_hash, ''::bytea), COALESCE(description, ''),
-		          enabled, created_at, updated_at`
+		          enabled, first_party, created_at, updated_at`
 
 	var c model.OAuthClient
 	err := db.Pool.QueryRow(ctx, query, clientID, req.Name, req.Description, uris, req.Enabled).Scan(
 		&c.ID, &c.OrgID, &c.Name, &c.ClientType, &c.RedirectURIs,
-		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.CreatedAt, &c.UpdatedAt)
+		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.FirstParty, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil

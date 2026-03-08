@@ -291,8 +291,13 @@ func TestRegisterOAuthRoutes(t *testing.T) {
 	tokenCall := 0
 	revokeCall := 0
 
+	consentCall := 0
+
 	RegisterOAuthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		authorizeCall++
+		w.WriteHeader(http.StatusOK)
+	}, func(w http.ResponseWriter, _ *http.Request) {
+		consentCall++
 		w.WriteHeader(http.StatusOK)
 	}, func(w http.ResponseWriter, _ *http.Request) {
 		tokenCall++
@@ -316,6 +321,14 @@ func TestRegisterOAuthRoutes(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if authorizeCall != 2 {
 		t.Errorf("POST /oauth/authorize: handler called %d times, want 2", authorizeCall)
+	}
+
+	// POST /oauth/consent
+	req = httptest.NewRequest(http.MethodPost, "/oauth/consent", http.NoBody)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if consentCall != 1 {
+		t.Errorf("POST /oauth/consent: handler called %d times, want 1", consentCall)
 	}
 
 	// POST /oauth/token

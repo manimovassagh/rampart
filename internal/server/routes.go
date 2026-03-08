@@ -213,9 +213,10 @@ func RegisterExportImportRoutes(r *chi.Mux, pubKey *rsa.PublicKey, exportHandler
 
 // RegisterOAuthRoutes mounts the OAuth 2.0 authorization and token endpoints.
 // If rl is non-nil, it is applied as rate limiting middleware to /oauth/token.
-func RegisterOAuthRoutes(r *chi.Mux, authorize, token, revoke http.HandlerFunc, rl *middleware.RateLimiter) {
+func RegisterOAuthRoutes(r *chi.Mux, authorize, consent, token, revoke http.HandlerFunc, rl *middleware.RateLimiter) {
 	r.Get("/oauth/authorize", authorize)
 	r.Post("/oauth/authorize", authorize)
+	r.Post("/oauth/consent", consent)
 	if rl != nil {
 		r.With(rl.Middleware()).Post("/oauth/token", token)
 	} else {

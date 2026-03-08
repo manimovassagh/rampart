@@ -25,6 +25,9 @@ import (
 //go:embed templates/login/*.html
 var loginThemeFS embed.FS
 
+//go:embed templates/consent/consent.html
+var consentFS embed.FS
+
 const (
 	authCodeTTL       = 10 * time.Minute
 	scopeOpenID       = "openid"
@@ -66,11 +69,14 @@ type AuthorizeStore interface {
 	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
 	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
 	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope, nonce string, expiresAt time.Time) error
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
 	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
 	IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error
 	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
+	HasConsent(ctx context.Context, userID uuid.UUID, clientID, scopes string) (bool, error)
+	GrantConsent(ctx context.Context, userID uuid.UUID, clientID, scopes string) error
 }
 
 // AuthorizeHandler handles the OAuth 2.0 authorization endpoint.
@@ -348,6 +354,28 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Consent check — skip for first-party clients
+	if !client.FirstParty {
+		hasConsent, cErr := h.store.HasConsent(ctx, user.ID, clientID, scope)
+		if cErr != nil {
+			h.logger.Error("failed to check consent", "error", cErr)
+			h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
+			return
+		}
+		if !hasConsent {
+			// Generate new CSRF token for consent form
+			consentCSRF, csrfErr := middleware.GenerateCSRFToken()
+			if csrfErr != nil {
+				h.logger.Error("failed to generate CSRF token for consent", "error", csrfErr)
+				h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
+				return
+			}
+			middleware.SetOAuthCSRFCookie(w, consentCSRF)
+			h.renderConsentPage(w, client, user.ID, scope, state, codeChallenge, nonce, redirectURI, consentCSRF)
+			return
+		}
+	}
+
 	// Generate authorization code
 	code, err := oauth.GenerateAuthorizationCode()
 	if err != nil {
@@ -420,6 +448,166 @@ func (h *AuthorizeHandler) renderLoginPage(w http.ResponseWriter, data *loginPag
 	if err := tmpl.Execute(w, data); err != nil {
 		h.logger.Error("failed to render login template", "error", err, "theme", data.Theme)
 	}
+}
+
+// consentPageData holds the data for the consent template.
+type consentPageData struct {
+	ClientID          string
+	ClientName        string
+	ClientDescription string
+	RedirectURI       string
+	Scope             string
+	State             string
+	CodeChallenge     string
+	Nonce             string
+	UserID            string
+	CSRFToken         string
+	ScopeDetails      []scopeDetail
+}
+
+type scopeDetail struct {
+	Label       string
+	Description string
+}
+
+// knownScopes maps scope strings to human-readable descriptions.
+var knownScopes = map[string]scopeDetail{
+	"openid":  {Label: "Verify your identity", Description: "Confirm who you are"},
+	"profile": {Label: "View your profile", Description: "Name, username, and avatar"},
+	"email":   {Label: "View your email address", Description: "Your verified email"},
+	"offline": {Label: "Access your data when you're not using the app", Description: "Refresh tokens for long-lived access"},
+}
+
+var consentTemplate = template.Must(template.ParseFS(consentFS, "templates/consent/consent.html"))
+
+func (h *AuthorizeHandler) renderConsentPage(w http.ResponseWriter, client *model.OAuthClient, userID uuid.UUID, scope, state, codeChallenge, nonce, redirectURI, csrfToken string) {
+	var details []scopeDetail
+	for _, s := range strings.Split(scope, " ") {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if d, ok := knownScopes[s]; ok {
+			details = append(details, d)
+		} else {
+			details = append(details, scopeDetail{Label: s})
+		}
+	}
+
+	data := &consentPageData{
+		ClientID:          client.ID,
+		ClientName:        client.Name,
+		ClientDescription: client.Description,
+		RedirectURI:       redirectURI,
+		Scope:             scope,
+		State:             state,
+		CodeChallenge:     codeChallenge,
+		Nonce:             nonce,
+		UserID:            userID.String(),
+		CSRFToken:         csrfToken,
+		ScopeDetails:      details,
+	}
+
+	w.Header().Set("Content-Type", contentTypeHTML)
+	w.Header().Set("Cache-Control", cacheNoStore)
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.WriteHeader(http.StatusOK)
+	if err := consentTemplate.Execute(w, data); err != nil {
+		h.logger.Error("failed to render consent template", "error", err)
+	}
+}
+
+// Consent handles POST /oauth/consent — the consent form submission.
+func (h *AuthorizeHandler) Consent(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		apierror.BadRequest(w, "Invalid form data.")
+		return
+	}
+
+	// Validate CSRF
+	csrfFormToken := r.FormValue("csrf_token")
+	if !middleware.ValidateOAuthCSRF(r, csrfFormToken) {
+		h.renderError(w, http.StatusForbidden, "CSRF validation failed. Please try again.")
+		return
+	}
+
+	consent := r.FormValue("consent")
+	clientID := r.FormValue("client_id")
+	redirectURI := r.FormValue("redirect_uri")
+	scope := r.FormValue("scope")
+	state := r.FormValue("state")
+	codeChallenge := r.FormValue("code_challenge")
+	nonce := r.FormValue("nonce")
+	userIDStr := r.FormValue("user_id")
+
+	if clientID == "" || redirectURI == "" || state == "" || userIDStr == "" {
+		h.renderError(w, http.StatusBadRequest, "Missing required parameters.")
+		return
+	}
+
+	// If user denied consent, redirect with access_denied error
+	if consent != "allow" {
+		params := url.Values{
+			"error":             {"access_denied"},
+			"error_description": {"The user denied the consent request."},
+			"state":             {state},
+		}
+		http.Redirect(w, r, redirectURI+"?"+params.Encode(), http.StatusFound)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Re-validate client
+	client, err := h.store.GetOAuthClient(ctx, clientID)
+	if err != nil || client == nil {
+		h.renderError(w, http.StatusBadRequest, "Unknown client.")
+		return
+	}
+	if !database.ValidateRedirectURI(client, redirectURI) {
+		h.renderError(w, http.StatusBadRequest, "Invalid redirect_uri.")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		h.renderError(w, http.StatusBadRequest, "Invalid user.")
+		return
+	}
+
+	// Verify user still exists and is enabled
+	user, err := h.store.GetUserByID(ctx, userID)
+	if err != nil || user == nil || !user.Enabled {
+		h.renderError(w, http.StatusBadRequest, "User account is disabled or not found.")
+		return
+	}
+
+	// Store consent
+	if err := h.store.GrantConsent(ctx, userID, clientID, scope); err != nil {
+		h.logger.Error("failed to store consent", "error", err)
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
+		return
+	}
+
+	// Generate authorization code
+	code, err := oauth.GenerateAuthorizationCode()
+	if err != nil {
+		h.logger.Error("failed to generate authorization code", "error", err)
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
+		return
+	}
+
+	expiresAt := time.Now().Add(authCodeTTL)
+	if err := h.store.StoreAuthorizationCode(ctx, code, clientID, userID, client.OrgID, redirectURI, codeChallenge, scope, nonce, expiresAt); err != nil {
+		h.logger.Error("failed to store authorization code", "error", err)
+		h.renderError(w, http.StatusInternalServerError, msgUnexpectedErr)
+		return
+	}
+
+	h.audit.Log(ctx, r, client.OrgID, model.EventUserLogin, &userID, user.Username, "user", userID.String(), user.Username, map[string]any{"client_id": clientID, "consent": "granted"})
+
+	params := url.Values{"code": {code}, "state": {state}}
+	http.Redirect(w, r, redirectURI+"?"+params.Encode(), http.StatusFound)
 }
 
 func (h *AuthorizeHandler) renderError(w http.ResponseWriter, status int, message string) {

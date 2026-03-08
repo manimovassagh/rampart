@@ -69,6 +69,18 @@ func (m *mockAuthorizeStore) ResetFailedLogins(_ context.Context, _ uuid.UUID) e
 	return nil
 }
 
+func (m *mockAuthorizeStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) {
+	return m.emailUser, m.emailErr
+}
+
+func (m *mockAuthorizeStore) HasConsent(_ context.Context, _ uuid.UUID, _, _ string) (bool, error) {
+	return true, nil // default to consented for existing tests
+}
+
+func (m *mockAuthorizeStore) GrantConsent(_ context.Context, _ uuid.UUID, _, _ string) error {
+	return nil
+}
+
 func newTestOAuthClient(orgID uuid.UUID) *model.OAuthClient {
 	return &model.OAuthClient{
 		ID:           "test-client",

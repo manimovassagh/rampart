@@ -16,6 +16,7 @@ type OAuthClient struct {
 	ClientSecretHash []byte    `json:"-"`
 	Description      string    `json:"description"`
 	Enabled          bool      `json:"enabled"`
+	FirstParty       bool      `json:"first_party"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }

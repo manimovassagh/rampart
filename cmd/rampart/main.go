@@ -216,7 +216,7 @@ func run(_ *slog.Logger) error {
 	// OAuth 2.0 Authorization Code + PKCE endpoints
 	authorizeHandler := handler.NewAuthorizeHandler(db, logger, auditLogger, socialRegistry)
 	tokenHandler := handler.NewTokenHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
-	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, tokenHandler.Token, tokenHandler.Revoke, tokenRL)
+	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, authorizeHandler.Consent, tokenHandler.Token, tokenHandler.Revoke, tokenRL)
 
 	// OIDC Discovery + JWKS (public endpoints, no auth)
 	discoveryHandler := handler.DiscoveryHandler(cfg.Issuer, logger)
