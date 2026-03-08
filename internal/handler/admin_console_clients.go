@@ -77,8 +77,19 @@ func (h *AdminConsoleHandler) CreateClientAction(w http.ResponseWriter, r *http.
 	clientType := r.FormValue("client_type")
 	redirectURIsRaw := strings.TrimSpace(r.FormValue("redirect_uris"))
 
+	formValues := map[string]string{
+		"name":          name,
+		"description":   description,
+		"client_type":   clientType,
+		"redirect_uris": redirectURIsRaw,
+	}
+
 	if name == "" {
-		h.render(w, r, tmplClientCreate, &pageData{Title: titleCreateClient, ActiveNav: navClients, Error: "Client name is required."})
+		h.render(w, r, tmplClientCreate, &pageData{
+			Title: titleCreateClient, ActiveNav: navClients,
+			FormErrors: map[string]string{"name": "Client name is required."},
+			FormValues: formValues,
+		})
 		return
 	}
 

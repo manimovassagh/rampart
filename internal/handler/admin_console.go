@@ -278,13 +278,15 @@ func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessio
 
 // pageData holds common data passed to all admin templates.
 type pageData struct {
-	Title     string
-	ActiveNav string
-	User      *middleware.AuthenticatedUser
-	OrgName   string
-	CSRFToken string
-	Flash     string
-	Error     string
+	Title      string
+	ActiveNav  string
+	User       *middleware.AuthenticatedUser
+	OrgName    string
+	CSRFToken  string
+	Flash      string
+	Error      string
+	FormErrors map[string]string // per-field validation errors
+	FormValues map[string]string // preserved form input on validation failure
 
 	// Page-specific data
 	Stats           *model.DashboardStats
@@ -331,6 +333,14 @@ type paginationData struct {
 func (h *AdminConsoleHandler) render(w http.ResponseWriter, r *http.Request, pageName string, data *pageData) {
 	data.User = middleware.GetAuthenticatedUser(r.Context())
 	data.CSRFToken = middleware.GetCSRFToken(r)
+
+	// Ensure maps are initialized so templates can safely use {{index}}
+	if data.FormErrors == nil {
+		data.FormErrors = map[string]string{}
+	}
+	if data.FormValues == nil {
+		data.FormValues = map[string]string{}
+	}
 
 	if data.User != nil && data.OrgName == "" {
 		if org, err := h.store.GetOrganizationByID(r.Context(), data.User.OrgID); err == nil && org != nil {

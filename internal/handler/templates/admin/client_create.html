@@ -5,13 +5,14 @@
 
         <div>
             <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
-            <input type="text" id="name" name="name" required
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="text" id="name" name="name" required value="{{index .FormValues "name"}}"
+                   class="w-full px-3 py-2 border {{if index .FormErrors "name"}}border-red-500{{else}}border-gray-300{{end}} rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {{if index .FormErrors "name"}}<p class="mt-1 text-xs text-red-600">{{index .FormErrors "name"}}</p>{{end}}
         </div>
 
         <div>
             <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <input type="text" id="description" name="description" maxlength="500"
+            <input type="text" id="description" name="description" maxlength="500" value="{{index .FormValues "description"}}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
 
@@ -19,8 +20,8 @@
             <label for="client_type" class="block text-sm font-medium text-gray-700 mb-1">Client Type</label>
             <select id="client_type" name="client_type"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="public">Public (SPA, mobile app — no secret)</option>
-                <option value="confidential">Confidential (server-side — with secret)</option>
+                <option value="public" {{if eq (index .FormValues "client_type") "public"}}selected{{end}}>Public (SPA, mobile app — no secret)</option>
+                <option value="confidential" {{if eq (index .FormValues "client_type") "confidential"}}selected{{end}}>Confidential (server-side — with secret)</option>
             </select>
             <p class="text-xs text-gray-500 mt-1">Public clients cannot securely store a secret. Confidential clients receive a generated secret on creation.</p>
         </div>
@@ -29,7 +30,7 @@
             <label for="redirect_uris" class="block text-sm font-medium text-gray-700 mb-1">Redirect URIs</label>
             <textarea id="redirect_uris" name="redirect_uris" rows="3"
                       placeholder="https://example.com/callback&#10;http://localhost:3000/callback"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">{{index .FormValues "redirect_uris"}}</textarea>
             <p class="text-xs text-gray-500 mt-1">One URI per line. Must be exact match per OAuth 2.0 spec.</p>
         </div>
 

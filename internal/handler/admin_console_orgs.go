@@ -71,19 +71,33 @@ func (h *AdminConsoleHandler) CreateOrgAction(w http.ResponseWriter, r *http.Req
 		DisplayName: strings.TrimSpace(r.FormValue("display_name")),
 	}
 
-	if req.Name == "" || req.Slug == "" {
-		h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, Error: "Name and slug are required."})
+	formValues := map[string]string{
+		"name":         req.Name,
+		"slug":         req.Slug,
+		"display_name": req.DisplayName,
+	}
+
+	formErrors := make(map[string]string)
+	if req.Name == "" {
+		formErrors["name"] = "Name is required."
+	}
+	if req.Slug == "" {
+		formErrors["slug"] = "Slug is required."
+	}
+	if len(formErrors) > 0 {
+		h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, FormErrors: formErrors, FormValues: formValues})
 		return
 	}
 
 	newOrg, err := h.store.CreateOrganization(r.Context(), req)
 	if err != nil {
 		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
-			h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, Error: "An organization with this slug already exists."})
+			formErrors["slug"] = "An organization with this slug already exists."
+			h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, FormErrors: formErrors, FormValues: formValues})
 			return
 		}
 		h.logger.Error("failed to create organization", "error", err)
-		h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, Error: "Failed to create organization."})
+		h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, Error: "Failed to create organization.", FormValues: formValues})
 		return
 	}
 

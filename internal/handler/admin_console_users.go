@@ -82,44 +82,54 @@ func (h *AdminConsoleHandler) CreateUserAction(w http.ResponseWriter, r *http.Re
 	enabled := r.FormValue("enabled") == formValueTrue
 	emailVerified := r.FormValue("email_verified") == formValueTrue
 
-	// Validate
-	var errors []string
+	// Preserve form values for re-rendering on error
+	formValues := map[string]string{
+		"username":    username,
+		"email":       email,
+		"given_name":  givenName,
+		"family_name": familyName,
+	}
+
+	// Validate with per-field errors
+	formErrors := make(map[string]string)
 	if fe := auth.ValidateEmail(email); fe != nil {
-		errors = append(errors, fe.Message)
+		formErrors[fe.Field] = fe.Message
 	}
 	if fe := auth.ValidatePassword(password); fe != nil {
-		errors = append(errors, fe.Message)
+		formErrors[fe.Field] = fe.Message
 	}
 	if fe := auth.ValidateUsername(username); fe != nil {
-		errors = append(errors, fe.Message)
+		formErrors[fe.Field] = fe.Message
 	}
-	if len(errors) > 0 {
-		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: strings.Join(errors, " ")})
+	if len(formErrors) > 0 {
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, FormErrors: formErrors, FormValues: formValues})
 		return
 	}
 
 	// Check duplicates
 	if existing, err := h.store.GetUserByEmail(ctx, email, orgID); err != nil {
 		h.logger.Error("failed to check email uniqueness", "error", err)
-		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr, FormValues: formValues})
 		return
 	} else if existing != nil {
-		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "A user with this email already exists."})
+		formErrors["email"] = "A user with this email already exists."
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, FormErrors: formErrors, FormValues: formValues})
 		return
 	}
 	if existing, err := h.store.GetUserByUsername(ctx, username, orgID); err != nil {
 		h.logger.Error("failed to check username uniqueness", "error", err)
-		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr, FormValues: formValues})
 		return
 	} else if existing != nil {
-		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "A user with this username already exists."})
+		formErrors["username"] = "A user with this username already exists."
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, FormErrors: formErrors, FormValues: formValues})
 		return
 	}
 
 	hash, err := auth.HashPassword(password)
 	if err != nil {
 		h.logger.Error("failed to hash password", "error", err)
-		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr, FormValues: formValues})
 		return
 	}
 
@@ -137,7 +147,7 @@ func (h *AdminConsoleHandler) CreateUserAction(w http.ResponseWriter, r *http.Re
 	created, err := h.store.CreateUser(ctx, user)
 	if err != nil {
 		h.logger.Error("failed to create user", "error", err)
-		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "Failed to create user."})
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "Failed to create user.", FormValues: formValues})
 		return
 	}
 

@@ -74,8 +74,10 @@ func (h *AdminConsoleHandler) CreateRoleAction(w http.ResponseWriter, r *http.Re
 	name := strings.ToLower(strings.TrimSpace(r.FormValue("name")))
 	description := strings.TrimSpace(r.FormValue("description"))
 
+	formValues := map[string]string{"name": name, "description": description}
+
 	if name == "" {
-		h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, Error: "Role name is required."})
+		h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, FormErrors: map[string]string{"name": "Role name is required."}, FormValues: formValues})
 		return
 	}
 
@@ -87,11 +89,11 @@ func (h *AdminConsoleHandler) CreateRoleAction(w http.ResponseWriter, r *http.Re
 
 	if _, err := h.store.CreateRole(ctx, role); err != nil {
 		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
-			h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, Error: "A role with this name already exists."})
+			h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, FormErrors: map[string]string{"name": "A role with this name already exists."}, FormValues: formValues})
 			return
 		}
 		h.logger.Error("failed to create role", "error", err)
-		h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, Error: "Failed to create role."})
+		h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, Error: "Failed to create role.", FormValues: formValues})
 		return
 	}
 
