@@ -137,6 +137,7 @@ func RegisterAdminRoutes(r *chi.Mux, pubKey *rsa.PublicKey, admin AdminEndpoints
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
 		r.Use(middleware.RequireRole("admin"))
+		r.Use(middleware.RequireJSON)
 
 		r.Get("/api/v1/admin/stats", admin.Stats)
 		r.Get("/api/v1/admin/users", admin.ListUsers)
@@ -166,6 +167,7 @@ func RegisterOrgRoutes(r *chi.Mux, pubKey *rsa.PublicKey, org OrgEndpoints) {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
 		r.Use(middleware.RequireRole("admin"))
+		r.Use(middleware.RequireJSON)
 
 		r.Get("/api/v1/admin/organizations", org.ListOrgs)
 		r.Post("/api/v1/admin/organizations", org.CreateOrg)
@@ -182,6 +184,7 @@ func RegisterExportImportRoutes(r *chi.Mux, pubKey *rsa.PublicKey, exportHandler
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
 		r.Use(middleware.RequireRole("admin"))
+		r.Use(middleware.RequireJSON)
 
 		r.Get("/api/v1/admin/organizations/{id}/export", exportHandler)
 		r.Post("/api/v1/admin/organizations/{id}/import", importHandler)

@@ -21,9 +21,6 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Port != 8080 {
 		t.Errorf("Port = %d, want 8080", cfg.Port)
 	}
-	if cfg.RedisURL != "redis://localhost:6379/0" {
-		t.Errorf("RedisURL = %q, want default", cfg.RedisURL)
-	}
 	if cfg.LogLevel != "info" {
 		t.Errorf("LogLevel = %q, want info", cfg.LogLevel)
 	}
@@ -44,7 +41,6 @@ func TestLoadDefaults(t *testing.T) {
 func TestLoadEnvOverrides(t *testing.T) {
 	t.Setenv("RAMPART_PORT", "9090")
 	t.Setenv("RAMPART_DB_URL", "postgres://custom:secret@db:5432/custom")
-	t.Setenv("RAMPART_REDIS_URL", "redis://cache:6379/1")
 	t.Setenv("RAMPART_LOG_LEVEL", "debug")
 	t.Setenv("RAMPART_ACCESS_TOKEN_TTL", "300")
 	t.Setenv("RAMPART_REFRESH_TOKEN_TTL", "86400")
@@ -61,9 +57,6 @@ func TestLoadEnvOverrides(t *testing.T) {
 	}
 	if cfg.DatabaseURL != "postgres://custom:secret@db:5432/custom" {
 		t.Errorf("DatabaseURL = %q, want custom", cfg.DatabaseURL)
-	}
-	if cfg.RedisURL != "redis://cache:6379/1" {
-		t.Errorf("RedisURL = %q, want custom", cfg.RedisURL)
 	}
 	if cfg.LogLevel != "debug" {
 		t.Errorf("LogLevel = %q, want debug", cfg.LogLevel)

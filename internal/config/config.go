@@ -51,10 +51,9 @@ type RateLimitConfig struct {
 
 // Config holds all server configuration loaded from environment variables.
 type Config struct {
-	Port            int
-	DatabaseURL     string
-	RedisURL        string
-	LogLevel        LogLevel
+	Port           int
+	DatabaseURL    string
+	LogLevel       LogLevel
 	LogFormat       LogFormat
 	AllowedOrigins  []string
 	SigningKeyPath  string
@@ -97,9 +96,8 @@ type Config struct {
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:           8080,
-		RedisURL:       "redis://localhost:6379/0",
-		LogLevel:       LogLevelInfo,
+		Port:     8080,
+		LogLevel: LogLevelInfo,
 		LogFormat:      LogFormatPretty,
 		SigningKeyPath: defaultSigningKeyPath,
 		Issuer:         defaultIssuer,
@@ -117,10 +115,6 @@ func Load() (*Config, error) {
 	}
 
 	cfg.DatabaseURL = os.Getenv("RAMPART_DB_URL")
-
-	if v := os.Getenv("RAMPART_REDIS_URL"); v != "" {
-		cfg.RedisURL = v
-	}
 
 	if v := os.Getenv("RAMPART_LOG_LEVEL"); v != "" {
 		level := LogLevel(strings.ToLower(v))

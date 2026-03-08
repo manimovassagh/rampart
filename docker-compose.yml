@@ -10,7 +10,6 @@ services:
     environment:
       RAMPART_PORT: "8080"
       RAMPART_DB_URL: "postgres://${POSTGRES_USER:-rampart}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-rampart}?sslmode=disable"
-      RAMPART_REDIS_URL: "${RAMPART_REDIS_URL:-redis://redis:6379/0}"
       RAMPART_LOG_LEVEL: "${RAMPART_LOG_LEVEL:-info}"
       RAMPART_ALLOWED_ORIGINS: "${RAMPART_ALLOWED_ORIGINS:-}"
       RAMPART_SIGNING_KEY_PATH: "/data/rampart-signing-key.pem"
@@ -28,8 +27,6 @@ services:
       - signingkey:/data
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
     read_only: true
@@ -76,35 +73,9 @@ services:
     networks:
       - rampart-net
 
-  redis:
-    image: redis:7.4-alpine
-    ports:
-      - "6379:6379"
-    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: "0.5"
-        reservations:
-          memory: 32M
-          cpus: "0.1"
-    networks:
-      - rampart-net
-
 volumes:
   pgdata:
   signingkey:
-  redisdata:
 
 networks:
   rampart-net:
