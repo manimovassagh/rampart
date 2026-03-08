@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/manimovassagh/rampart/internal/audit"
+	"github.com/manimovassagh/rampart/internal/plugin"
 	webhookpkg "github.com/manimovassagh/rampart/internal/webhook"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -117,9 +118,14 @@ func run(_ *slog.Logger) error {
 	sessionStore := session.NewPGStore(db.Pool)
 	auditLogger := audit.NewLogger(db, logger)
 
+	// Plugin registry — extensibility layer for event hooks, claim enrichers, etc.
+	pluginRegistry := plugin.NewRegistry(logger)
+	defer func() { _ = pluginRegistry.Close() }()
+
 	// Webhook dispatcher — delivers audit events to registered webhook endpoints
 	webhookDispatcher := webhookpkg.NewDispatcher(db, logger)
 	auditLogger.SetDispatcher(webhookDispatcher)
+	auditLogger.SetPluginDispatcher(pluginRegistry)
 	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout, loginRL)
 
@@ -253,7 +259,7 @@ func run(_ *slog.Logger) error {
 		kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer,
 		cfg.AccessTokenTTL, cfg.RefreshTokenTTL, hmacKey,
 	)
-	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger, socialRegistry)
+	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger, socialRegistry, pluginRegistry)
 	server.RegisterAdminConsoleRoutes(router, kp.PublicKey, hmacKey, handler.StaticHandler(), adminLoginHandler, adminConsoleHandler)
 
 	// SAML 2.0 SP endpoints for enterprise SSO

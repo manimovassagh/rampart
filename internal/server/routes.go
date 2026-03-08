@@ -344,6 +344,7 @@ type AdminConsoleEndpoints interface {
 	SAMLProviderDetailPage(w http.ResponseWriter, r *http.Request)
 	UpdateSAMLProviderAction(w http.ResponseWriter, r *http.Request)
 	DeleteSAMLProviderAction(w http.ResponseWriter, r *http.Request)
+	PluginsPage(w http.ResponseWriter, r *http.Request)
 }
 
 // AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
@@ -457,6 +458,9 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 		r.Post("/admin/clients/{id}", console.UpdateClientAction)
 		r.Post("/admin/clients/{id}/delete", console.DeleteClientAction)
 		r.Post("/admin/clients/{id}/regenerate-secret", console.RegenerateSecretAction)
+
+		// Plugins
+		r.Get("/admin/plugins", console.PluginsPage)
 
 		// OIDC
 		r.Get("/admin/oidc", console.OIDCPage)

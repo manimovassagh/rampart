@@ -14,6 +14,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/plugin"
 	"github.com/manimovassagh/rampart/internal/session"
 	"github.com/manimovassagh/rampart/internal/social"
 	"github.com/manimovassagh/rampart/internal/store"
@@ -54,6 +55,7 @@ const (
 	navSocial        = "social"
 	navWebhooks      = "webhooks"
 	navSAML          = "saml-providers"
+	navPlugins       = "plugins"
 
 	// Redirect paths
 	pathAdminUsers     = "/admin/users"
@@ -175,6 +177,7 @@ type AdminConsoleHandler struct {
 	issuer         string
 	pages          map[string]*template.Template
 	socialRegistry *social.Registry
+	plugins        *plugin.Registry
 }
 
 var adminFuncMap = template.FuncMap{
@@ -203,7 +206,7 @@ func parseAdminPage(pageFile string) *template.Template {
 }
 
 // NewAdminConsoleHandler creates a handler for SSR admin pages.
-func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger, socialReg *social.Registry) *AdminConsoleHandler {
+func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger, socialReg *social.Registry, pluginReg *plugin.Registry) *AdminConsoleHandler {
 	pages := map[string]*template.Template{
 		"dashboard":        parseAdminPage("dashboard.html"),
 		"users_list":       parseAdminPage("users_list.html"),
@@ -232,6 +235,7 @@ func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionSto
 		"saml_providers_list": parseAdminPage("saml_providers_list.html"),
 		"saml_provider_create": parseAdminPage("saml_provider_create.html"),
 		"saml_provider_detail": parseAdminPage("saml_provider_detail.html"),
+		"plugins_list":         parseAdminPage("plugins_list.html"),
 	}
 
 	return &AdminConsoleHandler{
@@ -242,6 +246,7 @@ func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionSto
 		issuer:         issuer,
 		pages:          pages,
 		socialRegistry: socialReg,
+		plugins:        pluginReg,
 	}
 }
 
@@ -291,6 +296,7 @@ type pageData struct {
 	Deliveries      []*model.WebhookDelivery
 	SAMLProviders   []*model.SAMLProvider
 	SAMLDetail      *model.SAMLProvider
+	Plugins         []plugin.Info
 	Search          string
 	Pagination      *paginationData
 }

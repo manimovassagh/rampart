@@ -797,6 +797,9 @@ func (s *stubAdminConsoleEndpoints) UpdateSAMLProviderAction(w http.ResponseWrit
 func (s *stubAdminConsoleEndpoints) DeleteSAMLProviderAction(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
+func (s *stubAdminConsoleEndpoints) PluginsPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 
 func TestRegisterAdminConsoleRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))

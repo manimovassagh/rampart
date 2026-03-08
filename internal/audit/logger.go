@@ -21,11 +21,17 @@ type WebhookDispatcher interface {
 	Dispatch(ctx context.Context, event *model.AuditEvent)
 }
 
+// PluginEventDispatcher dispatches audit events to registered plugin event hooks.
+type PluginEventDispatcher interface {
+	DispatchEvent(ctx context.Context, event *model.AuditEvent)
+}
+
 // Logger provides fire-and-forget audit logging.
 type Logger struct {
-	store      EventStore
-	logger     *slog.Logger
-	dispatcher WebhookDispatcher
+	store            EventStore
+	logger           *slog.Logger
+	dispatcher       WebhookDispatcher
+	pluginDispatcher PluginEventDispatcher
 }
 
 // NewLogger creates a new audit logger.
@@ -37,6 +43,13 @@ func NewLogger(store EventStore, logger *slog.Logger) *Logger {
 func (l *Logger) SetDispatcher(d WebhookDispatcher) {
 	if l != nil {
 		l.dispatcher = d
+	}
+}
+
+// SetPluginDispatcher sets the plugin event dispatcher for event hooks.
+func (l *Logger) SetPluginDispatcher(d PluginEventDispatcher) {
+	if l != nil {
+		l.pluginDispatcher = d
 	}
 }
 
@@ -73,6 +86,9 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, orgID uuid.UUID, even
 		}
 		if l.dispatcher != nil {
 			l.dispatcher.Dispatch(context.Background(), event)
+		}
+		if l.pluginDispatcher != nil {
+			l.pluginDispatcher.DispatchEvent(context.Background(), event)
 		}
 	}()
 }
