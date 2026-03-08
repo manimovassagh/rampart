@@ -56,6 +56,7 @@ const (
 	navWebhooks      = "webhooks"
 	navSAML          = "saml-providers"
 	navPlugins       = "plugins"
+	navCompliance    = "compliance"
 
 	// Redirect paths
 	pathAdminUsers     = "/admin/users"
@@ -236,6 +237,7 @@ func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionSto
 		"saml_provider_create": parseAdminPage("saml_provider_create.html"),
 		"saml_provider_detail": parseAdminPage("saml_provider_detail.html"),
 		"plugins_list":         parseAdminPage("plugins_list.html"),
+		"compliance":           parseAdminPage("compliance.html"),
 	}
 
 	return &AdminConsoleHandler{

@@ -267,6 +267,10 @@ func run(_ *slog.Logger) error {
 	scimHandler := handler.NewSCIMHandler(db, logger)
 	server.RegisterSCIMRoutes(router, kp.PublicKey, scimHandler)
 
+	// Compliance reporting endpoints (SOC2, GDPR, HIPAA)
+	complianceHandler := handler.NewComplianceHandler(db, logger)
+	server.RegisterComplianceRoutes(router, kp.PublicKey, complianceHandler)
+
 	// SAML 2.0 SP endpoints for enterprise SSO
 	samlCert, err := handler.ParseCertFromKey(kp.PrivateKey)
 	if err != nil {

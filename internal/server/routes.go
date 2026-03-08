@@ -321,6 +321,27 @@ func RegisterSCIMRoutes(r *chi.Mux, pubKey *rsa.PublicKey, scim SCIMEndpoints) {
 	})
 }
 
+// ComplianceEndpoints groups the handler methods for compliance reporting.
+type ComplianceEndpoints interface {
+	SOC2Report(w http.ResponseWriter, r *http.Request)
+	GDPRReport(w http.ResponseWriter, r *http.Request)
+	HIPAAReport(w http.ResponseWriter, r *http.Request)
+	ExportAuditTrail(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterComplianceRoutes mounts compliance reporting endpoints under /api/v1/compliance/.
+func RegisterComplianceRoutes(r *chi.Mux, pubKey *rsa.PublicKey, compliance ComplianceEndpoints) {
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(pubKey))
+		r.Use(middleware.RequireRole("admin"))
+
+		r.Get("/api/v1/compliance/soc2", compliance.SOC2Report)
+		r.Get("/api/v1/compliance/gdpr", compliance.GDPRReport)
+		r.Get("/api/v1/compliance/hipaa", compliance.HIPAAReport)
+		r.Get("/api/v1/compliance/audit-export", compliance.ExportAuditTrail)
+	})
+}
+
 // RegisterOIDCRoutes mounts OIDC Discovery and JWKS endpoints (public, no auth).
 func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
 	r.Get("/.well-known/openid-configuration", discovery)
@@ -394,6 +415,7 @@ type AdminConsoleEndpoints interface {
 	UpdateSAMLProviderAction(w http.ResponseWriter, r *http.Request)
 	DeleteSAMLProviderAction(w http.ResponseWriter, r *http.Request)
 	PluginsPage(w http.ResponseWriter, r *http.Request)
+	CompliancePage(w http.ResponseWriter, r *http.Request)
 }
 
 // AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
@@ -510,6 +532,9 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 
 		// Plugins
 		r.Get("/admin/plugins", console.PluginsPage)
+
+		// Compliance
+		r.Get("/admin/compliance", console.CompliancePage)
 
 		// OIDC
 		r.Get("/admin/oidc", console.OIDCPage)
