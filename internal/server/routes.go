@@ -291,6 +291,12 @@ type AdminConsoleEndpoints interface {
 	OIDCPage(w http.ResponseWriter, r *http.Request)
 	SocialProvidersPage(w http.ResponseWriter, r *http.Request)
 	UpdateSocialProviderAction(w http.ResponseWriter, r *http.Request)
+	ListWebhooksPage(w http.ResponseWriter, r *http.Request)
+	CreateWebhookPage(w http.ResponseWriter, r *http.Request)
+	CreateWebhookAction(w http.ResponseWriter, r *http.Request)
+	WebhookDetailPage(w http.ResponseWriter, r *http.Request)
+	UpdateWebhookAction(w http.ResponseWriter, r *http.Request)
+	DeleteWebhookAction(w http.ResponseWriter, r *http.Request)
 }
 
 // AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
@@ -376,6 +382,14 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 		r.Post("/admin/groups/{id}/members/{userId}/delete", console.RemoveGroupMemberAction)
 		r.Post("/admin/groups/{id}/roles", console.AssignGroupRoleAction)
 		r.Post("/admin/groups/{id}/roles/{roleId}/delete", console.UnassignGroupRoleAction)
+
+		// Webhooks
+		r.Get("/admin/webhooks", console.ListWebhooksPage)
+		r.Get("/admin/webhooks/new", console.CreateWebhookPage)
+		r.Post("/admin/webhooks", console.CreateWebhookAction)
+		r.Get("/admin/webhooks/{id}", console.WebhookDetailPage)
+		r.Post("/admin/webhooks/{id}", console.UpdateWebhookAction)
+		r.Post("/admin/webhooks/{id}/delete", console.DeleteWebhookAction)
 
 		// Events
 		r.Get("/admin/events", console.ListEventsPage)

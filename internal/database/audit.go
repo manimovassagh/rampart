@@ -12,7 +12,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/model"
 )
 
-// CreateAuditEvent inserts a new audit event.
+// CreateAuditEvent inserts a new audit event and populates the ID and CreatedAt fields.
 func (db *DB) CreateAuditEvent(ctx context.Context, event *model.AuditEvent) error {
 	detailsJSON, err := json.Marshal(event.Details)
 	if err != nil {
@@ -21,16 +21,36 @@ func (db *DB) CreateAuditEvent(ctx context.Context, event *model.AuditEvent) err
 
 	query := `
 		INSERT INTO audit_events (org_id, event_type, actor_id, actor_name, target_type, target_id, target_name, ip_address, user_agent, details)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING id, created_at`
 
-	_, err = db.Pool.Exec(ctx, query,
+	err = db.Pool.QueryRow(ctx, query,
 		event.OrgID, event.EventType, event.ActorID, event.ActorName,
 		event.TargetType, event.TargetID, event.TargetName,
-		event.IPAddress, event.UserAgent, detailsJSON)
+		event.IPAddress, event.UserAgent, detailsJSON).Scan(&event.ID, &event.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("inserting audit event: %w", err)
 	}
 	return nil
+}
+
+// GetAuditEventByID returns a single audit event by ID.
+func (db *DB) GetAuditEventByID(ctx context.Context, id uuid.UUID) (*model.AuditEvent, error) {
+	var e model.AuditEvent
+	var detailsJSON []byte
+	err := db.Pool.QueryRow(ctx,
+		`SELECT id, org_id, event_type, actor_id, actor_name, target_type, target_id, target_name, ip_address, user_agent, details, created_at
+		 FROM audit_events WHERE id = $1`, id,
+	).Scan(&e.ID, &e.OrgID, &e.EventType, &e.ActorID, &e.ActorName,
+		&e.TargetType, &e.TargetID, &e.TargetName, &e.IPAddress, &e.UserAgent,
+		&detailsJSON, &e.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("getting audit event: %w", err)
+	}
+	if len(detailsJSON) > 0 {
+		_ = json.Unmarshal(detailsJSON, &e.Details)
+	}
+	return &e, nil
 }
 
 // ListAuditEvents returns a paginated, filterable list of audit events.

@@ -225,6 +225,40 @@ type SocialProviderConfigStore interface {
 	DeleteSocialProviderConfig(ctx context.Context, orgID uuid.UUID, provider string) error
 }
 
+// ── Webhook ─────────────────────────────────────────────────────────────
+
+// WebhookReader provides webhook lookups.
+type WebhookReader interface {
+	GetWebhookByID(ctx context.Context, id uuid.UUID) (*model.Webhook, error)
+	GetEnabledWebhooksForEvent(ctx context.Context, orgID uuid.UUID, eventType string) ([]*model.Webhook, error)
+}
+
+// WebhookWriter provides webhook mutation operations.
+type WebhookWriter interface {
+	CreateWebhook(ctx context.Context, w *model.Webhook) (*model.Webhook, error)
+	UpdateWebhook(ctx context.Context, id uuid.UUID, req *model.UpdateWebhookRequest) (*model.Webhook, error)
+	DeleteWebhook(ctx context.Context, id uuid.UUID) error
+}
+
+// WebhookLister provides paginated webhook listing.
+type WebhookLister interface {
+	ListWebhooks(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*model.Webhook, int, error)
+}
+
+// WebhookDeliveryStore provides webhook delivery operations.
+type WebhookDeliveryStore interface {
+	CreateWebhookDelivery(ctx context.Context, d *model.WebhookDelivery) error
+	UpdateWebhookDelivery(ctx context.Context, id uuid.UUID, status string, attempts int, responseCode *int, lastError string, nextRetry *time.Time, completedAt *time.Time) error
+	GetPendingDeliveries(ctx context.Context, limit int) ([]*model.WebhookDelivery, error)
+	ListWebhookDeliveries(ctx context.Context, webhookID uuid.UUID, limit, offset int) ([]*model.WebhookDelivery, int, error)
+	DeleteOldDeliveries(ctx context.Context, olderThan time.Duration) (int64, error)
+}
+
+// GetAuditEventByIDStore provides audit event lookup by ID (used by webhook dispatcher).
+type GetAuditEventByIDStore interface {
+	GetAuditEventByID(ctx context.Context, id uuid.UUID) (*model.AuditEvent, error)
+}
+
 // ── Export / Import ─────────────────────────────────────────────────────
 
 // ExportImportStore provides organization export/import operations.

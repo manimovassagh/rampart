@@ -16,15 +16,28 @@ type EventStore interface {
 	CreateAuditEvent(ctx context.Context, event *model.AuditEvent) error
 }
 
+// WebhookDispatcher dispatches audit events to registered webhook endpoints.
+type WebhookDispatcher interface {
+	Dispatch(ctx context.Context, event *model.AuditEvent)
+}
+
 // Logger provides fire-and-forget audit logging.
 type Logger struct {
-	store  EventStore
-	logger *slog.Logger
+	store      EventStore
+	logger     *slog.Logger
+	dispatcher WebhookDispatcher
 }
 
 // NewLogger creates a new audit logger.
 func NewLogger(store EventStore, logger *slog.Logger) *Logger {
 	return &Logger{store: store, logger: logger}
+}
+
+// SetDispatcher sets the webhook dispatcher for event delivery.
+func (l *Logger) SetDispatcher(d WebhookDispatcher) {
+	if l != nil {
+		l.dispatcher = d
+	}
 }
 
 // Log records an audit event asynchronously (fire-and-forget).
@@ -56,6 +69,10 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, orgID uuid.UUID, even
 	go func() {
 		if err := l.store.CreateAuditEvent(context.Background(), event); err != nil {
 			l.logger.Error("failed to write audit event", "event_type", eventType, "error", err)
+			return
+		}
+		if l.dispatcher != nil {
+			l.dispatcher.Dispatch(context.Background(), event)
 		}
 	}()
 }

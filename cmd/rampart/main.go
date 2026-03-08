@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/manimovassagh/rampart/internal/audit"
+	webhookpkg "github.com/manimovassagh/rampart/internal/webhook"
 	"github.com/manimovassagh/rampart/internal/config"
 	"github.com/manimovassagh/rampart/internal/crypto"
 	"github.com/manimovassagh/rampart/internal/database"
@@ -112,6 +113,10 @@ func run(_ *slog.Logger) error {
 
 	sessionStore := session.NewPGStore(db.Pool)
 	auditLogger := audit.NewLogger(db, logger)
+
+	// Webhook dispatcher — delivers audit events to registered webhook endpoints
+	webhookDispatcher := webhookpkg.NewDispatcher(db, logger)
+	auditLogger.SetDispatcher(webhookDispatcher)
 	loginHandler := handler.NewLoginHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	server.RegisterLoginRoutes(router, loginHandler.Login, loginHandler.Refresh, loginHandler.Logout, loginRL)
 
@@ -266,6 +271,25 @@ func run(_ *slog.Logger) error {
 				} else if n > 0 {
 					logger.Info("cleaned up expired email verification tokens", "count", n)
 				}
+				if n, err := db.DeleteOldDeliveries(cleanupCtx, 7*24*time.Hour); err != nil {
+					logger.Warn("failed to clean up old webhook deliveries", "error", err)
+				} else if n > 0 {
+					logger.Info("cleaned up old webhook deliveries", "count", n)
+				}
+			}
+		}
+	}()
+
+	// Background worker for webhook delivery retries (runs every 30 seconds)
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-cleanupCtx.Done():
+				return
+			case <-ticker.C:
+				webhookDispatcher.ProcessPending(cleanupCtx)
 			}
 		}
 	}()

@@ -52,6 +52,7 @@ const (
 	navSessions      = "sessions"
 	navEvents        = "events"
 	navSocial        = "social"
+	navWebhooks      = "webhooks"
 
 	// Redirect paths
 	pathAdminUsers     = "/admin/users"
@@ -66,6 +67,8 @@ const (
 	pathAdminGroupFmt  = "/admin/groups/%s"
 	pathAdminSessions  = "/admin/sessions"
 	pathAdminEvents    = "/admin/events"
+	pathAdminWebhooks  = "/admin/webhooks"
+	pathAdminWebhookFmt = "/admin/webhooks/%s"
 
 	// Page titles
 	titleCreateUser   = "Create User"
@@ -124,6 +127,10 @@ type AdminConsoleStore interface {
 	store.GroupWriter
 	store.GroupLister
 	store.SocialProviderConfigStore
+	store.WebhookReader
+	store.WebhookWriter
+	store.WebhookLister
+	store.WebhookDeliveryStore
 }
 
 // AdminConsoleSessionStore defines session operations for the admin console.
@@ -215,6 +222,9 @@ func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionSto
 		"org_import":       parseAdminPage("org_import.html"),
 		"oidc":             parseAdminPage("oidc.html"),
 		"social_providers": parseAdminPage("social_providers.html"),
+		"webhooks_list":    parseAdminPage("webhooks_list.html"),
+		"webhook_create":   parseAdminPage("webhook_create.html"),
+		"webhook_detail":   parseAdminPage("webhook_detail.html"),
 	}
 
 	return &AdminConsoleHandler{
@@ -268,6 +278,10 @@ type pageData struct {
 	OIDC            *DiscoveryResponse
 	SocialProviders []SocialProviderInfo
 	SearchUsers     []*model.User
+	Webhooks        []*model.Webhook
+	WebhookDetail   *model.Webhook
+	WebhookSecret   string
+	Deliveries      []*model.WebhookDelivery
 	Search          string
 	Pagination      *paginationData
 }
