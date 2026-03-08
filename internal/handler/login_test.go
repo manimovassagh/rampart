@@ -203,6 +203,24 @@ func (m *mockLoginStore) FindUserByEmail(_ context.Context, _ string) (*model.Us
 	return nil, nil
 }
 
+// ── stub methods to satisfy store.WebAuthnCredentialStore ──
+
+func (m *mockLoginStore) CreateWebAuthnCredential(_ context.Context, _ *model.WebAuthnCredential) error {
+	return nil
+}
+func (m *mockLoginStore) GetWebAuthnCredentialsByUserID(_ context.Context, _ uuid.UUID) ([]*model.WebAuthnCredential, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) UpdateWebAuthnSignCount(_ context.Context, _ []byte, _ uint32) error {
+	return nil
+}
+func (m *mockLoginStore) DeleteWebAuthnCredential(_ context.Context, _, _ uuid.UUID) error {
+	return nil
+}
+func (m *mockLoginStore) CountWebAuthnCredentials(_ context.Context, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+
 // mockSessionStore implements session.Store for testing.
 type mockSessionStore struct {
 	created   *session.Session

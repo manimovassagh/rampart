@@ -111,8 +111,18 @@ type MFAEndpoints interface {
 	DisableTOTP(w http.ResponseWriter, r *http.Request)
 }
 
+// WebAuthnEndpoints groups the handler methods for WebAuthn/Passkey support.
+type WebAuthnEndpoints interface {
+	BeginRegistration(w http.ResponseWriter, r *http.Request)
+	FinishRegistration(w http.ResponseWriter, r *http.Request)
+	BeginLogin(w http.ResponseWriter, r *http.Request)
+	FinishLogin(w http.ResponseWriter, r *http.Request)
+	ListCredentials(w http.ResponseWriter, r *http.Request)
+	DeleteCredential(w http.ResponseWriter, r *http.Request)
+}
+
 // RegisterMFARoutes mounts MFA enrollment/management (authenticated) and MFA verify (unauthenticated) endpoints.
-func RegisterMFARoutes(r *chi.Mux, pubKey *rsa.PublicKey, mfaEnroll MFAEndpoints, mfaVerify http.HandlerFunc, rl *middleware.RateLimiter) {
+func RegisterMFARoutes(r *chi.Mux, pubKey *rsa.PublicKey, mfaEnroll MFAEndpoints, mfaVerify http.HandlerFunc, webauthn WebAuthnEndpoints, rl *middleware.RateLimiter) {
 	jsonMW := middleware.RequireJSON
 
 	// MFA verify during login — unauthenticated (uses MFA token)
@@ -122,12 +132,27 @@ func RegisterMFARoutes(r *chi.Mux, pubKey *rsa.PublicKey, mfaEnroll MFAEndpoints
 		r.With(jsonMW).Post("/mfa/totp/verify", mfaVerify)
 	}
 
+	// WebAuthn login — unauthenticated (uses MFA token)
+	if rl != nil {
+		r.With(jsonMW, rl.Middleware()).Post("/mfa/webauthn/login/begin", webauthn.BeginLogin)
+		r.With(rl.Middleware()).Post("/mfa/webauthn/login/complete", webauthn.FinishLogin)
+	} else {
+		r.With(jsonMW).Post("/mfa/webauthn/login/begin", webauthn.BeginLogin)
+		r.Post("/mfa/webauthn/login/complete", webauthn.FinishLogin)
+	}
+
 	// MFA enrollment/management — requires authentication
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(pubKey))
 		r.With(jsonMW).Post("/mfa/totp/enroll", mfaEnroll.EnrollTOTP)
 		r.With(jsonMW).Post("/mfa/totp/verify-setup", mfaEnroll.VerifyTOTPSetup)
 		r.With(jsonMW).Post("/mfa/totp/disable", mfaEnroll.DisableTOTP)
+
+		// WebAuthn credential management — requires authentication
+		r.Post("/mfa/webauthn/register/begin", webauthn.BeginRegistration)
+		r.Post("/mfa/webauthn/register/complete", webauthn.FinishRegistration)
+		r.Get("/mfa/webauthn/credentials", webauthn.ListCredentials)
+		r.Delete("/mfa/webauthn/credentials/{id}", webauthn.DeleteCredential)
 	})
 }
 

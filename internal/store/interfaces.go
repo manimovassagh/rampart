@@ -225,6 +225,24 @@ type SocialProviderConfigStore interface {
 	DeleteSocialProviderConfig(ctx context.Context, orgID uuid.UUID, provider string) error
 }
 
+// ── WebAuthn ────────────────────────────────────────────────────────────
+
+// WebAuthnCredentialStore provides WebAuthn credential operations.
+type WebAuthnCredentialStore interface {
+	CreateWebAuthnCredential(ctx context.Context, cred *model.WebAuthnCredential) error
+	GetWebAuthnCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]*model.WebAuthnCredential, error)
+	UpdateWebAuthnSignCount(ctx context.Context, credentialID []byte, signCount uint32) error
+	DeleteWebAuthnCredential(ctx context.Context, id, userID uuid.UUID) error
+	CountWebAuthnCredentials(ctx context.Context, userID uuid.UUID) (int, error)
+}
+
+// WebAuthnSessionStore provides WebAuthn ceremony session operations.
+type WebAuthnSessionStore interface {
+	StoreWebAuthnSessionData(ctx context.Context, userID uuid.UUID, data []byte, ceremony string, expiresAt time.Time) error
+	GetWebAuthnSessionData(ctx context.Context, userID uuid.UUID, ceremony string) ([]byte, error)
+	DeleteExpiredWebAuthnSessions(ctx context.Context) (int64, error)
+}
+
 // ── Webhook ─────────────────────────────────────────────────────────────
 
 // WebhookReader provides webhook lookups.

@@ -82,6 +82,7 @@ type LoginStore interface {
 	store.OrgSettingsReadWriter
 	store.GroupReader // GetEffectiveUserRoles
 	store.MFADeviceStore
+	store.WebAuthnCredentialStore
 }
 
 // LoginHandler handles authentication endpoints.
@@ -248,12 +249,27 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 				apierror.InternalError(w)
 				return
 			}
+
+			// Determine available MFA methods
+			mfaMethods := []string{}
+			if device.DeviceType == "totp" {
+				mfaMethods = append(mfaMethods, "totp")
+			}
+			waCount, _ := h.store.CountWebAuthnCredentials(ctx, user.ID)
+			if waCount > 0 {
+				mfaMethods = append(mfaMethods, "webauthn")
+			}
+			if len(mfaMethods) == 0 {
+				mfaMethods = append(mfaMethods, "totp")
+			}
+
 			w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 			w.WriteHeader(http.StatusOK)
 			if err := json.NewEncoder(w).Encode(map[string]any{
 				"mfa_required": true,
 				"mfa_token":    mfaToken,
-				"message":      "MFA verification required. Submit TOTP code to /mfa/totp/verify.",
+				"mfa_methods":  mfaMethods,
+				"message":      "MFA verification required.",
 			}); err != nil {
 				h.logger.Error("failed to encode MFA challenge response", "error", err)
 			}

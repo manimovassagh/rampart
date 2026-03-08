@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/audit"
 	webhookpkg "github.com/manimovassagh/rampart/internal/webhook"
+
+	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/manimovassagh/rampart/internal/config"
 	"github.com/manimovassagh/rampart/internal/crypto"
 	"github.com/manimovassagh/rampart/internal/database"
@@ -146,7 +149,19 @@ func run(_ *slog.Logger) error {
 	// MFA endpoints (enrollment + login verification)
 	mfaHandler := handler.NewMFAHandler(db, logger, cfg.Issuer)
 	mfaVerifyHandler := handler.NewMFAVerifyHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
-	server.RegisterMFARoutes(router, kp.PublicKey, mfaHandler, mfaVerifyHandler.VerifyTOTP, loginRL)
+
+	// WebAuthn/Passkey configuration — derive RPID and origins from issuer URL
+	rpID := extractHost(cfg.Issuer)
+	wa, err := gowebauthn.New(&gowebauthn.Config{
+		RPID:          rpID,
+		RPDisplayName: "Rampart",
+		RPOrigins:     append([]string{cfg.Issuer}, cfg.AllowedOrigins...),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize WebAuthn: %w", err)
+	}
+	webauthnHandler := handler.NewWebAuthnHandler(db, sessionStore, logger, auditLogger, wa, kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	server.RegisterMFARoutes(router, kp.PublicKey, mfaHandler, mfaVerifyHandler.VerifyTOTP, webauthnHandler, loginRL)
 
 	meHandler := handler.NewMeHandler(db)
 	server.RegisterProtectedRoutes(router, kp.PublicKey, meHandler.Me)
@@ -271,6 +286,11 @@ func run(_ *slog.Logger) error {
 				} else if n > 0 {
 					logger.Info("cleaned up expired email verification tokens", "count", n)
 				}
+				if n, err := db.DeleteExpiredWebAuthnSessions(cleanupCtx); err != nil {
+					logger.Warn("failed to clean up expired webauthn sessions", "error", err)
+				} else if n > 0 {
+					logger.Info("cleaned up expired webauthn sessions", "count", n)
+				}
 				if n, err := db.DeleteOldDeliveries(cleanupCtx, 7*24*time.Hour); err != nil {
 					logger.Warn("failed to clean up old webhook deliveries", "error", err)
 				} else if n > 0 {
@@ -314,6 +334,15 @@ func run(_ *slog.Logger) error {
 	}
 
 	return srv.Shutdown()
+}
+
+// extractHost parses a URL and returns just the hostname (without scheme or port).
+func extractHost(issuer string) string {
+	u, err := url.Parse(issuer)
+	if err != nil {
+		return "localhost"
+	}
+	return u.Hostname()
 }
 
 func parseLogLevel(level string) slog.Level {
