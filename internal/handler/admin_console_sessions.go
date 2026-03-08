@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 )
@@ -54,6 +55,7 @@ func (h *AdminConsoleHandler) RevokeSessionAction(w http.ResponseWriter, r *http
 		h.logger.Error("failed to revoke session", "error", err)
 		middleware.SetFlash(w, "Failed to revoke session.")
 	} else {
+		metrics.ActiveSessions.Dec()
 		authUser := middleware.GetAuthenticatedUser(r.Context())
 		h.auditLog(r, authUser.OrgID, model.EventSessionRevoked, "session", sessionID.String(), "")
 		middleware.SetFlash(w, "Session revoked.")
@@ -68,6 +70,7 @@ func (h *AdminConsoleHandler) RevokeAllSessionsAction(w http.ResponseWriter, r *
 		h.logger.Error("failed to revoke all sessions", "error", err)
 		middleware.SetFlash(w, "Failed to revoke sessions.")
 	} else {
+		metrics.ActiveSessions.Set(0)
 		authUser := middleware.GetAuthenticatedUser(r.Context())
 		h.auditLog(r, authUser.OrgID, model.EventSessionsRevokedAll, "session", "all", "")
 		middleware.SetFlash(w, "All sessions revoked.")

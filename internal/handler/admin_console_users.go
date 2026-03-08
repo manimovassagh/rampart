@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/auth"
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 )
@@ -245,8 +246,11 @@ func (h *AdminConsoleHandler) DeleteUserAction(w http.ResponseWriter, r *http.Re
 
 	ctx := r.Context()
 
+	sessionCount, _ := h.sessions.CountByUserID(ctx, userID)
 	if err := h.sessions.DeleteByUserID(ctx, userID); err != nil {
 		h.logger.Error("failed to delete user sessions", "error", err)
+	} else {
+		metrics.ActiveSessions.Sub(float64(sessionCount))
 	}
 	if err := h.store.DeleteUser(ctx, userID); err != nil {
 		h.logger.Error("failed to delete user", "error", err)
@@ -310,11 +314,14 @@ func (h *AdminConsoleHandler) RevokeSessionsAction(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if err := h.sessions.DeleteByUserID(r.Context(), userID); err != nil {
+	revokeCtx := r.Context()
+	revokeCount, _ := h.sessions.CountByUserID(revokeCtx, userID)
+	if err := h.sessions.DeleteByUserID(revokeCtx, userID); err != nil {
 		h.logger.Error("failed to revoke sessions", "error", err)
 		middleware.SetFlash(w, "Failed to revoke sessions.")
 	} else {
-		sessAuthUser := middleware.GetAuthenticatedUser(r.Context())
+		metrics.ActiveSessions.Sub(float64(revokeCount))
+		sessAuthUser := middleware.GetAuthenticatedUser(revokeCtx)
 		h.auditLog(r, sessAuthUser.OrgID, model.EventSessionRevoked, "user", userID.String(), "")
 		middleware.SetFlash(w, "All sessions revoked.")
 	}

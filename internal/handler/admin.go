@@ -13,6 +13,7 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/auth"
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
@@ -351,11 +352,13 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Delete sessions first.
+	delCount, _ := h.sessions.CountByUserID(ctx, userID)
 	if err := h.sessions.DeleteByUserID(ctx, userID); err != nil {
 		h.logger.Error("failed to delete user sessions", "error", err)
 		apierror.InternalError(w)
 		return
 	}
+	metrics.ActiveSessions.Sub(float64(delCount))
 
 	if err := h.store.DeleteUser(ctx, userID); err != nil {
 		h.logger.Error("failed to delete user", "error", err)
@@ -448,12 +451,16 @@ func (h *AdminHandler) RevokeSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.sessions.DeleteByUserID(r.Context(), userID); err != nil {
+	ctx := r.Context()
+	count, _ := h.sessions.CountByUserID(ctx, userID)
+
+	if err := h.sessions.DeleteByUserID(ctx, userID); err != nil {
 		h.logger.Error("failed to revoke sessions", "error", err)
 		apierror.InternalError(w)
 		return
 	}
 
+	metrics.ActiveSessions.Sub(float64(count))
 	w.WriteHeader(http.StatusNoContent)
 }
 
