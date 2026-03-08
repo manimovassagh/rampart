@@ -79,6 +79,38 @@ func (m *mockDB) CreateUser(_ context.Context, user *model.User) (*model.User, e
 	return created, nil
 }
 
+// ── stub methods to satisfy store.OrgReader ──
+
+func (m *mockDB) GetOrganizationByID(_ context.Context, _ uuid.UUID) (*model.Organization, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockDB) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) { return nil, nil }
+func (m *mockDB) FindUserByEmail(_ context.Context, _ string) (*model.User, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserWriter ──
+
+func (m *mockDB) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockDB) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockDB) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error { return nil }
+func (m *mockDB) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockDB) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
+	return nil
+}
+func (m *mockDB) ResetFailedLogins(_ context.Context, _ uuid.UUID) error { return nil }
+
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockDB) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
 func apiTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }

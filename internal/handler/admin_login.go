@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/subtle"
@@ -12,13 +11,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
 	"github.com/manimovassagh/rampart/internal/session"
+	"github.com/manimovassagh/rampart/internal/store"
 	"github.com/manimovassagh/rampart/internal/token"
 )
 
@@ -29,11 +27,11 @@ const (
 
 // AdminLoginStore defines database operations for admin login flow.
 type AdminLoginStore interface {
-	GetOAuthClient(ctx context.Context, clientID string) (*model.OAuthClient, error)
-	ConsumeAuthorizationCode(ctx context.Context, code string) (*model.AuthorizationCode, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
-	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
+	store.OAuthClientReader
+	store.AuthCodeStore
+	store.UserReader
+	store.OrgSettingsReadWriter
+	store.GroupReader
 }
 
 // AdminLoginHandler handles the admin OAuth login flow.
@@ -53,7 +51,7 @@ type AdminLoginHandler struct {
 
 // NewAdminLoginHandler creates a new admin login handler.
 func NewAdminLoginHandler(
-	store AdminLoginStore,
+	s AdminLoginStore,
 	sessions session.Store,
 	logger *slog.Logger,
 	auditLogger *audit.Logger,
@@ -64,7 +62,7 @@ func NewAdminLoginHandler(
 	hmacKey []byte,
 ) *AdminLoginHandler {
 	return &AdminLoginHandler{
-		store:      store,
+		store:      s,
 		sessions:   sessions,
 		logger:     logger,
 		audit:      auditLogger,

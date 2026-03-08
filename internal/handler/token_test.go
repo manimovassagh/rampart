@@ -55,6 +55,55 @@ func (m *mockTokenStore) GetEffectiveUserRoles(_ context.Context, _ uuid.UUID) (
 	return m.roles, m.rolesErr
 }
 
+// ── stub methods to satisfy store.AuthCodeStore ──
+
+func (m *mockTokenStore) StoreAuthorizationCode(_ context.Context, _, _ string, _, _ uuid.UUID, _, _, _, _ string, _ time.Time) error {
+	return nil
+}
+func (m *mockTokenStore) DeleteExpiredAuthorizationCodes(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockTokenStore) GetUserByEmail(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockTokenStore) GetUserByUsername(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockTokenStore) FindUserByEmail(_ context.Context, _ string) (*model.User, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockTokenStore) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.GroupReader ──
+
+func (m *mockTokenStore) GetGroupByID(_ context.Context, _ uuid.UUID) (*model.Group, error) {
+	return nil, nil
+}
+func (m *mockTokenStore) GetGroupMembers(_ context.Context, _ uuid.UUID) ([]*model.GroupMember, error) {
+	return nil, nil
+}
+func (m *mockTokenStore) GetGroupRoles(_ context.Context, _ uuid.UUID) ([]*model.GroupRoleAssignment, error) {
+	return nil, nil
+}
+func (m *mockTokenStore) GetUserGroups(_ context.Context, _ uuid.UUID) ([]*model.Group, error) {
+	return nil, nil
+}
+func (m *mockTokenStore) CountGroupMembers(_ context.Context, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *mockTokenStore) CountGroupRoles(_ context.Context, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *mockTokenStore) CountGroups(_ context.Context, _ uuid.UUID) (int, error) { return 0, nil }
+
 func TestTokenMissingGrantType(t *testing.T) {
 	store := &mockTokenStore{}
 	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)

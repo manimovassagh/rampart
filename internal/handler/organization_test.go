@@ -64,6 +64,28 @@ func (m *mockOrgStore) CountUsers(_ context.Context, _ uuid.UUID) (int, error) {
 	return m.countUsers, m.countUsersErr
 }
 
+// ── stub methods to satisfy store.OrgReader ──
+
+func (m *mockOrgStore) GetDefaultOrganizationID(_ context.Context) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+func (m *mockOrgStore) GetOrganizationIDBySlug(_ context.Context, _ string) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+
+// ── stub methods to satisfy store.OrgLister ──
+
+func (m *mockOrgStore) CountOrganizations(_ context.Context) (int, error) { return 0, nil }
+
+// ── stub methods to satisfy store.UserLister ──
+
+func (m *mockOrgStore) ListUsers(_ context.Context, _ uuid.UUID, _, _ string, _, _ int) ([]*model.User, int, error) {
+	return nil, 0, nil
+}
+func (m *mockOrgStore) CountRecentUsers(_ context.Context, _ uuid.UUID, _ int) (int, error) {
+	return 0, nil
+}
+
 type mockOrgSettingsStore struct {
 	settings    *model.OrgSettings
 	settingsErr error

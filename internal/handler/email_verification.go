@@ -9,10 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 const (
@@ -20,29 +19,26 @@ const (
 	verifyTokenTTL    = 24 * time.Hour
 )
 
-// EmailVerificationStore defines the database operations for email verification.
-type EmailVerificationStore interface {
-	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
-	FindUserByEmail(ctx context.Context, email string) (*model.User, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	CreateEmailVerificationToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error
-	ConsumeEmailVerificationToken(ctx context.Context, token string) (uuid.UUID, error)
-	MarkEmailVerified(ctx context.Context, userID uuid.UUID) error
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
+// EmailVerificationHandlerStore defines the database operations for email verification.
+type EmailVerificationHandlerStore interface {
+	store.OrgReader
+	store.UserReader
+	store.EmailVerificationTokenStore
+	store.OrgSettingsReadWriter
 }
 
 // EmailVerificationHandler handles email verification endpoints.
 type EmailVerificationHandler struct {
-	store  EmailVerificationStore
+	store  EmailVerificationHandlerStore
 	email  EmailSender
 	logger *slog.Logger
 	issuer string
 }
 
 // NewEmailVerificationHandler creates a new email verification handler.
-func NewEmailVerificationHandler(store EmailVerificationStore, email EmailSender, logger *slog.Logger, issuer string) *EmailVerificationHandler {
+func NewEmailVerificationHandler(s EmailVerificationHandlerStore, email EmailSender, logger *slog.Logger, issuer string) *EmailVerificationHandler {
 	return &EmailVerificationHandler{
-		store:  store,
+		store:  s,
 		email:  email,
 		logger: logger,
 		issuer: issuer,

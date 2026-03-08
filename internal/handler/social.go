@@ -23,6 +23,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
 	"github.com/manimovassagh/rampart/internal/social"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 const (
@@ -34,15 +35,13 @@ const (
 
 // SocialStore defines the database operations required by SocialHandler.
 type SocialStore interface {
-	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
-	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
-	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
-	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
-	CreateSocialAccount(ctx context.Context, account *model.SocialAccount) (*model.SocialAccount, error)
-	GetSocialAccount(ctx context.Context, provider, providerUserID string) (*model.SocialAccount, error)
-	StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope, nonce string, expiresAt time.Time) error
-	GetOAuthClient(ctx context.Context, clientID string) (*model.OAuthClient, error)
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
+	store.OrgReader
+	store.UserReader
+	store.UserWriter
+	store.SocialAccountStore
+	store.AuthCodeStore
+	store.OAuthClientReader
+	store.OrgSettingsReadWriter
 }
 
 // SocialHandler handles social login initiation and callback.
@@ -56,9 +55,9 @@ type SocialHandler struct {
 }
 
 // NewSocialHandler creates a new social login handler.
-func NewSocialHandler(store SocialStore, registry *social.Registry, logger *slog.Logger, auditLogger *audit.Logger, hmacKey []byte, issuer string) *SocialHandler {
+func NewSocialHandler(s SocialStore, registry *social.Registry, logger *slog.Logger, auditLogger *audit.Logger, hmacKey []byte, issuer string) *SocialHandler {
 	return &SocialHandler{
-		store:    store,
+		store:    s,
 		registry: registry,
 		logger:   logger,
 		audit:    auditLogger,

@@ -81,6 +81,49 @@ func (m *mockAuthorizeStore) GrantConsent(_ context.Context, _ uuid.UUID, _, _ s
 	return nil
 }
 
+// ── stub methods to satisfy store.OrgReader ──
+
+func (m *mockAuthorizeStore) GetOrganizationByID(_ context.Context, _ uuid.UUID) (*model.Organization, error) {
+	return nil, nil
+}
+func (m *mockAuthorizeStore) GetOrganizationIDBySlug(_ context.Context, _ string) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockAuthorizeStore) FindUserByEmail(_ context.Context, _ string) (*model.User, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserWriter ──
+
+func (m *mockAuthorizeStore) CreateUser(_ context.Context, _ *model.User) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockAuthorizeStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockAuthorizeStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockAuthorizeStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
+	return nil
+}
+
+// ── stub methods to satisfy store.AuthCodeStore ──
+
+func (m *mockAuthorizeStore) ConsumeAuthorizationCode(_ context.Context, _ string) (*model.AuthorizationCode, error) {
+	return nil, nil
+}
+func (m *mockAuthorizeStore) DeleteExpiredAuthorizationCodes(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockAuthorizeStore) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
 func newTestOAuthClient(orgID uuid.UUID) *model.OAuthClient {
 	return &model.OAuthClient{
 		ID:           "test-client",

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -22,6 +23,19 @@ type mockMeStore struct {
 func (m *mockMeStore) GetSocialAccountsByUserID(_ context.Context, _ uuid.UUID) ([]*model.SocialAccount, error) {
 	return m.accounts, m.err
 }
+
+// ── stub methods to satisfy store.SocialAccountStore ──
+
+func (m *mockMeStore) CreateSocialAccount(_ context.Context, _ *model.SocialAccount) (*model.SocialAccount, error) {
+	return nil, nil
+}
+func (m *mockMeStore) GetSocialAccount(_ context.Context, _, _ string) (*model.SocialAccount, error) {
+	return nil, nil
+}
+func (m *mockMeStore) UpdateSocialAccountTokens(_ context.Context, _ uuid.UUID, _, _ string, _ *time.Time) error {
+	return nil
+}
+func (m *mockMeStore) DeleteSocialAccount(_ context.Context, _ uuid.UUID) error { return nil }
 
 func newTestMeHandler(store MeStore) *MeHandler {
 	return NewMeHandler(store)

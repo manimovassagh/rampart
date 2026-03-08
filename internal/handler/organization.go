@@ -1,16 +1,14 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 const (
@@ -21,30 +19,27 @@ const (
 
 // OrgStore defines the database operations required by OrgHandler.
 type OrgStore interface {
-	GetOrganizationByID(ctx context.Context, id uuid.UUID) (*model.Organization, error)
-	ListOrganizations(ctx context.Context, search string, limit, offset int) ([]*model.Organization, int, error)
-	CreateOrganization(ctx context.Context, req *model.CreateOrgRequest) (*model.Organization, error)
-	UpdateOrganization(ctx context.Context, id uuid.UUID, req *model.UpdateOrgRequest) (*model.Organization, error)
-	DeleteOrganization(ctx context.Context, id uuid.UUID) error
-	CountUsers(ctx context.Context, orgID uuid.UUID) (int, error)
+	store.OrgReader
+	store.OrgWriter
+	store.OrgLister
+	store.UserLister
 }
 
-// OrgSettingsStore defines the settings operations required by OrgHandler.
-type OrgSettingsStore interface {
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
-	UpdateOrgSettings(ctx context.Context, orgID uuid.UUID, req *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error)
+// OrgSettingsHandlerStore defines the settings operations required by OrgHandler.
+type OrgSettingsHandlerStore interface {
+	store.OrgSettingsReadWriter
 }
 
 // OrgHandler handles organization management endpoints.
 type OrgHandler struct {
 	store    OrgStore
-	settings OrgSettingsStore
+	settings OrgSettingsHandlerStore
 	logger   *slog.Logger
 }
 
 // NewOrgHandler creates a handler with organization dependencies.
-func NewOrgHandler(store OrgStore, settings OrgSettingsStore, logger *slog.Logger) *OrgHandler {
-	return &OrgHandler{store: store, settings: settings, logger: logger}
+func NewOrgHandler(s OrgStore, settings OrgSettingsHandlerStore, logger *slog.Logger) *OrgHandler {
+	return &OrgHandler{store: s, settings: settings, logger: logger}
 }
 
 // ListOrgs handles GET /api/v1/admin/organizations.

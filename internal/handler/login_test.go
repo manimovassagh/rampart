@@ -133,6 +133,76 @@ func (m *mockLoginStore) ConsumeBackupCode(_ context.Context, _ uuid.UUID, _ []b
 	return false, nil
 }
 
+// ── stub methods to satisfy store.OrgReader ──
+
+func (m *mockLoginStore) GetOrganizationByID(_ context.Context, _ uuid.UUID) (*model.Organization, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserWriter ──
+
+func (m *mockLoginStore) CreateUser(_ context.Context, _ *model.User) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockLoginStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
+	return nil
+}
+
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockLoginStore) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.GroupReader ──
+
+func (m *mockLoginStore) GetGroupByID(_ context.Context, _ uuid.UUID) (*model.Group, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) GetGroupMembers(_ context.Context, _ uuid.UUID) ([]*model.GroupMember, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) GetGroupRoles(_ context.Context, _ uuid.UUID) ([]*model.GroupRoleAssignment, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) GetUserGroups(_ context.Context, _ uuid.UUID) ([]*model.Group, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) CountGroupMembers(_ context.Context, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *mockLoginStore) CountGroupRoles(_ context.Context, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *mockLoginStore) CountGroups(_ context.Context, _ uuid.UUID) (int, error) { return 0, nil }
+
+// ── stub methods to satisfy store.MFADeviceStore ──
+
+func (m *mockLoginStore) CreateMFADevice(_ context.Context, _ uuid.UUID, _, _, _ string) (*model.MFADevice, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) VerifyMFADevice(_ context.Context, _, _ uuid.UUID) error { return nil }
+func (m *mockLoginStore) GetPendingMFADevice(_ context.Context, _ uuid.UUID) (*model.MFADevice, error) {
+	return nil, nil
+}
+func (m *mockLoginStore) DeleteUnverifiedMFADevices(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
+func (m *mockLoginStore) DisableMFA(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockLoginStore) StoreBackupCodes(_ context.Context, _ uuid.UUID, _ [][]byte) error {
+	return nil
+}
+
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockLoginStore) FindUserByEmail(_ context.Context, _ string) (*model.User, error) {
+	return nil, nil
+}
+
 // mockSessionStore implements session.Store for testing.
 type mockSessionStore struct {
 	created   *session.Session

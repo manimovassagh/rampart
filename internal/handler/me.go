@@ -1,19 +1,18 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 // MeStore defines the database operations required by the /me handler.
 type MeStore interface {
-	GetSocialAccountsByUserID(ctx context.Context, userID uuid.UUID) ([]*model.SocialAccount, error)
+	store.SocialAccountStore
 }
 
 // MeResponse is the JSON response for GET /me.
@@ -34,8 +33,8 @@ type MeHandler struct {
 }
 
 // NewMeHandler creates a new MeHandler.
-func NewMeHandler(store MeStore) *MeHandler {
-	return &MeHandler{store: store}
+func NewMeHandler(s MeStore) *MeHandler {
+	return &MeHandler{store: s}
 }
 
 // Me handles GET /me — returns the authenticated user's identity from the JWT.

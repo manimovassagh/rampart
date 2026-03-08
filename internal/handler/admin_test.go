@@ -91,6 +91,32 @@ func (m *mockAdminUserStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*mo
 	return m.orgSettings, m.orgSettingsErr
 }
 
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockAdminUserStore) FindUserByEmail(_ context.Context, _ string) (*model.User, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserWriter ──
+
+func (m *mockAdminUserStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockAdminUserStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
+	return nil
+}
+func (m *mockAdminUserStore) ResetFailedLogins(_ context.Context, _ uuid.UUID) error { return nil }
+
+// ── stub methods to satisfy store.OrgLister ──
+
+func (m *mockAdminUserStore) ListOrganizations(_ context.Context, _ string, _, _ int) ([]*model.Organization, int, error) {
+	return nil, 0, nil
+}
+
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockAdminUserStore) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
 // mockAdminSessionStore implements AdminSessionStore for testing.
 type mockAdminSessionStore struct {
 	sessions       []*session.Session

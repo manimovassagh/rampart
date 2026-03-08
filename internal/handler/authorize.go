@@ -20,6 +20,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
 	"github.com/manimovassagh/rampart/internal/social"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 //go:embed templates/login/*.html
@@ -65,18 +66,13 @@ func init() {
 
 // AuthorizeStore defines the database operations required by AuthorizeHandler.
 type AuthorizeStore interface {
-	GetOAuthClient(ctx context.Context, clientID string) (*model.OAuthClient, error)
-	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
-	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
-	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	StoreAuthorizationCode(ctx context.Context, code string, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope, nonce string, expiresAt time.Time) error
-	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
-	IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error
-	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
-	HasConsent(ctx context.Context, userID uuid.UUID, clientID, scopes string) (bool, error)
-	GrantConsent(ctx context.Context, userID uuid.UUID, clientID, scopes string) error
+	store.OAuthClientReader
+	store.OrgReader
+	store.UserReader
+	store.UserWriter
+	store.AuthCodeStore
+	store.OrgSettingsReadWriter
+	store.ConsentStore
 }
 
 // AuthorizeHandler handles the OAuth 2.0 authorization endpoint.
@@ -88,8 +84,8 @@ type AuthorizeHandler struct {
 }
 
 // NewAuthorizeHandler creates a new authorization endpoint handler.
-func NewAuthorizeHandler(store AuthorizeStore, logger *slog.Logger, auditLogger *audit.Logger, socialRegistry *social.Registry) *AuthorizeHandler {
-	return &AuthorizeHandler{store: store, logger: logger, audit: auditLogger, socialRegistry: socialRegistry}
+func NewAuthorizeHandler(s AuthorizeStore, logger *slog.Logger, auditLogger *audit.Logger, socialRegistry *social.Registry) *AuthorizeHandler {
+	return &AuthorizeHandler{store: s, logger: logger, audit: auditLogger, socialRegistry: socialRegistry}
 }
 
 type loginPageData struct {

@@ -81,6 +81,66 @@ func (m *mockSocialStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model
 	return m.orgSettings, m.orgSettErr
 }
 
+// ── stub methods to satisfy store.OrgReader ──
+
+func (m *mockSocialStore) GetOrganizationByID(_ context.Context, _ uuid.UUID) (*model.Organization, error) {
+	return nil, nil
+}
+func (m *mockSocialStore) GetOrganizationIDBySlug(_ context.Context, _ string) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockSocialStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockSocialStore) GetUserByUsername(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockSocialStore) FindUserByEmail(_ context.Context, _ string) (*model.User, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserWriter ──
+
+func (m *mockSocialStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockSocialStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockSocialStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
+	return nil
+}
+func (m *mockSocialStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
+	return nil
+}
+func (m *mockSocialStore) ResetFailedLogins(_ context.Context, _ uuid.UUID) error { return nil }
+
+// ── stub methods to satisfy store.SocialAccountStore ──
+
+func (m *mockSocialStore) GetSocialAccountsByUserID(_ context.Context, _ uuid.UUID) ([]*model.SocialAccount, error) {
+	return nil, nil
+}
+func (m *mockSocialStore) UpdateSocialAccountTokens(_ context.Context, _ uuid.UUID, _, _ string, _ *time.Time) error {
+	return nil
+}
+func (m *mockSocialStore) DeleteSocialAccount(_ context.Context, _ uuid.UUID) error { return nil }
+
+// ── stub methods to satisfy store.AuthCodeStore ──
+
+func (m *mockSocialStore) ConsumeAuthorizationCode(_ context.Context, _ string) (*model.AuthorizationCode, error) {
+	return nil, nil
+}
+func (m *mockSocialStore) DeleteExpiredAuthorizationCodes(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockSocialStore) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
 // mockProvider implements social.Provider for testing.
 type mockProvider struct {
 	name    string

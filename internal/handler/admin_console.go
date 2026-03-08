@@ -16,6 +16,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
 	"github.com/manimovassagh/rampart/internal/social"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 //go:embed templates/admin/*.html templates/admin/partials/*.html
@@ -105,73 +106,24 @@ func StaticHandler() http.Handler {
 
 // AdminConsoleStore defines the database operations required by AdminConsoleHandler.
 type AdminConsoleStore interface {
-	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
-	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
-	ListUsers(ctx context.Context, orgID uuid.UUID, search, status string, limit, offset int) ([]*model.User, int, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, req *model.UpdateUserRequest) (*model.User, error)
-	DeleteUser(ctx context.Context, id uuid.UUID) error
-	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash []byte) error
-	CountUsers(ctx context.Context, orgID uuid.UUID) (int, error)
-	CountRecentUsers(ctx context.Context, orgID uuid.UUID, days int) (int, error)
-	CountOrganizations(ctx context.Context) (int, error)
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
-	GetOrganizationByID(ctx context.Context, id uuid.UUID) (*model.Organization, error)
-	ListOrganizations(ctx context.Context, search string, limit, offset int) ([]*model.Organization, int, error)
-	CreateOrganization(ctx context.Context, req *model.CreateOrgRequest) (*model.Organization, error)
-	UpdateOrganization(ctx context.Context, id uuid.UUID, req *model.UpdateOrgRequest) (*model.Organization, error)
-	DeleteOrganization(ctx context.Context, id uuid.UUID) error
-	UpdateOrgSettings(ctx context.Context, orgID uuid.UUID, req *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error)
-
-	// OAuth Client operations
-	GetOAuthClient(ctx context.Context, clientID string) (*model.OAuthClient, error)
-	ListOAuthClients(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*model.OAuthClient, int, error)
-	CreateOAuthClient(ctx context.Context, client *model.OAuthClient) (*model.OAuthClient, error)
-	UpdateOAuthClient(ctx context.Context, clientID string, req *model.UpdateClientRequest) (*model.OAuthClient, error)
-	DeleteOAuthClient(ctx context.Context, clientID string) error
-	UpdateClientSecret(ctx context.Context, clientID string, secretHash []byte) error
-	CountOAuthClients(ctx context.Context, orgID uuid.UUID) (int, error)
-
-	// Role operations
-	ListRoles(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*model.Role, int, error)
-	GetRoleByID(ctx context.Context, id uuid.UUID) (*model.Role, error)
-	CreateRole(ctx context.Context, role *model.Role) (*model.Role, error)
-	UpdateRole(ctx context.Context, id uuid.UUID, req *model.UpdateRoleRequest) (*model.Role, error)
-	DeleteRole(ctx context.Context, id uuid.UUID) error
-	CountRoles(ctx context.Context, orgID uuid.UUID) (int, error)
-	CountRoleUsers(ctx context.Context, roleID uuid.UUID) (int, error)
-	AssignRole(ctx context.Context, userID, roleID uuid.UUID) error
-	UnassignRole(ctx context.Context, userID, roleID uuid.UUID) error
-	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*model.Role, error)
-	GetRoleUsers(ctx context.Context, roleID uuid.UUID) ([]*model.UserRoleAssignment, error)
-
-	// Audit event operations
-	CreateAuditEvent(ctx context.Context, event *model.AuditEvent) error
-	ListAuditEvents(ctx context.Context, orgID uuid.UUID, eventType, search string, limit, offset int) ([]*model.AuditEvent, int, error)
-	CountRecentEvents(ctx context.Context, orgID uuid.UUID, hours int) (int, error)
-
-	// Group operations
-	ListGroups(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*model.Group, int, error)
-	GetGroupByID(ctx context.Context, id uuid.UUID) (*model.Group, error)
-	CreateGroup(ctx context.Context, group *model.Group) (*model.Group, error)
-	UpdateGroup(ctx context.Context, id uuid.UUID, req *model.UpdateGroupRequest) (*model.Group, error)
-	DeleteGroup(ctx context.Context, id uuid.UUID) error
-	CountGroups(ctx context.Context, orgID uuid.UUID) (int, error)
-	CountGroupMembers(ctx context.Context, groupID uuid.UUID) (int, error)
-	CountGroupRoles(ctx context.Context, groupID uuid.UUID) (int, error)
-	AddUserToGroup(ctx context.Context, userID, groupID uuid.UUID) error
-	RemoveUserFromGroup(ctx context.Context, userID, groupID uuid.UUID) error
-	GetGroupMembers(ctx context.Context, groupID uuid.UUID) ([]*model.GroupMember, error)
-	GetGroupRoles(ctx context.Context, groupID uuid.UUID) ([]*model.GroupRoleAssignment, error)
-	AssignRoleToGroup(ctx context.Context, groupID, roleID uuid.UUID) error
-	UnassignRoleFromGroup(ctx context.Context, groupID, roleID uuid.UUID) error
-	GetUserGroups(ctx context.Context, userID uuid.UUID) ([]*model.Group, error)
-
-	// Social provider config operations
-	UpsertSocialProviderConfig(ctx context.Context, cfg *model.SocialProviderConfig) error
-	ListSocialProviderConfigs(ctx context.Context, orgID uuid.UUID) ([]*model.SocialProviderConfig, error)
-	DeleteSocialProviderConfig(ctx context.Context, orgID uuid.UUID, provider string) error
+	store.UserReader
+	store.UserWriter
+	store.UserLister
+	store.OrgReader
+	store.OrgWriter
+	store.OrgLister
+	store.OrgSettingsReadWriter
+	store.OAuthClientReader
+	store.OAuthClientWriter
+	store.OAuthClientLister
+	store.RoleReader
+	store.RoleWriter
+	store.RoleLister
+	store.AuditStore
+	store.GroupReader
+	store.GroupWriter
+	store.GroupLister
+	store.SocialProviderConfigStore
 }
 
 // AdminConsoleSessionStore defines session operations for the admin console.
@@ -240,7 +192,7 @@ func parseAdminPage(pageFile string) *template.Template {
 }
 
 // NewAdminConsoleHandler creates a handler for SSR admin pages.
-func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger, socialReg *social.Registry) *AdminConsoleHandler {
+func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger, socialReg *social.Registry) *AdminConsoleHandler {
 	pages := map[string]*template.Template{
 		"dashboard":        parseAdminPage("dashboard.html"),
 		"users_list":       parseAdminPage("users_list.html"),
@@ -266,7 +218,7 @@ func NewAdminConsoleHandler(store AdminConsoleStore, sessions AdminConsoleSessio
 	}
 
 	return &AdminConsoleHandler{
-		store:          store,
+		store:          s,
 		sessions:       sessions,
 		audit:          auditLogger,
 		logger:         logger,

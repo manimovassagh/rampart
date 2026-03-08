@@ -9,11 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/auth"
-	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 const (
@@ -27,26 +25,25 @@ type EmailSender interface {
 	Enabled() bool
 }
 
-// PasswordResetStore defines the database operations for password reset.
-type PasswordResetStore interface {
-	FindUserByEmail(ctx context.Context, email string) (*model.User, error)
-	CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error
-	ConsumePasswordResetToken(ctx context.Context, token string) (uuid.UUID, error)
-	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash []byte) error
+// PasswordResetHandlerStore defines the database operations for password reset.
+type PasswordResetHandlerStore interface {
+	store.UserReader
+	store.UserWriter
+	store.PasswordResetTokenStore
 }
 
 // PasswordResetHandler handles forgot-password and reset-password flows.
 type PasswordResetHandler struct {
-	store  PasswordResetStore
+	store  PasswordResetHandlerStore
 	email  EmailSender
 	logger *slog.Logger
 	issuer string // used to build reset URL
 }
 
 // NewPasswordResetHandler creates a new password reset handler.
-func NewPasswordResetHandler(store PasswordResetStore, email EmailSender, logger *slog.Logger, issuer string) *PasswordResetHandler {
+func NewPasswordResetHandler(s PasswordResetHandlerStore, email EmailSender, logger *slog.Logger, issuer string) *PasswordResetHandler {
 	return &PasswordResetHandler{
-		store:  store,
+		store:  s,
 		email:  email,
 		logger: logger,
 		issuer: issuer,

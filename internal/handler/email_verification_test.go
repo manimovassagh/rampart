@@ -69,6 +69,36 @@ func (m *mockEmailVerificationStore) GetOrgSettings(_ context.Context, _ uuid.UU
 	return m.settings, nil
 }
 
+// ── stub methods to satisfy store.OrgReader ──
+
+func (m *mockEmailVerificationStore) GetOrganizationByID(_ context.Context, _ uuid.UUID) (*model.Organization, error) {
+	return nil, nil
+}
+func (m *mockEmailVerificationStore) GetOrganizationIDBySlug(_ context.Context, _ string) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockEmailVerificationStore) GetUserByEmail(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockEmailVerificationStore) GetUserByUsername(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.EmailVerificationTokenStore ──
+
+func (m *mockEmailVerificationStore) DeleteExpiredEmailVerificationTokens(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockEmailVerificationStore) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
 type noopEmailSender struct{}
 
 func (n *noopEmailSender) Send(_, _, _ string) error { return nil }

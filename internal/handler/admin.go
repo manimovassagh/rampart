@@ -17,6 +17,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 const (
@@ -26,18 +27,11 @@ const (
 
 // AdminUserStore defines the database operations required by AdminHandler.
 type AdminUserStore interface {
-	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
-	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
-	ListUsers(ctx context.Context, orgID uuid.UUID, search, status string, limit, offset int) ([]*model.User, int, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, req *model.UpdateUserRequest) (*model.User, error)
-	DeleteUser(ctx context.Context, id uuid.UUID) error
-	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash []byte) error
-	CountUsers(ctx context.Context, orgID uuid.UUID) (int, error)
-	CountRecentUsers(ctx context.Context, orgID uuid.UUID, days int) (int, error)
-	CountOrganizations(ctx context.Context) (int, error)
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
+	store.UserReader
+	store.UserWriter
+	store.UserLister
+	store.OrgLister
+	store.OrgSettingsReadWriter
 }
 
 // AdminSessionStore defines the session operations required by AdminHandler.
@@ -56,8 +50,8 @@ type AdminHandler struct {
 }
 
 // NewAdminHandler creates a handler with admin dependencies.
-func NewAdminHandler(store AdminUserStore, sessions AdminSessionStore, logger *slog.Logger) *AdminHandler {
-	return &AdminHandler{store: store, sessions: sessions, logger: logger}
+func NewAdminHandler(s AdminUserStore, sessions AdminSessionStore, logger *slog.Logger) *AdminHandler {
+	return &AdminHandler{store: s, sessions: sessions, logger: logger}
 }
 
 // Stats handles GET /api/v1/admin/stats.

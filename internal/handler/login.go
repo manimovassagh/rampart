@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"log/slog"
@@ -17,6 +16,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
+	"github.com/manimovassagh/rampart/internal/store"
 	"github.com/manimovassagh/rampart/internal/token"
 )
 
@@ -76,18 +76,12 @@ type LogoutRequest struct {
 
 // LoginStore defines the database operations required by LoginHandler.
 type LoginStore interface {
-	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
-	GetOrganizationIDBySlug(ctx context.Context, slug string) (uuid.UUID, error)
-	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
-	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
-	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
-	IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error
-	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
-	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error)
-	ConsumeBackupCode(ctx context.Context, userID uuid.UUID, codeHash []byte) (bool, error)
+	store.OrgReader
+	store.UserReader
+	store.UserWriter
+	store.OrgSettingsReadWriter
+	store.GroupReader // GetEffectiveUserRoles
+	store.MFADeviceStore
 }
 
 // LoginHandler handles authentication endpoints.
@@ -104,9 +98,9 @@ type LoginHandler struct {
 }
 
 // NewLoginHandler creates a handler with all authentication dependencies.
-func NewLoginHandler(store LoginStore, sessions session.Store, logger *slog.Logger, auditLogger *audit.Logger, privateKey *rsa.PrivateKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *LoginHandler {
+func NewLoginHandler(s LoginStore, sessions session.Store, logger *slog.Logger, auditLogger *audit.Logger, privateKey *rsa.PrivateKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *LoginHandler {
 	return &LoginHandler{
-		store:      store,
+		store:      s,
 		sessions:   sessions,
 		logger:     logger,
 		audit:      auditLogger,

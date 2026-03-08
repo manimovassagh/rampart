@@ -1,41 +1,32 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 
-	"github.com/google/uuid"
-
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/mfa"
 	"github.com/manimovassagh/rampart/internal/middleware"
-	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
-// MFAStore defines the database operations required by MFAHandler.
-type MFAStore interface {
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	CreateMFADevice(ctx context.Context, userID uuid.UUID, deviceType, name, secret string) (*model.MFADevice, error)
-	GetPendingMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error)
-	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error)
-	VerifyMFADevice(ctx context.Context, deviceID, userID uuid.UUID) error
-	DeleteUnverifiedMFADevices(ctx context.Context, userID uuid.UUID) error
-	DisableMFA(ctx context.Context, userID uuid.UUID) error
-	StoreBackupCodes(ctx context.Context, userID uuid.UUID, codeHashes [][]byte) error
+// MFAHandlerStore defines the database operations required by MFAHandler.
+type MFAHandlerStore interface {
+	store.UserReader
+	store.MFADeviceStore
 }
 
 // MFAHandler handles MFA enrollment and management endpoints.
 type MFAHandler struct {
-	store  MFAStore
+	store  MFAHandlerStore
 	logger *slog.Logger
 	issuer string
 }
 
 // NewMFAHandler creates a new MFA handler.
-func NewMFAHandler(store MFAStore, logger *slog.Logger, issuer string) *MFAHandler {
-	return &MFAHandler{store: store, logger: logger, issuer: issuer}
+func NewMFAHandler(s MFAHandlerStore, logger *slog.Logger, issuer string) *MFAHandler {
+	return &MFAHandler{store: s, logger: logger, issuer: issuer}
 }
 
 // EnrollTOTP handles POST /mfa/totp/enroll.

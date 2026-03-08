@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 const (
@@ -22,12 +22,10 @@ const (
 
 // UserStore defines the database operations required by RegisterHandler.
 type UserStore interface {
-	GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error)
-	GetOrganizationIDBySlug(ctx context.Context, slug string) (uuid.UUID, error)
-	GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error)
-	GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error)
-	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
+	store.OrgReader
+	store.UserReader
+	store.UserWriter
+	store.OrgSettingsReadWriter
 }
 
 // RegisterHandler handles user self-registration.
@@ -38,8 +36,8 @@ type RegisterHandler struct {
 }
 
 // NewRegisterHandler creates a handler with a user store dependency.
-func NewRegisterHandler(store UserStore, logger *slog.Logger) *RegisterHandler {
-	return &RegisterHandler{store: store, logger: logger}
+func NewRegisterHandler(s UserStore, logger *slog.Logger) *RegisterHandler {
+	return &RegisterHandler{store: s, logger: logger}
 }
 
 // SetEmailVerifier sets the email verification handler for post-registration flows.

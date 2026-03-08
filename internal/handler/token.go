@@ -1,33 +1,30 @@
 package handler
 
 import (
-	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
 	"strings"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/middleware"
-	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
 	"github.com/manimovassagh/rampart/internal/session"
+	"github.com/manimovassagh/rampart/internal/store"
 	"github.com/manimovassagh/rampart/internal/token"
 )
 
 // TokenStore defines the database operations required by TokenHandler.
 type TokenStore interface {
-	GetOAuthClient(ctx context.Context, clientID string) (*model.OAuthClient, error)
-	ConsumeAuthorizationCode(ctx context.Context, code string) (*model.AuthorizationCode, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
-	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
+	store.OAuthClientReader
+	store.AuthCodeStore
+	store.UserReader
+	store.OrgSettingsReadWriter
+	store.GroupReader
 }
 
 // TokenHandler handles the OAuth 2.0 token endpoint.
@@ -43,9 +40,9 @@ type TokenHandler struct {
 }
 
 // NewTokenHandler creates a new token endpoint handler.
-func NewTokenHandler(store TokenStore, sessions session.Store, logger *slog.Logger, privateKey *rsa.PrivateKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *TokenHandler {
+func NewTokenHandler(s TokenStore, sessions session.Store, logger *slog.Logger, privateKey *rsa.PrivateKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *TokenHandler {
 	return &TokenHandler{
-		store:      store,
+		store:      s,
 		sessions:   sessions,
 		logger:     logger,
 		privateKey: privateKey,

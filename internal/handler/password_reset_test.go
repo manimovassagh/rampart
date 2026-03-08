@@ -40,6 +40,39 @@ func (m *mockResetStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte
 	return nil
 }
 
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockResetStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockResetStore) GetUserByEmail(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockResetStore) GetUserByUsername(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserWriter ──
+
+func (m *mockResetStore) CreateUser(_ context.Context, _ *model.User) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockResetStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockResetStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockResetStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockResetStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
+	return nil
+}
+func (m *mockResetStore) ResetFailedLogins(_ context.Context, _ uuid.UUID) error { return nil }
+
+// ── stub methods to satisfy store.PasswordResetTokenStore ──
+
+func (m *mockResetStore) DeleteExpiredPasswordResetTokens(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
 type mockEmailSender struct {
 	sent    bool
 	enabled bool

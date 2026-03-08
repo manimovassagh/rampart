@@ -1,14 +1,11 @@
 package handler
 
 import (
-	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/audit"
@@ -16,18 +13,17 @@ import (
 	"github.com/manimovassagh/rampart/internal/mfa"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
+	"github.com/manimovassagh/rampart/internal/store"
 	"github.com/manimovassagh/rampart/internal/token"
 )
 
 // MFAVerifyStore defines the database operations required by MFAVerifyHandler.
 type MFAVerifyStore interface {
-	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error)
-	ConsumeBackupCode(ctx context.Context, userID uuid.UUID, codeHash []byte) (bool, error)
-	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
-	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
-	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
-	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
+	store.UserReader
+	store.UserWriter
+	store.MFADeviceStore
+	store.OrgSettingsReadWriter
+	store.GroupReader
 }
 
 // MFAVerifyHandler handles the MFA verification step during login.
@@ -45,9 +41,9 @@ type MFAVerifyHandler struct {
 }
 
 // NewMFAVerifyHandler creates a handler for MFA verification during login.
-func NewMFAVerifyHandler(store MFAVerifyStore, sessions session.Store, logger *slog.Logger, auditLogger *audit.Logger, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *MFAVerifyHandler {
+func NewMFAVerifyHandler(s MFAVerifyStore, sessions session.Store, logger *slog.Logger, auditLogger *audit.Logger, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey, kid, issuer string, accessTTL, refreshTTL time.Duration) *MFAVerifyHandler {
 	return &MFAVerifyHandler{
-		store:      store,
+		store:      s,
 		sessions:   sessions,
 		logger:     logger,
 		audit:      auditLogger,

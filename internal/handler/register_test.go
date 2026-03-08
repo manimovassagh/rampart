@@ -82,6 +82,40 @@ func (m *mockUserStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.O
 	return m.orgSettings, m.orgSettingsErr
 }
 
+// ── stub methods to satisfy store.OrgReader ──
+
+func (m *mockUserStore) GetOrganizationByID(_ context.Context, _ uuid.UUID) (*model.Organization, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserReader ──
+
+func (m *mockUserStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockUserStore) FindUserByEmail(_ context.Context, _ string) (*model.User, error) {
+	return nil, nil
+}
+
+// ── stub methods to satisfy store.UserWriter ──
+
+func (m *mockUserStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockUserStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockUserStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error { return nil }
+func (m *mockUserStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockUserStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
+	return nil
+}
+func (m *mockUserStore) ResetFailedLogins(_ context.Context, _ uuid.UUID) error { return nil }
+
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockUserStore) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
 func newTestRegisterHandler(store *mockUserStore) *RegisterHandler {
 	return NewRegisterHandler(store, noopLogger())
 }
