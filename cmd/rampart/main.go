@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/manimovassagh/rampart/internal/audit"
+	"github.com/manimovassagh/rampart/internal/cluster"
 	"github.com/manimovassagh/rampart/internal/plugin"
 	webhookpkg "github.com/manimovassagh/rampart/internal/webhook"
 
@@ -274,9 +275,14 @@ func run(_ *slog.Logger) error {
 	socialHandler := handler.NewSocialHandler(db, socialRegistry, logger, auditLogger, hmacKey, cfg.Issuer)
 	server.RegisterSocialRoutes(router, socialHandler.InitiateLogin, socialHandler.Callback)
 
-	// Background cleanup for expired authorization codes
+	// Leader election — ensures only one instance runs background workers in HA deployments.
+	// Uses PostgreSQL advisory locks; safe for single-instance too (always becomes leader).
+	leaderElector := cluster.NewLeader(db.Pool, logger)
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
 	defer cleanupCancel()
+	go leaderElector.Run(cleanupCtx)
+
+	// Background cleanup for expired authorization codes (leader-only)
 	go func() {
 		ticker := time.NewTicker(10 * time.Minute)
 		defer ticker.Stop()
@@ -285,6 +291,9 @@ func run(_ *slog.Logger) error {
 			case <-cleanupCtx.Done():
 				return
 			case <-ticker.C:
+				if !leaderElector.IsLeader() {
+					continue
+				}
 				if n, err := db.DeleteExpiredAuthorizationCodes(cleanupCtx); err != nil {
 					logger.Warn("failed to clean up expired auth codes", "error", err)
 				} else if n > 0 {
@@ -314,7 +323,7 @@ func run(_ *slog.Logger) error {
 		}
 	}()
 
-	// Background worker for webhook delivery retries (runs every 30 seconds)
+	// Background worker for webhook delivery retries (leader-only)
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
@@ -323,6 +332,9 @@ func run(_ *slog.Logger) error {
 			case <-cleanupCtx.Done():
 				return
 			case <-ticker.C:
+				if !leaderElector.IsLeader() {
+					continue
+				}
 				webhookDispatcher.ProcessPending(cleanupCtx)
 			}
 		}

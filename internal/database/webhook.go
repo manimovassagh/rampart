@@ -142,6 +142,7 @@ func (db *DB) UpdateWebhookDelivery(ctx context.Context, id uuid.UUID, status st
 }
 
 // GetPendingDeliveries returns deliveries ready for retry.
+// Uses FOR UPDATE SKIP LOCKED to prevent duplicate delivery in multi-instance deployments.
 func (db *DB) GetPendingDeliveries(ctx context.Context, limit int) ([]*model.WebhookDelivery, error) {
 	rows, err := db.Pool.Query(ctx,
 		`SELECT d.id, d.webhook_id, d.event_id, d.status, d.attempts, d.next_retry_at,
@@ -149,7 +150,8 @@ func (db *DB) GetPendingDeliveries(ctx context.Context, limit int) ([]*model.Web
 		 FROM webhook_deliveries d
 		 WHERE d.status = 'pending' AND (d.next_retry_at IS NULL OR d.next_retry_at <= now())
 		 ORDER BY d.created_at ASC
-		 LIMIT $1`,
+		 LIMIT $1
+		 FOR UPDATE SKIP LOCKED`,
 		limit,
 	)
 	if err != nil {
