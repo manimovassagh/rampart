@@ -4,32 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/manimovassagh/rampart/internal/model"
 )
 
-// MFADevice represents a registered MFA device (e.g. TOTP authenticator).
-type MFADevice struct {
-	ID         uuid.UUID
-	UserID     uuid.UUID
-	DeviceType string
-	Name       string
-	Secret     string
-	Verified   bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-}
-
 // CreateMFADevice inserts a new unverified MFA device.
-func (db *DB) CreateMFADevice(ctx context.Context, userID uuid.UUID, deviceType, name, secret string) (*MFADevice, error) {
+func (db *DB) CreateMFADevice(ctx context.Context, userID uuid.UUID, deviceType, name, secret string) (*model.MFADevice, error) {
 	encSecret, err := db.encryptToken(secret)
 	if err != nil {
 		return nil, fmt.Errorf("encrypting MFA secret: %w", err)
 	}
 
-	var d MFADevice
+	var d model.MFADevice
 	err = db.Pool.QueryRow(ctx,
 		`INSERT INTO mfa_devices (user_id, device_type, name, secret)
 		 VALUES ($1, $2, $3, $4)
@@ -65,8 +54,8 @@ func (db *DB) VerifyMFADevice(ctx context.Context, deviceID, userID uuid.UUID) e
 }
 
 // GetVerifiedMFADevice returns the verified TOTP device for a user, if any.
-func (db *DB) GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*MFADevice, error) {
-	var d MFADevice
+func (db *DB) GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error) {
+	var d model.MFADevice
 	err := db.Pool.QueryRow(ctx,
 		`SELECT id, user_id, device_type, name, secret, verified, created_at, updated_at
 		 FROM mfa_devices WHERE user_id = $1 AND verified = true AND device_type = 'totp'
@@ -87,8 +76,8 @@ func (db *DB) GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*MFAD
 }
 
 // GetPendingMFADevice returns the unverified TOTP device for a user (enrollment in progress).
-func (db *DB) GetPendingMFADevice(ctx context.Context, userID uuid.UUID) (*MFADevice, error) {
-	var d MFADevice
+func (db *DB) GetPendingMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error) {
+	var d model.MFADevice
 	err := db.Pool.QueryRow(ctx,
 		`SELECT id, user_id, device_type, name, secret, verified, created_at, updated_at
 		 FROM mfa_devices WHERE user_id = $1 AND verified = false AND device_type = 'totp'

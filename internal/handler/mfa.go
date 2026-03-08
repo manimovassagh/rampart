@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
-	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/mfa"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
@@ -18,9 +17,9 @@ import (
 // MFAStore defines the database operations required by MFAHandler.
 type MFAStore interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	CreateMFADevice(ctx context.Context, userID uuid.UUID, deviceType, name, secret string) (*database.MFADevice, error)
-	GetPendingMFADevice(ctx context.Context, userID uuid.UUID) (*database.MFADevice, error)
-	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*database.MFADevice, error)
+	CreateMFADevice(ctx context.Context, userID uuid.UUID, deviceType, name, secret string) (*model.MFADevice, error)
+	GetPendingMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error)
+	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error)
 	VerifyMFADevice(ctx context.Context, deviceID, userID uuid.UUID) error
 	DeleteUnverifiedMFADevices(ctx context.Context, userID uuid.UUID) error
 	DisableMFA(ctx context.Context, userID uuid.UUID) error

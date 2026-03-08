@@ -14,7 +14,6 @@ import (
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
-	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
@@ -87,7 +86,7 @@ type LoginStore interface {
 	GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error
 	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
-	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*database.MFADevice, error)
+	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error)
 	ConsumeBackupCode(ctx context.Context, userID uuid.UUID, codeHash []byte) (bool, error)
 }
 

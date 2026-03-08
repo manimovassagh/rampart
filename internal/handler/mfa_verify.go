@@ -12,7 +12,6 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/audit"
-	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/mfa"
 	"github.com/manimovassagh/rampart/internal/model"
@@ -23,7 +22,7 @@ import (
 // MFAVerifyStore defines the database operations required by MFAVerifyHandler.
 type MFAVerifyStore interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*database.MFADevice, error)
+	GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error)
 	ConsumeBackupCode(ctx context.Context, userID uuid.UUID, codeHash []byte) (bool, error)
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
 	GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error)
