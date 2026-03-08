@@ -779,6 +779,24 @@ func (s *stubAdminConsoleEndpoints) UpdateWebhookAction(w http.ResponseWriter, _
 func (s *stubAdminConsoleEndpoints) DeleteWebhookAction(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
+func (s *stubAdminConsoleEndpoints) ListSAMLProvidersPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateSAMLProviderPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) CreateSAMLProviderAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) SAMLProviderDetailPage(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) UpdateSAMLProviderAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+func (s *stubAdminConsoleEndpoints) DeleteSAMLProviderAction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 
 func TestRegisterAdminConsoleRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))

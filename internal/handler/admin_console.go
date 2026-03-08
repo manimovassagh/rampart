@@ -53,6 +53,7 @@ const (
 	navEvents        = "events"
 	navSocial        = "social"
 	navWebhooks      = "webhooks"
+	navSAML          = "saml-providers"
 
 	// Redirect paths
 	pathAdminUsers     = "/admin/users"
@@ -68,7 +69,9 @@ const (
 	pathAdminSessions  = "/admin/sessions"
 	pathAdminEvents    = "/admin/events"
 	pathAdminWebhooks  = "/admin/webhooks"
-	pathAdminWebhookFmt = "/admin/webhooks/%s"
+	pathAdminWebhookFmt    = "/admin/webhooks/%s"
+	pathAdminSAMLProviders = "/admin/saml-providers"
+	pathAdminSAMLFmt       = "/admin/saml-providers/%s"
 
 	// Page titles
 	titleCreateUser   = "Create User"
@@ -131,6 +134,7 @@ type AdminConsoleStore interface {
 	store.WebhookWriter
 	store.WebhookLister
 	store.WebhookDeliveryStore
+	store.SAMLProviderStore
 }
 
 // AdminConsoleSessionStore defines session operations for the admin console.
@@ -224,7 +228,10 @@ func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionSto
 		"social_providers": parseAdminPage("social_providers.html"),
 		"webhooks_list":    parseAdminPage("webhooks_list.html"),
 		"webhook_create":   parseAdminPage("webhook_create.html"),
-		"webhook_detail":   parseAdminPage("webhook_detail.html"),
+		"webhook_detail":      parseAdminPage("webhook_detail.html"),
+		"saml_providers_list": parseAdminPage("saml_providers_list.html"),
+		"saml_provider_create": parseAdminPage("saml_provider_create.html"),
+		"saml_provider_detail": parseAdminPage("saml_provider_detail.html"),
 	}
 
 	return &AdminConsoleHandler{
@@ -282,6 +289,8 @@ type pageData struct {
 	WebhookDetail   *model.Webhook
 	WebhookSecret   string
 	Deliveries      []*model.WebhookDelivery
+	SAMLProviders   []*model.SAMLProvider
+	SAMLDetail      *model.SAMLProvider
 	Search          string
 	Pagination      *paginationData
 }

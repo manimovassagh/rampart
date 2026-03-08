@@ -277,6 +277,18 @@ type GetAuditEventByIDStore interface {
 	GetAuditEventByID(ctx context.Context, id uuid.UUID) (*model.AuditEvent, error)
 }
 
+// ── SAML ────────────────────────────────────────────────────────────────
+
+// SAMLProviderStore provides SAML provider configuration operations.
+type SAMLProviderStore interface {
+	CreateSAMLProvider(ctx context.Context, p *model.SAMLProvider) (*model.SAMLProvider, error)
+	GetSAMLProviderByID(ctx context.Context, id uuid.UUID) (*model.SAMLProvider, error)
+	ListSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*model.SAMLProvider, error)
+	GetEnabledSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*model.SAMLProvider, error)
+	UpdateSAMLProvider(ctx context.Context, id uuid.UUID, req *model.UpdateSAMLProviderRequest) (*model.SAMLProvider, error)
+	DeleteSAMLProvider(ctx context.Context, id uuid.UUID) error
+}
+
 // ── Export / Import ─────────────────────────────────────────────────────
 
 // ExportImportStore provides organization export/import operations.

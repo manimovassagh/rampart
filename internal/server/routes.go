@@ -256,6 +256,22 @@ func RegisterSocialRoutes(r *chi.Mux, initiate, callback http.HandlerFunc) {
 	r.Get("/oauth/social/{provider}/callback", callback)
 }
 
+// SAMLEndpoints groups the handler methods for SAML SP endpoints.
+type SAMLEndpoints interface {
+	Metadata(w http.ResponseWriter, r *http.Request)
+	InitiateLogin(w http.ResponseWriter, r *http.Request)
+	ACS(w http.ResponseWriter, r *http.Request)
+	ListProviders(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterSAMLRoutes mounts SAML SP endpoints (public, no auth required).
+func RegisterSAMLRoutes(r *chi.Mux, samlHandler SAMLEndpoints) {
+	r.Get("/saml/providers", samlHandler.ListProviders)
+	r.Get("/saml/{providerID}/metadata", samlHandler.Metadata)
+	r.Get("/saml/{providerID}/login", samlHandler.InitiateLogin)
+	r.Post("/saml/{providerID}/acs", samlHandler.ACS)
+}
+
 // RegisterOIDCRoutes mounts OIDC Discovery and JWKS endpoints (public, no auth).
 func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
 	r.Get("/.well-known/openid-configuration", discovery)
@@ -322,6 +338,12 @@ type AdminConsoleEndpoints interface {
 	WebhookDetailPage(w http.ResponseWriter, r *http.Request)
 	UpdateWebhookAction(w http.ResponseWriter, r *http.Request)
 	DeleteWebhookAction(w http.ResponseWriter, r *http.Request)
+	ListSAMLProvidersPage(w http.ResponseWriter, r *http.Request)
+	CreateSAMLProviderPage(w http.ResponseWriter, r *http.Request)
+	CreateSAMLProviderAction(w http.ResponseWriter, r *http.Request)
+	SAMLProviderDetailPage(w http.ResponseWriter, r *http.Request)
+	UpdateSAMLProviderAction(w http.ResponseWriter, r *http.Request)
+	DeleteSAMLProviderAction(w http.ResponseWriter, r *http.Request)
 }
 
 // AdminLoginEndpoints groups the handler methods needed for admin OAuth login.
@@ -415,6 +437,14 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 		r.Get("/admin/webhooks/{id}", console.WebhookDetailPage)
 		r.Post("/admin/webhooks/{id}", console.UpdateWebhookAction)
 		r.Post("/admin/webhooks/{id}/delete", console.DeleteWebhookAction)
+
+		// SAML Providers
+		r.Get("/admin/saml-providers", console.ListSAMLProvidersPage)
+		r.Get("/admin/saml-providers/new", console.CreateSAMLProviderPage)
+		r.Post("/admin/saml-providers", console.CreateSAMLProviderAction)
+		r.Get("/admin/saml-providers/{id}", console.SAMLProviderDetailPage)
+		r.Post("/admin/saml-providers/{id}", console.UpdateSAMLProviderAction)
+		r.Post("/admin/saml-providers/{id}/delete", console.DeleteSAMLProviderAction)
 
 		// Events
 		r.Get("/admin/events", console.ListEventsPage)

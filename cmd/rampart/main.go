@@ -256,6 +256,14 @@ func run(_ *slog.Logger) error {
 	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger, socialRegistry)
 	server.RegisterAdminConsoleRoutes(router, kp.PublicKey, hmacKey, handler.StaticHandler(), adminLoginHandler, adminConsoleHandler)
 
+	// SAML 2.0 SP endpoints for enterprise SSO
+	samlCert, err := handler.ParseCertFromKey(kp.PrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to generate SAML SP certificate: %w", err)
+	}
+	samlHandler := handler.NewSAMLHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, samlCert, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	server.RegisterSAMLRoutes(router, samlHandler)
+
 	// Social login handler
 	socialHandler := handler.NewSocialHandler(db, socialRegistry, logger, auditLogger, hmacKey, cfg.Issuer)
 	server.RegisterSocialRoutes(router, socialHandler.InitiateLogin, socialHandler.Callback)
