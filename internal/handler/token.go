@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
@@ -217,6 +218,10 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.TokensIssued.WithLabelValues("access").Inc()
+	metrics.TokensIssued.WithLabelValues("refresh").Inc()
+	metrics.ActiveSessions.Inc()
+
 	resp := TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -292,6 +297,8 @@ func (h *TokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.sessions.Delete(ctx, sess.ID); err != nil {
 		h.logger.Error("failed to delete session for revocation", "error", err)
+	} else {
+		metrics.ActiveSessions.Dec()
 	}
 
 	w.WriteHeader(http.StatusOK)

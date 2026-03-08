@@ -15,6 +15,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/database"
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
 	"github.com/manimovassagh/rampart/internal/token"
@@ -177,12 +178,14 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	if user == nil {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, nil, req.Identifier, "user", "", req.Identifier, map[string]any{"reason": "user_not_found"})
+		metrics.AuthTotal.WithLabelValues("failure").Inc()
 		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
 	}
 
 	if !user.Enabled {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_disabled"})
+		metrics.AuthTotal.WithLabelValues("failure").Inc()
 		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
 	}
@@ -190,6 +193,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Check account lockout
 	if user.IsLocked() {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_locked"})
+		metrics.AuthTotal.WithLabelValues("failure").Inc()
 		apierror.Unauthorized(w, "Account is temporarily locked. Please try again later.")
 		return
 	}
@@ -210,6 +214,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if !ok {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_password"})
+		metrics.AuthTotal.WithLabelValues("failure").Inc()
 		// Increment failed login counter with lockout policy
 		maxAttempts, lockoutDur := defaultLockoutPolicy(settings)
 		if maxAttempts > 0 {
@@ -308,6 +313,10 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.audit.LogSimple(ctx, r, orgID, model.EventUserLogin, &user.ID, user.Username, "user", user.ID.String(), user.Username)
+	metrics.AuthTotal.WithLabelValues("success").Inc()
+	metrics.TokensIssued.WithLabelValues("access").Inc()
+	metrics.TokensIssued.WithLabelValues("refresh").Inc()
+	metrics.ActiveSessions.Inc()
 
 	resp := LoginResponse{
 		AccessToken:  accessToken,
@@ -429,6 +438,8 @@ func (h *LoginHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		apierror.InternalError(w)
 		return
 	}
+
+	metrics.ActiveSessions.Dec()
 
 	// Look up user for audit event
 	if user, uErr := h.store.GetUserByID(ctx, sess.UserID); uErr == nil && user != nil {

@@ -13,6 +13,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/database"
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/mfa"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/session"
@@ -139,6 +140,7 @@ func (h *MFAVerifyHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 
 	if !valid {
 		h.audit.Log(ctx, r, user.OrgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_mfa_code"})
+		metrics.AuthTotal.WithLabelValues("failure").Inc()
 		apierror.Unauthorized(w, "Invalid MFA code.")
 		return
 	}
@@ -200,6 +202,10 @@ func (h *MFAVerifyHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.audit.LogSimple(ctx, r, user.OrgID, model.EventUserLogin, &user.ID, user.Username, "user", user.ID.String(), user.Username)
+	metrics.AuthTotal.WithLabelValues("success").Inc()
+	metrics.TokensIssued.WithLabelValues("access").Inc()
+	metrics.TokensIssued.WithLabelValues("refresh").Inc()
+	metrics.ActiveSessions.Inc()
 
 	resp := LoginResponse{
 		AccessToken:  accessToken,

@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/cors"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/middleware"
 )
 
@@ -34,6 +35,7 @@ func NewRouter(logger *slog.Logger, allowedOrigins []string, hstsEnabled bool) *
 		MaxAge:           300,
 	}))
 	r.Use(middleware.Logging(logger))
+	r.Use(metrics.Middleware)
 
 	// Custom 404 handler — return JSON instead of plain text
 	r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
@@ -47,6 +49,11 @@ func NewRouter(logger *slog.Logger, allowedOrigins []string, hstsEnabled bool) *
 func RegisterHealthRoutes(r *chi.Mux, healthHandler, readyHandler http.HandlerFunc) {
 	r.Get("/healthz", healthHandler)
 	r.Get("/readyz", readyHandler)
+}
+
+// RegisterMetricsRoutes mounts the Prometheus metrics endpoint.
+func RegisterMetricsRoutes(r *chi.Mux) {
+	r.Handle("/metrics", metrics.Handler())
 }
 
 // RegisterAuthRoutes mounts authentication-related endpoints.

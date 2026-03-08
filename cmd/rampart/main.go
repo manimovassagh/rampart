@@ -92,6 +92,7 @@ func run(_ *slog.Logger) error {
 	router := server.NewRouter(logger, cfg.AllowedOrigins, cfg.HSTSEnabled)
 	healthHandler := handler.NewHealthHandler(db)
 	server.RegisterHealthRoutes(router, healthHandler.Liveness, healthHandler.Readiness)
+	server.RegisterMetricsRoutes(router)
 
 	// Rate limiters for auth endpoints
 	loginRL := middleware.NewRateLimiter(cfg.RateLimit.LoginPerMinute, time.Minute)
