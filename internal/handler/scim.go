@@ -58,14 +58,14 @@ const (
 // ServiceProviderConfig handles GET /scim/v2/ServiceProviderConfig.
 func (h *SCIMHandler) ServiceProviderConfig(w http.ResponseWriter, _ *http.Request) {
 	resp := map[string]any{
-		"schemas":            []string{scimSPCURN},
-		"documentationUri":   "https://tools.ietf.org/html/rfc7644",
-		"patch":              map[string]bool{"supported": true},
-		"bulk":               map[string]any{"supported": false, "maxOperations": 0, "maxPayloadSize": 0},
-		"filter":             map[string]any{"supported": true, "maxResults": 100},
-		"changePassword":     map[string]bool{"supported": false},
-		"sort":               map[string]bool{"supported": false},
-		"etag":               map[string]bool{"supported": false},
+		"schemas":          []string{scimSPCURN},
+		"documentationUri": "https://tools.ietf.org/html/rfc7644",
+		"patch":            map[string]bool{"supported": true},
+		"bulk":             map[string]any{"supported": false, "maxOperations": 0, "maxPayloadSize": 0},
+		"filter":           map[string]any{"supported": true, "maxResults": 100},
+		"changePassword":   map[string]bool{"supported": false},
+		"sort":             map[string]bool{"supported": false},
+		"etag":             map[string]bool{"supported": false},
 		"authenticationSchemes": []map[string]string{
 			{
 				"type":        "oauthbearertoken",
@@ -141,7 +141,7 @@ func (h *SCIMHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	startIndex, count := parsePagination(r)
 	filter := parseFilter(r.URL.Query().Get("filter"))
 
-	users, total, err := h.store.ListUsers(ctx, orgID, filter, "", count, (startIndex-1))
+	users, total, err := h.store.ListUsers(ctx, orgID, filter, "", count, (startIndex - 1))
 	if err != nil {
 		h.scimError(w, http.StatusInternalServerError, "Failed to list users.")
 		return
@@ -570,11 +570,11 @@ const scimOrgContextKey contextKey = "scim_org_id"
 // --- SCIM Data Types ---
 
 type scimUserRequest struct {
-	UserName   string       `json:"userName"`
-	Name       scimName     `json:"name"`
-	Emails     []scimEmail  `json:"emails"`
-	Active     bool         `json:"active"`
-	ExternalID string       `json:"externalId"`
+	UserName   string      `json:"userName"`
+	Name       scimName    `json:"name"`
+	Emails     []scimEmail `json:"emails"`
+	Active     bool        `json:"active"`
+	ExternalID string      `json:"externalId"`
 }
 
 type scimName struct {
@@ -599,8 +599,8 @@ type scimMember struct {
 }
 
 type scimPatchRequest struct {
-	Schemas    []string        `json:"schemas"`
-	Operations []scimPatchOp  `json:"Operations"`
+	Schemas    []string      `json:"schemas"`
+	Operations []scimPatchOp `json:"Operations"`
 }
 
 type scimPatchOp struct {

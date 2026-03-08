@@ -97,9 +97,9 @@ func (m *mockDB) FindUserByEmail(_ context.Context, _ string) (*model.User, erro
 func (m *mockDB) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockDB) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockDB) DeleteUser(_ context.Context, _ uuid.UUID) error               { return nil }
 func (m *mockDB) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error { return nil }
-func (m *mockDB) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockDB) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error        { return nil }
 func (m *mockDB) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
 	return nil
 }

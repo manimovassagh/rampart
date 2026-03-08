@@ -51,9 +51,9 @@ type RateLimitConfig struct {
 
 // Config holds all server configuration loaded from environment variables.
 type Config struct {
-	Port           int
-	DatabaseURL    string
-	LogLevel       LogLevel
+	Port            int
+	DatabaseURL     string
+	LogLevel        LogLevel
 	LogFormat       LogFormat
 	AllowedOrigins  []string
 	SigningKeyPath  string
@@ -96,8 +96,8 @@ type Config struct {
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:     8080,
-		LogLevel: LogLevelInfo,
+		Port:           8080,
+		LogLevel:       LogLevelInfo,
 		LogFormat:      LogFormatPretty,
 		SigningKeyPath: defaultSigningKeyPath,
 		Issuer:         defaultIssuer,

@@ -28,7 +28,7 @@ type testEventHook struct {
 	returnErr error
 }
 
-func (h *testEventHook) Name() string { return h.name }
+func (h *testEventHook) Name() string              { return h.name }
 func (h *testEventHook) SupportedEvents() []string { return h.events }
 func (h *testEventHook) HandleEvent(_ context.Context, _ *model.AuditEvent) error {
 	h.mu.Lock()
@@ -163,7 +163,7 @@ type testMiddleware struct {
 	priority int
 }
 
-func (m *testMiddleware) Name() string { return m.name }
+func (m *testMiddleware) Name() string  { return m.name }
 func (m *testMiddleware) Priority() int { return m.priority }
 func (m *testMiddleware) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler { return next }

@@ -59,19 +59,19 @@ const (
 	navCompliance    = "compliance"
 
 	// Redirect paths
-	pathAdminUsers     = "/admin/users"
-	pathAdminUserFmt   = "/admin/users/%s"
-	pathAdminOrgs      = "/admin/organizations"
-	pathAdminOrgFmt    = "/admin/organizations/%s"
-	pathAdminClients   = "/admin/clients"
-	pathAdminClientFmt = "/admin/clients/%s"
-	pathAdminRoles     = "/admin/roles"
-	pathAdminRoleFmt   = "/admin/roles/%s"
-	pathAdminGroups    = "/admin/groups"
-	pathAdminGroupFmt  = "/admin/groups/%s"
-	pathAdminSessions  = "/admin/sessions"
-	pathAdminEvents    = "/admin/events"
-	pathAdminWebhooks  = "/admin/webhooks"
+	pathAdminUsers         = "/admin/users"
+	pathAdminUserFmt       = "/admin/users/%s"
+	pathAdminOrgs          = "/admin/organizations"
+	pathAdminOrgFmt        = "/admin/organizations/%s"
+	pathAdminClients       = "/admin/clients"
+	pathAdminClientFmt     = "/admin/clients/%s"
+	pathAdminRoles         = "/admin/roles"
+	pathAdminRoleFmt       = "/admin/roles/%s"
+	pathAdminGroups        = "/admin/groups"
+	pathAdminGroupFmt      = "/admin/groups/%s"
+	pathAdminSessions      = "/admin/sessions"
+	pathAdminEvents        = "/admin/events"
+	pathAdminWebhooks      = "/admin/webhooks"
 	pathAdminWebhookFmt    = "/admin/webhooks/%s"
 	pathAdminSAMLProviders = "/admin/saml-providers"
 	pathAdminSAMLFmt       = "/admin/saml-providers/%s"
@@ -209,31 +209,31 @@ func parseAdminPage(pageFile string) *template.Template {
 // NewAdminConsoleHandler creates a handler for SSR admin pages.
 func NewAdminConsoleHandler(s AdminConsoleStore, sessions AdminConsoleSessionStore, logger *slog.Logger, issuer string, auditLogger *audit.Logger, socialReg *social.Registry, pluginReg *plugin.Registry) *AdminConsoleHandler {
 	pages := map[string]*template.Template{
-		"dashboard":        parseAdminPage("dashboard.html"),
-		"users_list":       parseAdminPage("users_list.html"),
-		"user_create":      parseAdminPage("user_create.html"),
-		"user_detail":      parseAdminPage("user_detail.html"),
-		"orgs_list":        parseAdminPage("orgs_list.html"),
-		"org_create":       parseAdminPage("org_create.html"),
-		"org_detail":       parseAdminPage("org_detail.html"),
-		"clients_list":     parseAdminPage("clients_list.html"),
-		"client_create":    parseAdminPage("client_create.html"),
-		"client_detail":    parseAdminPage("client_detail.html"),
-		"roles_list":       parseAdminPage("roles_list.html"),
-		"role_create":      parseAdminPage("role_create.html"),
-		"role_detail":      parseAdminPage("role_detail.html"),
-		"events_list":      parseAdminPage("events_list.html"),
-		"sessions_list":    parseAdminPage("sessions_list.html"),
-		"groups_list":      parseAdminPage("groups_list.html"),
-		"group_create":     parseAdminPage("group_create.html"),
-		"group_detail":     parseAdminPage("group_detail.html"),
-		"org_import":       parseAdminPage("org_import.html"),
-		"oidc":             parseAdminPage("oidc.html"),
-		"social_providers": parseAdminPage("social_providers.html"),
-		"webhooks_list":    parseAdminPage("webhooks_list.html"),
-		"webhook_create":   parseAdminPage("webhook_create.html"),
-		"webhook_detail":      parseAdminPage("webhook_detail.html"),
-		"saml_providers_list": parseAdminPage("saml_providers_list.html"),
+		"dashboard":            parseAdminPage("dashboard.html"),
+		"users_list":           parseAdminPage("users_list.html"),
+		"user_create":          parseAdminPage("user_create.html"),
+		"user_detail":          parseAdminPage("user_detail.html"),
+		"orgs_list":            parseAdminPage("orgs_list.html"),
+		"org_create":           parseAdminPage("org_create.html"),
+		"org_detail":           parseAdminPage("org_detail.html"),
+		"clients_list":         parseAdminPage("clients_list.html"),
+		"client_create":        parseAdminPage("client_create.html"),
+		"client_detail":        parseAdminPage("client_detail.html"),
+		"roles_list":           parseAdminPage("roles_list.html"),
+		"role_create":          parseAdminPage("role_create.html"),
+		"role_detail":          parseAdminPage("role_detail.html"),
+		"events_list":          parseAdminPage("events_list.html"),
+		"sessions_list":        parseAdminPage("sessions_list.html"),
+		"groups_list":          parseAdminPage("groups_list.html"),
+		"group_create":         parseAdminPage("group_create.html"),
+		"group_detail":         parseAdminPage("group_detail.html"),
+		"org_import":           parseAdminPage("org_import.html"),
+		"oidc":                 parseAdminPage("oidc.html"),
+		"social_providers":     parseAdminPage("social_providers.html"),
+		"webhooks_list":        parseAdminPage("webhooks_list.html"),
+		"webhook_create":       parseAdminPage("webhook_create.html"),
+		"webhook_detail":       parseAdminPage("webhook_detail.html"),
+		"saml_providers_list":  parseAdminPage("saml_providers_list.html"),
 		"saml_provider_create": parseAdminPage("saml_provider_create.html"),
 		"saml_provider_detail": parseAdminPage("saml_provider_detail.html"),
 		"plugins_list":         parseAdminPage("plugins_list.html"),
@@ -463,4 +463,3 @@ func buildPaginationWithExtra(page, limit, total int, baseURL, search, filterVal
 	}
 	return pg
 }
-

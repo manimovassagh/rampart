@@ -60,7 +60,7 @@ func (m *mockResetStore) CreateUser(_ context.Context, _ *model.User) (*model.Us
 func (m *mockResetStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockResetStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
+func (m *mockResetStore) DeleteUser(_ context.Context, _ uuid.UUID) error        { return nil }
 func (m *mockResetStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error { return nil }
 func (m *mockResetStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
 	return nil

@@ -75,7 +75,7 @@ func (h *AdminConsoleHandler) CreateSAMLProviderAction(w http.ResponseWriter, r 
 			FormErrors: formErrors,
 			FormValues: map[string]string{
 				"name": name, "entity_id": entityID, "sso_url": ssoURL,
-				"certificate": certificate,
+				"certificate":  certificate,
 				"metadata_url": r.FormValue("metadata_url"),
 				"slo_url":      r.FormValue("slo_url"),
 			},
@@ -128,8 +128,8 @@ func (h *AdminConsoleHandler) SAMLProviderDetailPage(w http.ResponseWriter, r *h
 	}
 
 	h.render(w, r, "saml_provider_detail", &pageData{
-		Title:     "SAML: " + p.Name,
-		ActiveNav: navSAML,
+		Title:      "SAML: " + p.Name,
+		ActiveNav:  navSAML,
 		SAMLDetail: p,
 	})
 }

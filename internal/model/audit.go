@@ -8,19 +8,19 @@ import (
 
 // Audit event type constants.
 const (
-	EventUserLogin               = "user.login"
-	EventUserLoginFailed         = "user.login_failed"
-	EventUserCreated             = "user.created"
-	EventUserUpdated             = "user.updated"
-	EventUserDeleted             = "user.deleted"
-	EventUserPasswordReset       = "user.password_reset"
-	EventClientCreated      = "client.created"
-	EventOrgCreated         = "org.created"
-	EventSessionRevoked          = "session.revoked"
-	EventSessionsRevokedAll      = "session.revoked_all"
-	EventSocialLogin             = "social_login"
-	EventSocialLoginFailed       = "social_login_failed"
-	EventSocialAccountLinked     = "social_account_linked"
+	EventUserLogin           = "user.login"
+	EventUserLoginFailed     = "user.login_failed"
+	EventUserCreated         = "user.created"
+	EventUserUpdated         = "user.updated"
+	EventUserDeleted         = "user.deleted"
+	EventUserPasswordReset   = "user.password_reset"
+	EventClientCreated       = "client.created"
+	EventOrgCreated          = "org.created"
+	EventSessionRevoked      = "session.revoked"
+	EventSessionsRevokedAll  = "session.revoked_all"
+	EventSocialLogin         = "social_login"
+	EventSocialLoginFailed   = "social_login_failed"
+	EventSocialAccountLinked = "social_account_linked"
 )
 
 // AuditEvent represents a row in the audit_events table.

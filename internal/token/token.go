@@ -68,14 +68,14 @@ func GenerateAccessTokenWithCustomClaims(key *rsa.PrivateKey, kid, issuer string
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},
-		OrgID:            orgID,
+		OrgID:             orgID,
 		PreferredUsername: username,
-		Email:            email,
-		EmailVerified:    emailVerified,
-		GivenName:        givenName,
-		FamilyName:       familyName,
-		Roles:            roles,
-		Custom:           customClaims,
+		Email:             email,
+		EmailVerified:     emailVerified,
+		GivenName:         givenName,
+		FamilyName:        familyName,
+		Roles:             roles,
+		Custom:            customClaims,
 	}
 
 	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
