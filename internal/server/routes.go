@@ -280,6 +280,7 @@ type AdminConsoleEndpoints interface {
 	GroupDetailPage(w http.ResponseWriter, r *http.Request)
 	UpdateGroupAction(w http.ResponseWriter, r *http.Request)
 	DeleteGroupAction(w http.ResponseWriter, r *http.Request)
+	SearchUsersForGroup(w http.ResponseWriter, r *http.Request)
 	AddGroupMemberAction(w http.ResponseWriter, r *http.Request)
 	RemoveGroupMemberAction(w http.ResponseWriter, r *http.Request)
 	AssignGroupRoleAction(w http.ResponseWriter, r *http.Request)
@@ -360,6 +361,9 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 		r.Get("/admin/sessions", console.ListSessionsPage)
 		r.Post("/admin/sessions/{id}/delete", console.RevokeSessionAction)
 		r.Post("/admin/sessions/revoke-all", console.RevokeAllSessionsAction)
+
+		// User search (autocomplete for group/role member addition)
+		r.Get("/admin/users/search", console.SearchUsersForGroup)
 
 		// Groups
 		r.Get("/admin/groups", console.ListGroupsPage)

@@ -728,6 +728,9 @@ func (s *stubAdminConsoleEndpoints) UpdateGroupAction(w http.ResponseWriter, _ *
 func (s *stubAdminConsoleEndpoints) DeleteGroupAction(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
+func (s *stubAdminConsoleEndpoints) SearchUsersForGroup(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 func (s *stubAdminConsoleEndpoints) AddGroupMemberAction(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }

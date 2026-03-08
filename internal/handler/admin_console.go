@@ -315,6 +315,7 @@ type pageData struct {
 	UserGroups      []*model.Group
 	OIDC            *DiscoveryResponse
 	SocialProviders []SocialProviderInfo
+	SearchUsers     []*model.User
 	Search          string
 	Pagination      *paginationData
 }

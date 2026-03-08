@@ -68,4 +68,42 @@
       }
     });
   });
+  // User search autocomplete: show/hide results dropdown
+  var searchResults = document.getElementById("user-search-results");
+  var searchInput = document.getElementById("user-search-input");
+  var hiddenInput = document.getElementById("add-member-id");
+  var addBtn = document.getElementById("add-member-btn");
+
+  if (searchResults && searchInput) {
+    // Show dropdown when htmx swaps content into results div
+    document.body.addEventListener("htmx:afterSwap", function (e) {
+      if (e.detail.target === searchResults) {
+        searchResults.classList.toggle("hidden", !searchResults.innerHTML.trim());
+      }
+    });
+
+    // Handle selecting a user from search results
+    document.addEventListener("click", function (e) {
+      var item = e.target.closest(".user-search-result");
+      if (item && hiddenInput && addBtn) {
+        hiddenInput.value = item.getAttribute("data-user-id");
+        searchInput.value = item.getAttribute("data-user-label");
+        searchResults.classList.add("hidden");
+        addBtn.disabled = false;
+      }
+    });
+
+    // Clear selection when input changes
+    searchInput.addEventListener("input", function () {
+      if (hiddenInput) hiddenInput.value = "";
+      if (addBtn) addBtn.disabled = true;
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener("click", function (e) {
+      if (searchResults && !e.target.closest("#user-search-wrapper")) {
+        searchResults.classList.add("hidden");
+      }
+    });
+  }
 })();

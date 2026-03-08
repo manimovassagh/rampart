@@ -1,0 +1,20 @@
+{{define "user_search_results"}}
+{{if .SearchUsers}}
+{{range .SearchUsers}}
+<button type="button"
+        class="user-search-result w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+        data-user-id="{{.ID}}"
+        data-user-label="{{.Username}} ({{.Email}})">
+    <div class="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-medium uppercase">
+        {{slice .Username 0 1}}
+    </div>
+    <div class="min-w-0 flex-1">
+        <div class="text-sm font-medium text-gray-900 truncate">{{.Username}}</div>
+        <div class="text-xs text-gray-500 truncate">{{.Email}}</div>
+    </div>
+</button>
+{{end}}
+{{else}}
+<div class="px-3 py-2 text-sm text-gray-500">No users found.</div>
+{{end}}
+{{end}}

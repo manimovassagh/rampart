@@ -185,6 +185,26 @@ func (h *AdminConsoleHandler) DeleteGroupAction(w http.ResponseWriter, r *http.R
 	http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 }
 
+// SearchUsersForGroup handles GET /admin/users/search — returns user search results as HTML partial.
+func (h *AdminConsoleHandler) SearchUsersForGroup(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		return
+	}
+
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	users, _, err := h.store.ListUsers(ctx, authUser.OrgID, q, "", 10, 0)
+	if err != nil {
+		h.logger.Error("failed to search users", "error", err)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		return
+	}
+
+	h.renderPartial(w, r, "group_detail", "user_search_results", &pageData{SearchUsers: users})
+}
+
 // AddGroupMemberAction handles POST /admin/groups/{id}/members
 func (h *AdminConsoleHandler) AddGroupMemberAction(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
