@@ -263,6 +263,10 @@ func run(_ *slog.Logger) error {
 	adminConsoleHandler := handler.NewAdminConsoleHandler(db, sessionStore, logger, cfg.Issuer, auditLogger, socialRegistry, pluginRegistry)
 	server.RegisterAdminConsoleRoutes(router, kp.PublicKey, hmacKey, handler.StaticHandler(), adminLoginHandler, adminConsoleHandler)
 
+	// SCIM 2.0 provisioning endpoints (for Okta, Azure AD, etc.)
+	scimHandler := handler.NewSCIMHandler(db, logger)
+	server.RegisterSCIMRoutes(router, kp.PublicKey, scimHandler)
+
 	// SAML 2.0 SP endpoints for enterprise SSO
 	samlCert, err := handler.ParseCertFromKey(kp.PrivateKey)
 	if err != nil {

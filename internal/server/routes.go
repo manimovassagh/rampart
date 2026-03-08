@@ -272,6 +272,55 @@ func RegisterSAMLRoutes(r *chi.Mux, samlHandler SAMLEndpoints) {
 	r.Post("/saml/{providerID}/acs", samlHandler.ACS)
 }
 
+// SCIMEndpoints groups the handler methods for SCIM 2.0 provisioning.
+type SCIMEndpoints interface {
+	ServiceProviderConfig(w http.ResponseWriter, r *http.Request)
+	ResourceTypes(w http.ResponseWriter, r *http.Request)
+	Schemas(w http.ResponseWriter, r *http.Request)
+	ListUsers(w http.ResponseWriter, r *http.Request)
+	GetUser(w http.ResponseWriter, r *http.Request)
+	CreateUser(w http.ResponseWriter, r *http.Request)
+	UpdateUser(w http.ResponseWriter, r *http.Request)
+	PatchUser(w http.ResponseWriter, r *http.Request)
+	DeleteUser(w http.ResponseWriter, r *http.Request)
+	ListGroups(w http.ResponseWriter, r *http.Request)
+	GetGroup(w http.ResponseWriter, r *http.Request)
+	CreateGroup(w http.ResponseWriter, r *http.Request)
+	UpdateGroup(w http.ResponseWriter, r *http.Request)
+	PatchGroup(w http.ResponseWriter, r *http.Request)
+	DeleteGroup(w http.ResponseWriter, r *http.Request)
+}
+
+// RegisterSCIMRoutes mounts SCIM 2.0 provisioning endpoints under /scim/v2/.
+// These endpoints require Bearer token authentication.
+func RegisterSCIMRoutes(r *chi.Mux, pubKey *rsa.PublicKey, scim SCIMEndpoints) {
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(pubKey))
+		r.Use(middleware.RequireRole("admin"))
+
+		// Discovery
+		r.Get("/scim/v2/ServiceProviderConfig", scim.ServiceProviderConfig)
+		r.Get("/scim/v2/ResourceTypes", scim.ResourceTypes)
+		r.Get("/scim/v2/Schemas", scim.Schemas)
+
+		// Users
+		r.Get("/scim/v2/Users", scim.ListUsers)
+		r.Post("/scim/v2/Users", scim.CreateUser)
+		r.Get("/scim/v2/Users/{id}", scim.GetUser)
+		r.Put("/scim/v2/Users/{id}", scim.UpdateUser)
+		r.Patch("/scim/v2/Users/{id}", scim.PatchUser)
+		r.Delete("/scim/v2/Users/{id}", scim.DeleteUser)
+
+		// Groups
+		r.Get("/scim/v2/Groups", scim.ListGroups)
+		r.Post("/scim/v2/Groups", scim.CreateGroup)
+		r.Get("/scim/v2/Groups/{id}", scim.GetGroup)
+		r.Put("/scim/v2/Groups/{id}", scim.UpdateGroup)
+		r.Patch("/scim/v2/Groups/{id}", scim.PatchGroup)
+		r.Delete("/scim/v2/Groups/{id}", scim.DeleteGroup)
+	})
+}
+
 // RegisterOIDCRoutes mounts OIDC Discovery and JWKS endpoints (public, no auth).
 func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
 	r.Get("/.well-known/openid-configuration", discovery)
