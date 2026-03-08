@@ -20,6 +20,7 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/database"
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
 	"github.com/manimovassagh/rampart/internal/social"
@@ -224,6 +225,7 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.Error("social provider exchange failed", "provider", providerName, "error", err)
 		h.audit.Log(ctx, r, uuid.Nil, model.EventSocialLoginFailed, nil, "", "social", "", providerName, map[string]any{"reason": "exchange_failed", "provider": providerName})
+		metrics.AuthTotal.WithLabelValues("failure").Inc()
 		http.Error(w, "Failed to authenticate with social provider.", http.StatusBadGateway)
 		return
 	}
@@ -262,6 +264,7 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.audit.Log(ctx, r, orgID, model.EventSocialLogin, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"provider": providerName, "client_id": payload.ClientID})
+	metrics.AuthTotal.WithLabelValues("success").Inc()
 
 	// Redirect back to the client with the authorization code and original state
 	params := url.Values{"code": {authCode}, "state": {payload.State}}

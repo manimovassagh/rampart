@@ -110,15 +110,15 @@ func (h *AdminConsoleHandler) GroupDetailPage(w http.ResponseWriter, r *http.Req
 	}
 
 	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	orgID := authUser.OrgID
+
 	group, err := h.store.GetGroupByID(ctx, groupID)
-	if err != nil || group == nil {
+	if err != nil || group == nil || group.OrgID != orgID {
 		middleware.SetFlash(w, "Group not found.")
 		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
-
-	authUser := middleware.GetAuthenticatedUser(ctx)
-	orgID := authUser.OrgID
 
 	memberCount, _ := h.store.CountGroupMembers(ctx, groupID)
 	roleCount, _ := h.store.CountGroupRoles(ctx, groupID)
@@ -140,6 +140,15 @@ func (h *AdminConsoleHandler) GroupDetailPage(w http.ResponseWriter, r *http.Req
 func (h *AdminConsoleHandler) UpdateGroupAction(w http.ResponseWriter, r *http.Request) {
 	groupID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
+		return
+	}
+
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	group, err := h.store.GetGroupByID(ctx, groupID)
+	if err != nil || group == nil || group.OrgID != authUser.OrgID {
+		middleware.SetFlash(w, "Group not found.")
 		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
 		return
 	}
@@ -174,7 +183,16 @@ func (h *AdminConsoleHandler) DeleteGroupAction(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := h.store.DeleteGroup(r.Context(), groupID); err != nil {
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	group, err := h.store.GetGroupByID(ctx, groupID)
+	if err != nil || group == nil || group.OrgID != authUser.OrgID {
+		middleware.SetFlash(w, "Group not found.")
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
+		return
+	}
+
+	if err := h.store.DeleteGroup(ctx, groupID); err != nil {
 		h.logger.Error("failed to delete group", "error", err)
 		middleware.SetFlash(w, "Failed to delete group.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
@@ -213,6 +231,15 @@ func (h *AdminConsoleHandler) AddGroupMemberAction(w http.ResponseWriter, r *htt
 		return
 	}
 
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	group, err := h.store.GetGroupByID(ctx, groupID)
+	if err != nil || group == nil || group.OrgID != authUser.OrgID {
+		middleware.SetFlash(w, "Group not found.")
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
@@ -244,13 +271,22 @@ func (h *AdminConsoleHandler) RemoveGroupMemberAction(w http.ResponseWriter, r *
 		return
 	}
 
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	group, err := h.store.GetGroupByID(ctx, groupID)
+	if err != nil || group == nil || group.OrgID != authUser.OrgID {
+		middleware.SetFlash(w, "Group not found.")
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
+		return
+	}
+
 	userID, err := uuid.Parse(chi.URLParam(r, "userId"))
 	if err != nil {
 		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
-	if err := h.store.RemoveUserFromGroup(r.Context(), userID, groupID); err != nil {
+	if err := h.store.RemoveUserFromGroup(ctx, userID, groupID); err != nil {
 		h.logger.Error("failed to remove member from group", "error", err)
 		middleware.SetFlash(w, "Failed to remove member.")
 	} else {
@@ -268,6 +304,15 @@ func (h *AdminConsoleHandler) AssignGroupRoleAction(w http.ResponseWriter, r *ht
 		return
 	}
 
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	group, err := h.store.GetGroupByID(ctx, groupID)
+	if err != nil || group == nil || group.OrgID != authUser.OrgID {
+		middleware.SetFlash(w, "Group not found.")
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		middleware.SetFlash(w, "Invalid form data.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
@@ -281,7 +326,7 @@ func (h *AdminConsoleHandler) AssignGroupRoleAction(w http.ResponseWriter, r *ht
 		return
 	}
 
-	if err := h.store.AssignRoleToGroup(r.Context(), groupID, roleID); err != nil {
+	if err := h.store.AssignRoleToGroup(ctx, groupID, roleID); err != nil {
 		h.logger.Error("failed to assign role to group", "error", err)
 		middleware.SetFlash(w, "Failed to assign role.")
 	} else {
@@ -299,13 +344,22 @@ func (h *AdminConsoleHandler) UnassignGroupRoleAction(w http.ResponseWriter, r *
 		return
 	}
 
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	group, err := h.store.GetGroupByID(ctx, groupID)
+	if err != nil || group == nil || group.OrgID != authUser.OrgID {
+		middleware.SetFlash(w, "Group not found.")
+		http.Redirect(w, r, pathAdminGroups, http.StatusFound)
+		return
+	}
+
 	roleID, err := uuid.Parse(chi.URLParam(r, "roleId"))
 	if err != nil {
 		http.Redirect(w, r, fmt.Sprintf(pathAdminGroupFmt, groupID), http.StatusFound)
 		return
 	}
 
-	if err := h.store.UnassignRoleFromGroup(r.Context(), groupID, roleID); err != nil {
+	if err := h.store.UnassignRoleFromGroup(ctx, groupID, roleID); err != nil {
 		h.logger.Error("failed to unassign role from group", "error", err)
 		middleware.SetFlash(w, "Failed to unassign role.")
 	} else {

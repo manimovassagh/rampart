@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/manimovassagh/rampart/internal/audit"
+	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/oauth"
@@ -260,11 +261,12 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.TokensIssued.WithLabelValues("access").Inc()
+	metrics.TokensIssued.WithLabelValues("refresh").Inc()
+	metrics.ActiveSessions.Inc()
+
 	// Set the session cookie with the access token
 	middleware.SetAdminSession(w, accessToken, h.hmacKey, int(accessTTL.Seconds()))
-
-	// Note: user.login event is already emitted by the authorize handler during
-	// credential verification, so we don't duplicate it here.
 
 	http.Redirect(w, r, "/admin/", http.StatusFound)
 }
@@ -276,6 +278,7 @@ func (h *AdminLoginHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		h.audit.LogSimple(r.Context(), r, authUser.OrgID, model.EventSessionRevoked, &authUser.UserID, authUser.PreferredUsername, "session", "", "admin_logout")
 	}
 	middleware.ClearAdminSession(w)
+	metrics.ActiveSessions.Dec()
 	http.Redirect(w, r, middleware.AdminLoginPath, http.StatusFound)
 }
 

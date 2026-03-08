@@ -134,8 +134,9 @@ func (h *AdminConsoleHandler) WebhookDetailPage(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	authUser := middleware.GetAuthenticatedUser(ctx)
 	wh, err := h.store.GetWebhookByID(ctx, id)
-	if err != nil || wh == nil {
+	if err != nil || wh == nil || wh.OrgID != authUser.OrgID {
 		middleware.SetFlash(w, "Webhook not found.")
 		http.Redirect(w, r, pathAdminWebhooks, http.StatusSeeOther)
 		return
@@ -168,6 +169,13 @@ func (h *AdminConsoleHandler) UpdateWebhookAction(w http.ResponseWriter, r *http
 	authUser := middleware.GetAuthenticatedUser(ctx)
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		http.Redirect(w, r, pathAdminWebhooks, http.StatusSeeOther)
+		return
+	}
+
+	wh, err := h.store.GetWebhookByID(ctx, id)
+	if err != nil || wh == nil || wh.OrgID != authUser.OrgID {
+		middleware.SetFlash(w, "Webhook not found.")
 		http.Redirect(w, r, pathAdminWebhooks, http.StatusSeeOther)
 		return
 	}
@@ -215,6 +223,13 @@ func (h *AdminConsoleHandler) DeleteWebhookAction(w http.ResponseWriter, r *http
 	authUser := middleware.GetAuthenticatedUser(ctx)
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		http.Redirect(w, r, pathAdminWebhooks, http.StatusSeeOther)
+		return
+	}
+
+	wh, err := h.store.GetWebhookByID(ctx, id)
+	if err != nil || wh == nil || wh.OrgID != authUser.OrgID {
+		middleware.SetFlash(w, "Webhook not found.")
 		http.Redirect(w, r, pathAdminWebhooks, http.StatusSeeOther)
 		return
 	}
