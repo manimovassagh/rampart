@@ -502,11 +502,19 @@ func (h *AdminConsoleHandler) CreateUserAction(w http.ResponseWriter, r *http.Re
 	}
 
 	// Check duplicates
-	if existing, _ := h.store.GetUserByEmail(ctx, email, orgID); existing != nil {
+	if existing, err := h.store.GetUserByEmail(ctx, email, orgID); err != nil {
+		h.logger.Error("failed to check email uniqueness", "error", err)
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr})
+		return
+	} else if existing != nil {
 		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "A user with this email already exists."})
 		return
 	}
-	if existing, _ := h.store.GetUserByUsername(ctx, username, orgID); existing != nil {
+	if existing, err := h.store.GetUserByUsername(ctx, username, orgID); err != nil {
+		h.logger.Error("failed to check username uniqueness", "error", err)
+		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: msgInternalErr})
+		return
+	} else if existing != nil {
 		h.render(w, r, tmplUserCreate, &pageData{Title: titleCreateUser, ActiveNav: navUsers, Error: "A user with this username already exists."})
 		return
 	}

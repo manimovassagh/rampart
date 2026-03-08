@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16.6-alpine
         env:
           POSTGRES_USER: rampart
           POSTGRES_PASSWORD: rampart
@@ -32,15 +32,6 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U rampart"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
@@ -54,7 +45,6 @@ jobs:
       - name: Run tests with coverage
         env:
           RAMPART_DB_URL: postgres://rampart:rampart@localhost:5432/rampart?sslmode=disable
-          RAMPART_REDIS_URL: redis://localhost:6379/0
         run: go test -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Check coverage threshold

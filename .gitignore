@@ -9,6 +9,7 @@ bin/
 # Test
 *.test
 *.out
+coverage.out
 coverage.txt
 coverage.html
 
@@ -33,6 +34,7 @@ Thumbs.db
 
 # Node (UI)
 node_modules/
+package-lock.json
 .next/
 dist/
 build/
@@ -60,7 +62,6 @@ plans/
 
 # Screenshots and snapshots (dev testing artifacts)
 *.png
-!docs/images/*.png
 repo-snapshot.md
 SECURITY_AUDIT.md
 

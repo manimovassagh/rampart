@@ -78,10 +78,11 @@ func RegisterPasswordResetRoutes(r *chi.Mux, forgotHandler, resetHandler http.Ha
 	jsonMW := middleware.RequireJSON
 	if rl != nil {
 		r.With(jsonMW, rl.Middleware()).Post("/forgot-password", forgotHandler)
+		r.With(jsonMW, rl.Middleware()).Post("/reset-password", resetHandler)
 	} else {
 		r.With(jsonMW).Post("/forgot-password", forgotHandler)
+		r.With(jsonMW).Post("/reset-password", resetHandler)
 	}
-	r.With(jsonMW).Post("/reset-password", resetHandler)
 }
 
 // MFAEndpoints groups the handler methods needed by RegisterMFARoutes.

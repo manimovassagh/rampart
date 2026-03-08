@@ -52,7 +52,7 @@
                         <input type="checkbox" id="enabled-{{.Name}}" name="enabled"
                                class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                {{if .Enabled}}checked{{end}}
-                               onchange="this.form.submit()">
+                               data-auto-submit="true">
                         <label for="enabled-{{.Name}}" class="text-sm text-gray-700">Enable this provider</label>
                     </div>
 

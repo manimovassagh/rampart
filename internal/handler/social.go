@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -264,8 +265,8 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	h.audit.Log(ctx, r, orgID, model.EventSocialLogin, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"provider": providerName, "client_id": payload.ClientID})
 
 	// Redirect back to the client with the authorization code and original state
-	redirectURL := payload.RedirectURI + "?code=" + authCode + "&state=" + payload.State
-	http.Redirect(w, r, redirectURL, http.StatusFound)
+	params := url.Values{"code": {authCode}, "state": {payload.State}}
+	http.Redirect(w, r, payload.RedirectURI+"?"+params.Encode(), http.StatusFound)
 }
 
 // resolveUser implements the account linking logic:

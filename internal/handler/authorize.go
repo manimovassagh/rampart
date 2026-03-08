@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -316,7 +317,10 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch org settings for lockout policy
-	authSettings, _ := h.store.GetOrgSettings(ctx, orgID)
+	authSettings, err := h.store.GetOrgSettings(ctx, orgID)
+	if err != nil {
+		h.logger.Warn("failed to fetch org settings for lockout policy, using defaults", "error", err)
+	}
 
 	ok, err := auth.VerifyPassword(password, string(user.PasswordHash))
 	if err != nil {
@@ -366,8 +370,8 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	h.audit.Log(ctx, r, orgID, model.EventUserLogin, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"client_id": clientID})
 
 	// Redirect back to the client with the authorization code
-	redirectURL := redirectURI + "?code=" + code + "&state=" + state
-	http.Redirect(w, r, redirectURL, http.StatusFound)
+	params := url.Values{"code": {code}, "state": {state}}
+	http.Redirect(w, r, redirectURI+"?"+params.Encode(), http.StatusFound)
 }
 
 // applyOrgSettings populates the login page data with org-specific branding and theme.

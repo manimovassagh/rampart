@@ -14,6 +14,15 @@
     }
   });
 
+  // Handle auto-submit checkboxes: <input data-auto-submit="true">
+  document.addEventListener("change", function (e) {
+    var el = e.target.closest("[data-auto-submit]");
+    if (el) {
+      var form = el.closest("form");
+      if (form) form.submit();
+    }
+  });
+
   // Handle dismiss buttons: <button data-dismiss>
   document.addEventListener("click", function (e) {
     var btn = e.target.closest("[data-dismiss]");
