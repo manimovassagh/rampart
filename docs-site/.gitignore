@@ -1,6 +1,9 @@
 # Dependencies
 /node_modules
 
+# Override root .gitignore — CI needs package-lock.json for caching
+!package-lock.json
+
 # Production
 /build
 
