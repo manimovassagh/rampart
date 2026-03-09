@@ -155,8 +155,8 @@ type DashboardStats struct {
 	RecentEvents       int `json:"recent_events"`
 
 	// Chart data
-	LoginCounts  []DayCount  `json:"login_counts"`
-	RoleCounts   []RoleCount `json:"role_counts"`
+	LoginCounts []DayCount  `json:"login_counts"`
+	RoleCounts  []RoleCount `json:"role_counts"`
 }
 
 // DayCount holds an event count for a single day.
