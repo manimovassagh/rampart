@@ -351,6 +351,7 @@ func RegisterOIDCRoutes(r *chi.Mux, discovery, jwks http.HandlerFunc) {
 // AdminConsoleEndpoints groups the handler methods needed by RegisterAdminConsoleRoutes.
 type AdminConsoleEndpoints interface {
 	Dashboard(w http.ResponseWriter, r *http.Request)
+	DashboardSSE(w http.ResponseWriter, r *http.Request)
 	ListUsersPage(w http.ResponseWriter, r *http.Request)
 	CreateUserPage(w http.ResponseWriter, r *http.Request)
 	CreateUserAction(w http.ResponseWriter, r *http.Request)
@@ -446,6 +447,7 @@ func RegisterAdminConsoleRoutes(r *chi.Mux, pubKey *rsa.PublicKey, hmacKey []byt
 		r.Use(middleware.CSRFProtect())
 
 		r.Get("/admin/", console.Dashboard)
+		r.Get("/admin/sse/dashboard", console.DashboardSSE)
 		r.Post("/admin/logout", login.Logout)
 
 		// Users

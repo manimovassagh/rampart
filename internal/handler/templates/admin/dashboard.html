@@ -48,17 +48,28 @@
     }
     .panel-title { font-size: 0.8rem; font-weight: 600; color: #f8fafc; margin-bottom: 18px; }
 
-    /* ── Bar animation ──────────────────────────── */
+    /* ── Bar animation (first load only) ───────── */
     .bar-grow { animation: grow 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards; transform-origin: bottom; }
     @keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 
-    /* ── Donut ──────────────────────────────────── */
+    /* ── Donut (first load only) ────────────────── */
     .donut-seg { animation: donutIn 1s ease forwards; opacity: 0; }
     @keyframes donutIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* ── Fade entrance ──────────────────────────── */
+    /* ── Fade entrance (first load only) ───────── */
     .fade-in { animation: fadeIn 0.5s ease forwards; opacity: 0; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* After SSE connects, disable animations so live updates are seamless */
+    .sse-live .fade-in { animation: none !important; opacity: 1 !important; }
+    .sse-live .bar-grow { animation: none !important; transform: scaleY(1) !important; }
+    .sse-live .donut-seg { animation: none !important; opacity: 1 !important; }
+
+    /* ── SSE status indicator ───────────────────── */
+    .sse-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .sse-dot.connected { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
+    .sse-dot.disconnected { background: #ef4444; }
+    .sse-status { font-size: 0.65rem; color: #64748b; display: flex; align-items: center; margin-top: 8px; }
 
     /* ── Legend dot ──────────────────────────────── */
     .ldot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; flex-shrink: 0; }
@@ -68,131 +79,139 @@
     .donut-wrap { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 8px 0; }
 </style>
 
-<div class="dash">
-    <!-- Primary Stat Cards -->
-    <div class="grid2 fade-in" style="animation-delay: 0s">
-        <a href="/admin/users" class="stat-card">
-            <p class="label">Total Users</p>
-            <p class="value mono">{{.Stats.TotalUsers}}</p>
-            <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#8b5cf6" stroke-width="2" points="0,35 30,30 60,32 90,25 120,22 150,18 180,20 200,12"/></svg>
-        </a>
-        <a href="/admin/sessions" class="stat-card">
-            <p class="label">Active Sessions</p>
-            <p class="value mono">{{.Stats.ActiveSessions}}</p>
-            <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#10b981" stroke-width="2" points="0,25 30,28 60,22 90,30 120,18 150,24 180,16 200,20"/></svg>
-        </a>
-        <a href="/admin/events" class="stat-card">
-            <p class="label">Events (24h)</p>
-            <p class="value mono">{{.Stats.RecentEvents}}</p>
-            <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#f59e0b" stroke-width="2" points="0,30 30,26 60,28 90,22 120,20 150,24 180,18 200,16"/></svg>
-        </a>
-        <a href="/admin/users" class="stat-card">
-            <p class="label">New Users (7d)</p>
-            <p class="value mono">{{.Stats.RecentUsers}}</p>
-            <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#0ea5e9" stroke-width="2" points="0,36 30,34 60,30 90,28 120,24 150,20 180,16 200,10"/></svg>
-        </a>
-    </div>
-
-    <!-- Secondary Stats -->
-    <div class="grid4 fade-in" style="animation-delay: 0.1s; margin-top: 12px;">
-        <a href="/admin/organizations" class="mini-card">
-            <span class="mc-label">Orgs</span>
-            <p class="mc-value mono">{{.Stats.TotalOrganizations}}</p>
-        </a>
-        <a href="/admin/roles" class="mini-card">
-            <span class="mc-label">Roles</span>
-            <p class="mc-value mono">{{.Stats.TotalRoles}}</p>
-        </a>
-        <a href="/admin/groups" class="mini-card">
-            <span class="mc-label">Groups</span>
-            <p class="mc-value mono">{{.Stats.TotalGroups}}</p>
-        </a>
-        <a href="/admin/clients" class="mini-card">
-            <span class="mc-label">OAuth Clients</span>
-            <p class="mc-value mono">{{.Stats.TotalClients}}</p>
-        </a>
-    </div>
-
-    <!-- Charts Row -->
-    <div class="grid-charts fade-in" style="animation-delay: 0.2s; margin-top: 12px;">
-        <!-- Bar Chart -->
-        <div class="panel">
-            <p class="panel-title">Logins &mdash; Last 7 Days</p>
-            {{if .Stats.LoginCounts}}
-            {{$max := maxCount .Stats.LoginCounts}}
-            <svg viewBox="0 0 480 170" style="width: 100%; display: block;" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#8b5cf6"/>
-                        <stop offset="100%" stop-color="#6d28d9"/>
-                    </linearGradient>
-                </defs>
-                <!-- Grid -->
-                <line x1="38" y1="10" x2="470" y2="10" stroke="#334155" stroke-width="0.5"/>
-                <line x1="38" y1="50" x2="470" y2="50" stroke="#334155" stroke-width="0.5"/>
-                <line x1="38" y1="90" x2="470" y2="90" stroke="#334155" stroke-width="0.5"/>
-                <line x1="38" y1="130" x2="470" y2="130" stroke="#334155" stroke-width="0.5"/>
-                <!-- Y labels -->
-                <text x="34" y="14" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">{{$max}}</text>
-                <text x="34" y="94" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">{{barHeight $max 2 1}}</text>
-                <text x="34" y="134" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">0</text>
-                <!-- Bars -->
-                {{range $i, $d := .Stats.LoginCounts}}
-                {{$h := barHeight $d.Count $max 115}}
-                <rect class="bar-grow" style="animation-delay: {{multiply $i 70}}ms"
-                      x="{{add (multiply $i 54) 46}}" y="{{subtract 130 $h}}"
-                      width="34" height="{{$h}}"
-                      rx="4" fill="url(#bg)" opacity="{{if eq $d.Count 0}}0.15{{else}}0.85{{end}}">
-                    <title>{{$d.Day}}: {{$d.Count}}</title>
-                </rect>
-                <text x="{{add (multiply $i 54) 63}}" y="150"
-                      text-anchor="middle" fill="#64748b" font-size="10"
-                      font-family="-apple-system, system-ui, sans-serif">{{$d.Day}}</text>
-                {{if gt $d.Count 0}}
-                <text x="{{add (multiply $i 54) 63}}" y="{{subtract 126 $h}}"
-                      text-anchor="middle" fill="#94a3b8" font-size="8"
-                      font-family="ui-monospace, monospace">{{$d.Count}}</text>
-                {{end}}
-                {{end}}
-            </svg>
-            {{else}}
-            <p style="color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0;">No login data yet</p>
-            {{end}}
+<div class="dash" id="dash-root">
+    <div id="dash-content">
+        <!-- Primary Stat Cards -->
+        <div class="grid2 fade-in" style="animation-delay: 0s">
+            <a href="/admin/users" class="stat-card">
+                <p class="label">Total Users</p>
+                <p class="value mono">{{.Stats.TotalUsers}}</p>
+                <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#8b5cf6" stroke-width="2" points="0,35 30,30 60,32 90,25 120,22 150,18 180,20 200,12"/></svg>
+            </a>
+            <a href="/admin/sessions" class="stat-card">
+                <p class="label">Active Sessions</p>
+                <p class="value mono">{{.Stats.ActiveSessions}}</p>
+                <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#10b981" stroke-width="2" points="0,25 30,28 60,22 90,30 120,18 150,24 180,16 200,20"/></svg>
+            </a>
+            <a href="/admin/events" class="stat-card">
+                <p class="label">Events (24h)</p>
+                <p class="value mono">{{.Stats.RecentEvents}}</p>
+                <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#f59e0b" stroke-width="2" points="0,30 30,26 60,28 90,22 120,20 150,24 180,18 200,16"/></svg>
+            </a>
+            <a href="/admin/users" class="stat-card">
+                <p class="label">New Users (7d)</p>
+                <p class="value mono">{{.Stats.RecentUsers}}</p>
+                <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#0ea5e9" stroke-width="2" points="0,36 30,34 60,30 90,28 120,24 150,20 180,16 200,10"/></svg>
+            </a>
         </div>
 
-        <!-- Donut Chart -->
-        <div class="panel">
-            <p class="panel-title">Users by Role</p>
-            {{if .Stats.RoleCounts}}
-            {{$total := roleTotal .Stats.RoleCounts}}
-            <div class="donut-wrap">
-                <svg width="130" height="130" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" stroke-width="12"/>
-                    {{range $i, $rc := $.Stats.RoleCounts}}
-                    <circle class="donut-seg" style="animation-delay: {{multiply $i 150}}ms"
-                            cx="50" cy="50" r="40" fill="none"
-                            stroke="{{roleColor $i}}" stroke-width="12"
-                            stroke-dasharray="{{donutDash $rc.Count $total 251.3}} 251.3"
-                            stroke-dashoffset="{{donutOffset $.Stats.RoleCounts $i $total 251.3}}"
-                            transform="rotate(-90 50 50)"/>
+        <!-- Secondary Stats -->
+        <div class="grid4 fade-in" style="animation-delay: 0.1s; margin-top: 12px;">
+            <a href="/admin/organizations" class="mini-card">
+                <span class="mc-label">Orgs</span>
+                <p class="mc-value mono">{{.Stats.TotalOrganizations}}</p>
+            </a>
+            <a href="/admin/roles" class="mini-card">
+                <span class="mc-label">Roles</span>
+                <p class="mc-value mono">{{.Stats.TotalRoles}}</p>
+            </a>
+            <a href="/admin/groups" class="mini-card">
+                <span class="mc-label">Groups</span>
+                <p class="mc-value mono">{{.Stats.TotalGroups}}</p>
+            </a>
+            <a href="/admin/clients" class="mini-card">
+                <span class="mc-label">OAuth Clients</span>
+                <p class="mc-value mono">{{.Stats.TotalClients}}</p>
+            </a>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid-charts fade-in" style="animation-delay: 0.2s; margin-top: 12px;">
+            <!-- Bar Chart -->
+            <div class="panel">
+                <p class="panel-title">Logins &mdash; Last 7 Days</p>
+                {{if .Stats.LoginCounts}}
+                {{$max := maxCount .Stats.LoginCounts}}
+                <svg viewBox="0 0 480 170" style="width: 100%; display: block;" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#8b5cf6"/>
+                            <stop offset="100%" stop-color="#6d28d9"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Grid -->
+                    <line x1="38" y1="10" x2="470" y2="10" stroke="#334155" stroke-width="0.5"/>
+                    <line x1="38" y1="50" x2="470" y2="50" stroke="#334155" stroke-width="0.5"/>
+                    <line x1="38" y1="90" x2="470" y2="90" stroke="#334155" stroke-width="0.5"/>
+                    <line x1="38" y1="130" x2="470" y2="130" stroke="#334155" stroke-width="0.5"/>
+                    <!-- Y labels -->
+                    <text x="34" y="14" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">{{$max}}</text>
+                    <text x="34" y="94" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">{{barHeight $max 2 1}}</text>
+                    <text x="34" y="134" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">0</text>
+                    <!-- Bars -->
+                    {{range $i, $d := .Stats.LoginCounts}}
+                    {{$h := barHeight $d.Count $max 115}}
+                    <rect class="bar-grow" style="animation-delay: {{multiply $i 70}}ms"
+                          x="{{add (multiply $i 54) 46}}" y="{{subtract 130 $h}}"
+                          width="34" height="{{$h}}"
+                          rx="4" fill="url(#bg)" opacity="{{if eq $d.Count 0}}0.15{{else}}0.85{{end}}">
+                        <title>{{$d.Day}}: {{$d.Count}}</title>
+                    </rect>
+                    <text x="{{add (multiply $i 54) 63}}" y="150"
+                          text-anchor="middle" fill="#64748b" font-size="10"
+                          font-family="-apple-system, system-ui, sans-serif">{{$d.Day}}</text>
+                    {{if gt $d.Count 0}}
+                    <text x="{{add (multiply $i 54) 63}}" y="{{subtract 126 $h}}"
+                          text-anchor="middle" fill="#94a3b8" font-size="8"
+                          font-family="ui-monospace, monospace">{{$d.Count}}</text>
                     {{end}}
-                    <text x="50" y="47" text-anchor="middle" fill="#f8fafc" font-size="16" font-weight="700" font-family="ui-monospace, monospace">{{$total}}</text>
-                    <text x="50" y="58" text-anchor="middle" fill="#64748b" font-size="7">total</text>
+                    {{end}}
                 </svg>
-                <div>
-                    {{range $i, $rc := $.Stats.RoleCounts}}
-                    <div class="legend-row">
-                        <span class="ldot" style="background: {{roleColor $i}}"></span>
-                        <span class="legend-name">{{$rc.Role}}</span>
-                        <span class="legend-val mono">{{$rc.Count}} ({{pct $rc.Count $total}}%)</span>
-                    </div>
-                    {{end}}
-                </div>
+                {{else}}
+                <p style="color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0;">No login data yet</p>
+                {{end}}
             </div>
-            {{else}}
-            <p style="color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0;">No roles assigned</p>
-            {{end}}
+
+            <!-- Donut Chart -->
+            <div class="panel">
+                <p class="panel-title">Users by Role</p>
+                {{if .Stats.RoleCounts}}
+                {{$total := roleTotal .Stats.RoleCounts}}
+                <div class="donut-wrap">
+                    <svg width="130" height="130" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" stroke-width="12"/>
+                        {{range $i, $rc := $.Stats.RoleCounts}}
+                        <circle class="donut-seg" style="animation-delay: {{multiply $i 150}}ms"
+                                cx="50" cy="50" r="40" fill="none"
+                                stroke="{{roleColor $i}}" stroke-width="12"
+                                stroke-dasharray="{{donutDash $rc.Count $total 251.3}} 251.3"
+                                stroke-dashoffset="{{donutOffset $.Stats.RoleCounts $i $total 251.3}}"
+                                transform="rotate(-90 50 50)"/>
+                        {{end}}
+                        <text x="50" y="47" text-anchor="middle" fill="#f8fafc" font-size="16" font-weight="700" font-family="ui-monospace, monospace">{{$total}}</text>
+                        <text x="50" y="58" text-anchor="middle" fill="#64748b" font-size="7">total</text>
+                    </svg>
+                    <div>
+                        {{range $i, $rc := $.Stats.RoleCounts}}
+                        <div class="legend-row">
+                            <span class="ldot" style="background: {{roleColor $i}}"></span>
+                            <span class="legend-name">{{$rc.Role}}</span>
+                            <span class="legend-val mono">{{$rc.Count}} ({{pct $rc.Count $total}}%)</span>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+                {{else}}
+                <p style="color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0;">No roles assigned</p>
+                {{end}}
+            </div>
+        </div>
+
+        <div class="sse-status" id="sse-status">
+            <span class="sse-dot disconnected" id="sse-dot"></span>
+            <span id="sse-label">Connecting…</span>
         </div>
     </div>
 </div>
+
 {{end}}

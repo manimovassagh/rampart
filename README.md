@@ -88,10 +88,10 @@ Deploy it on Docker, bare metal, or Kubernetes — and get OAuth 2.0, OpenID Con
 
 ## Admin Console
 
-Rampart includes a **built-in admin dashboard** — server-side rendered with htmx + Tailwind CSS. Manage users, applications, roles, sessions, and audit logs from a single interface.
+Rampart includes a **built-in admin dashboard** with real-time SSE updates — server-side rendered with Go templates. Manage users, applications, roles, sessions, and audit logs from a single interface.
 
 <p align="center">
-  <img src="docs/images/admin-console-preview.svg" alt="Rampart Admin Console" width="100%" />
+  <img src="docs/screenshots/dashboard.png" alt="Rampart Admin Console" width="100%" />
 </p>
 
 ---

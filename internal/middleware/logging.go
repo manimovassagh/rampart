@@ -29,6 +29,20 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
+// Flush delegates to the underlying ResponseWriter if it supports http.Flusher.
+// This is required for SSE (Server-Sent Events) to work through the logging middleware.
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Unwrap returns the underlying ResponseWriter, enabling http.ResponseController
+// to find and use interface implementations (Flusher, SetWriteDeadline, etc.).
+func (w *statusWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 // Logging is middleware that logs each request using slog.
 func Logging(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
