@@ -96,4 +96,59 @@
         </div>
     </a>
 </div>
+
+<!-- Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <!-- Logins — Last 7 Days (Bar Chart) -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 class="text-sm font-semibold text-gray-700 mb-4">Logins — Last 7 Days</h3>
+        {{if .Stats.LoginCounts}}
+        {{$max := maxCount .Stats.LoginCounts}}
+        <svg viewBox="0 0 400 180" class="w-full" xmlns="http://www.w3.org/2000/svg">
+            <!-- Grid lines -->
+            <line x1="40" y1="10" x2="390" y2="10" stroke="#f1f5f9" stroke-width="1"/>
+            <line x1="40" y1="55" x2="390" y2="55" stroke="#f1f5f9" stroke-width="1"/>
+            <line x1="40" y1="100" x2="390" y2="100" stroke="#f1f5f9" stroke-width="1"/>
+            <line x1="40" y1="145" x2="390" y2="145" stroke="#e2e8f0" stroke-width="1"/>
+            <!-- Y-axis labels -->
+            <text x="35" y="14" text-anchor="end" fill="#94a3b8" font-size="10" font-family="system-ui">{{$max}}</text>
+            <text x="35" y="104" text-anchor="end" fill="#94a3b8" font-size="10" font-family="system-ui">{{barHeight $max 2 1}}</text>
+            <text x="35" y="149" text-anchor="end" fill="#94a3b8" font-size="10" font-family="system-ui">0</text>
+            {{range $i, $d := .Stats.LoginCounts}}
+            {{$h := barHeight $d.Count $max 130}}
+            <rect x="{{add (multiply $i 50) 50}}" y="{{subtract 145 $h}}" width="30" height="{{$h}}" rx="4" fill="#8b5cf6" opacity="0.85">
+                <title>{{$d.Day}}: {{$d.Count}}</title>
+            </rect>
+            <text x="{{add (multiply $i 50) 65}}" y="165" text-anchor="middle" fill="#64748b" font-size="10" font-family="system-ui">{{$d.Day}}</text>
+            {{end}}
+        </svg>
+        {{else}}
+        <p class="text-gray-400 text-sm text-center py-8">No login data available</p>
+        {{end}}
+    </div>
+
+    <!-- Users by Role (Horizontal Bar Chart) -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 class="text-sm font-semibold text-gray-700 mb-4">Users by Role</h3>
+        {{if .Stats.RoleCounts}}
+        {{$total := roleTotal .Stats.RoleCounts}}
+        <div class="space-y-3">
+            {{range .Stats.RoleCounts}}
+            <div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="font-medium text-gray-700 capitalize">{{.Role}}</span>
+                    <span class="text-gray-500">{{.Count}}</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-3">
+                    <div class="bg-indigo-500 h-3 rounded-full transition-all" style="width: {{pct .Count $total}}%"></div>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        <p class="text-xs text-gray-400 mt-4 text-right">Total: {{$total}} assigned</p>
+        {{else}}
+        <p class="text-gray-400 text-sm text-center py-8">No role data available</p>
+        {{end}}
+    </div>
+</div>
 {{end}}

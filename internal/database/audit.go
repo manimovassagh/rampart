@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -117,6 +118,44 @@ func (db *DB) ListAuditEvents(ctx context.Context, orgID uuid.UUID, eventType, s
 	}
 
 	return events, total, nil
+}
+
+// LoginCountsByDay returns login event counts per day for the last N days.
+func (db *DB) LoginCountsByDay(ctx context.Context, orgID uuid.UUID, days int) ([]model.DayCount, error) {
+	query := `
+		SELECT d::date AS day, COALESCE(c.cnt, 0) AS count
+		FROM generate_series(
+			(now() - make_interval(days => $2))::date,
+			now()::date,
+			'1 day'::interval
+		) AS d
+		LEFT JOIN (
+			SELECT created_at::date AS day, COUNT(*) AS cnt
+			FROM audit_events
+			WHERE org_id = $1
+			  AND event_type IN ('user.login', 'user.login_failed')
+			  AND created_at > now() - make_interval(days => $2)
+			GROUP BY created_at::date
+		) c ON c.day = d::date
+		ORDER BY d`
+
+	rows, err := db.Pool.Query(ctx, query, orgID, days)
+	if err != nil {
+		return nil, fmt.Errorf("counting logins by day: %w", err)
+	}
+	defer rows.Close()
+
+	var counts []model.DayCount
+	for rows.Next() {
+		var dc model.DayCount
+		var t time.Time
+		if err := rows.Scan(&t, &dc.Count); err != nil {
+			return nil, fmt.Errorf("scanning login day count: %w", err)
+		}
+		dc.Day = t.Format("Mon")
+		counts = append(counts, dc)
+	}
+	return counts, rows.Err()
 }
 
 // CountRecentEvents returns the number of audit events in the last N hours.

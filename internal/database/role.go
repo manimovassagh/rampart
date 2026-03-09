@@ -126,6 +126,33 @@ func (db *DB) DeleteRole(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// UserCountsByRole returns the number of users per role in an org.
+func (db *DB) UserCountsByRole(ctx context.Context, orgID uuid.UUID) ([]model.RoleCount, error) {
+	query := `
+		SELECT r.name, COUNT(ur.user_id) AS cnt
+		FROM roles r
+		LEFT JOIN user_roles ur ON ur.role_id = r.id
+		WHERE r.org_id = $1
+		GROUP BY r.name
+		ORDER BY cnt DESC`
+
+	rows, err := db.Pool.Query(ctx, query, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("counting users by role: %w", err)
+	}
+	defer rows.Close()
+
+	var counts []model.RoleCount
+	for rows.Next() {
+		var rc model.RoleCount
+		if err := rows.Scan(&rc.Role, &rc.Count); err != nil {
+			return nil, fmt.Errorf("scanning role count: %w", err)
+		}
+		counts = append(counts, rc)
+	}
+	return counts, rows.Err()
+}
+
 // CountRoles returns the total number of roles in an org.
 func (db *DB) CountRoles(ctx context.Context, orgID uuid.UUID) (int, error) {
 	var count int

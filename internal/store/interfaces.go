@@ -81,6 +81,7 @@ type RoleReader interface {
 	GetRoleUsers(ctx context.Context, roleID uuid.UUID) ([]*model.UserRoleAssignment, error)
 	CountRoleUsers(ctx context.Context, roleID uuid.UUID) (int, error)
 	CountRoles(ctx context.Context, orgID uuid.UUID) (int, error)
+	UserCountsByRole(ctx context.Context, orgID uuid.UUID) ([]model.RoleCount, error)
 }
 
 // RoleWriter provides role mutation operations.
@@ -205,6 +206,7 @@ type AuditStore interface {
 	CreateAuditEvent(ctx context.Context, event *model.AuditEvent) error
 	ListAuditEvents(ctx context.Context, orgID uuid.UUID, eventType, search string, limit, offset int) ([]*model.AuditEvent, int, error)
 	CountRecentEvents(ctx context.Context, orgID uuid.UUID, hours int) (int, error)
+	LoginCountsByDay(ctx context.Context, orgID uuid.UUID, days int) ([]model.DayCount, error)
 }
 
 // ── Social ──────────────────────────────────────────────────────────────
