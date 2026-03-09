@@ -18,7 +18,7 @@ func (db *DB) CreateUser(ctx context.Context, user *model.User) (*model.User, er
 	query := `
 		INSERT INTO users (org_id, username, email, given_name, family_name, password_hash)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, org_id, username, email, email_verified, given_name, family_name,
+		RETURNING id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		          enabled, mfa_enabled, created_at, updated_at`
 
 	row := db.Pool.QueryRow(ctx, query,
@@ -54,7 +54,7 @@ func (db *DB) CreateUser(ctx context.Context, user *model.User) (*model.User, er
 // GetUserByEmail finds a user by email within an organization.
 func (db *DB) GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID) (*model.User, error) {
 	query := `
-		SELECT id, org_id, username, email, email_verified, given_name, family_name,
+		SELECT id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
 		       created_at, updated_at
 		FROM users
@@ -80,7 +80,7 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID)
 // Used for password reset where org context is not available.
 func (db *DB) FindUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	query := `
-		SELECT id, org_id, username, email, email_verified, given_name, family_name,
+		SELECT id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
 		       created_at, updated_at
 		FROM users
@@ -106,7 +106,7 @@ func (db *DB) FindUserByEmail(ctx context.Context, email string) (*model.User, e
 // GetUserByID finds a user by their UUID.
 func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	query := `
-		SELECT id, org_id, username, email, email_verified, given_name, family_name,
+		SELECT id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
 		       last_login_at, created_at, updated_at
 		FROM users
@@ -167,7 +167,7 @@ func (db *DB) ResetFailedLogins(ctx context.Context, userID uuid.UUID) error {
 // GetUserByUsername finds a user by username within an organization.
 func (db *DB) GetUserByUsername(ctx context.Context, username string, orgID uuid.UUID) (*model.User, error) {
 	query := `
-		SELECT id, org_id, username, email, email_verified, given_name, family_name,
+		SELECT id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
 		       created_at, updated_at
 		FROM users
@@ -226,7 +226,7 @@ func (db *DB) ListUsers(ctx context.Context, orgID uuid.UUID, search, status str
 
 	// Fetch page.
 	dataQuery := fmt.Sprintf(`
-		SELECT id, org_id, username, email, email_verified, given_name, family_name,
+		SELECT id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		       enabled, mfa_enabled, last_login_at, created_at, updated_at
 		FROM users
 		WHERE %s
@@ -271,7 +271,7 @@ func (db *DB) UpdateUser(ctx context.Context, id uuid.UUID, req *model.UpdateUse
 		    email_verified = $7,
 		    updated_at = now()
 		WHERE id = $1
-		RETURNING id, org_id, username, email, email_verified, given_name, family_name,
+		RETURNING id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		          enabled, mfa_enabled, last_login_at, created_at, updated_at`
 
 	var u model.User
