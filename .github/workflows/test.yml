@@ -52,11 +52,51 @@ jobs:
           total=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${total}%"
           threshold=${{ inputs.coverage-threshold }}
+
+          # Count packages and test results
+          pkg_count=$(go tool cover -func=coverage.out | grep -c "^[a-z]" || true)
+
+          # Get top/bottom coverage packages
+          top5=$(go tool cover -func=coverage.out | grep -v "total:" | sort -t'%' -k3 -rn | head -5 | awk '{printf "| `%s` | %s |\n", $1, $3}')
+          bottom5=$(go tool cover -func=coverage.out | grep -v "total:" | sort -t'%' -k3 -n | head -5 | awk '{printf "| `%s` | %s |\n", $1, $3}')
+
           if [ "$(echo "$total < $threshold" | bc -l)" -eq 1 ]; then
-            echo "Coverage ${total}% is below threshold ${threshold}%"
-            exit 1
+            status="❌ **Coverage ${total}% is below threshold ${threshold}%**"
+            exit_code=1
+          else
+            status="✅ **Coverage ${total}% meets threshold ${threshold}%**"
+            exit_code=0
           fi
-          echo "Coverage ${total}% meets threshold ${threshold}%"
+
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMEOF
+          ### Test Results
+
+          ${status}
+
+          | Metric | Value |
+          |--------|-------|
+          | Total Coverage | **${total}%** |
+          | Threshold | ${threshold}% |
+          | Packages Tested | ${pkg_count} |
+
+          <details>
+          <summary>Top coverage</summary>
+
+          | Package | Coverage |
+          |---------|----------|
+          ${top5}
+          </details>
+
+          <details>
+          <summary>Lowest coverage</summary>
+
+          | Package | Coverage |
+          |---------|----------|
+          ${bottom5}
+          </details>
+          SUMEOF
+
+          exit $exit_code
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
