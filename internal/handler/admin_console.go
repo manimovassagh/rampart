@@ -184,6 +184,38 @@ type AdminConsoleHandler struct {
 var adminFuncMap = template.FuncMap{
 	"add":      func(a, b int) int { return a + b },
 	"subtract": func(a, b int) int { return a - b },
+	"multiply": func(a, b int) int { return a * b },
+	"maxCount": func(counts []model.DayCount) int {
+		m := 1
+		for _, c := range counts {
+			if c.Count > m {
+				m = c.Count
+			}
+		}
+		return m
+	},
+	"barHeight": func(count, maxVal, maxPx int) int {
+		if maxVal == 0 {
+			return 0
+		}
+		return count * maxPx / maxVal
+	},
+	"roleTotal": func(counts []model.RoleCount) int {
+		t := 0
+		for _, c := range counts {
+			t += c.Count
+		}
+		if t == 0 {
+			return 1
+		}
+		return t
+	},
+	"pct": func(count, total int) int {
+		if total == 0 {
+			return 0
+		}
+		return count * 100 / total
+	},
 	"slice": func(s string, start, end int) string {
 		if end > len(s) {
 			end = len(s)
@@ -192,6 +224,23 @@ var adminFuncMap = template.FuncMap{
 			start = len(s)
 		}
 		return s[start:end]
+	},
+	"donutDash": func(count, total int, circumference float64) float64 {
+		if total == 0 {
+			return 0
+		}
+		return float64(count) / float64(total) * circumference
+	},
+	"donutOffset": func(counts []model.RoleCount, index, total int, circumference float64) float64 {
+		offset := 0.0
+		for i := 0; i < index; i++ {
+			offset -= float64(counts[i].Count) / float64(total) * circumference
+		}
+		return offset
+	},
+	"roleColor": func(index int) string {
+		colors := []string{"#8b5cf6", "#6d28d9", "#a78bfa", "#7c3aed", "#c4b5fd", "#5b21b6"}
+		return colors[index%len(colors)]
 	},
 }
 
@@ -386,6 +435,8 @@ func (h *AdminConsoleHandler) Dashboard(w http.ResponseWriter, r *http.Request) 
 	totalRoles, _ := h.store.CountRoles(ctx, orgID)
 	totalGroups, _ := h.store.CountGroups(ctx, orgID)
 	recentEvents, _ := h.store.CountRecentEvents(ctx, orgID, 24)
+	loginCounts, _ := h.store.LoginCountsByDay(ctx, orgID, 7)
+	roleCounts, _ := h.store.UserCountsByRole(ctx, orgID)
 
 	h.render(w, r, "dashboard", &pageData{
 		Title:     "Dashboard",
@@ -399,6 +450,8 @@ func (h *AdminConsoleHandler) Dashboard(w http.ResponseWriter, r *http.Request) 
 			TotalRoles:         totalRoles,
 			TotalGroups:        totalGroups,
 			RecentEvents:       recentEvents,
+			LoginCounts:        loginCounts,
+			RoleCounts:         roleCounts,
 		},
 	})
 }

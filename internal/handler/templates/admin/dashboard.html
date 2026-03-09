@@ -1,99 +1,198 @@
 {{define "content"}}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-    <a href="/admin/users" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500 group-hover:text-indigo-600">Total Users</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{.Stats.TotalUsers}}</p>
-            </div>
-            <div class="bg-blue-100 rounded-full p-3 group-hover:bg-blue-200 transition-colors">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>
-            </div>
-        </div>
-    </a>
+<style>
+    .dash { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
+    .dash .mono { font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace; }
 
-    <a href="/admin/sessions" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500 group-hover:text-indigo-600">Active Sessions</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{.Stats.ActiveSessions}}</p>
-            </div>
-            <div class="bg-green-100 rounded-full p-3 group-hover:bg-green-200 transition-colors">
-                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M9.172 15.828a4 4 0 010-5.656m5.656 0a4 4 0 010 5.656M12 12h.01"/></svg>
-            </div>
-        </div>
-    </a>
+    /* ── Grid layouts ───────────────────────────── */
+    .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .grid-charts { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
+    @media (max-width: 900px) {
+        .grid4 { grid-template-columns: repeat(2, 1fr); }
+        .grid-charts { grid-template-columns: 1fr; }
+    }
 
-    <a href="/admin/users" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500 group-hover:text-indigo-600">New Users (7 days)</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{.Stats.RecentUsers}}</p>
-            </div>
-            <div class="bg-purple-100 rounded-full p-3 group-hover:bg-purple-200 transition-colors">
-                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-            </div>
-        </div>
-    </a>
+    /* ── Stat Cards ─────────────────────────────── */
+    .stat-card {
+        position: relative; display: block; overflow: hidden;
+        border-radius: 10px; padding: 20px 22px;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(51, 65, 85, 0.6);
+        text-decoration: none; transition: all 0.25s ease;
+    }
+    .stat-card:hover {
+        border-color: rgba(139, 92, 246, 0.35);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    }
+    .stat-card .label { font-size: 0.7rem; font-weight: 500; color: #94a3b8; margin-bottom: 6px; }
+    .stat-card .value { font-size: 1.75rem; font-weight: 700; color: #f8fafc; line-height: 1; letter-spacing: -0.02em; }
+    .stat-card .sparkline { position: absolute; bottom: 0; left: 0; right: 0; opacity: 0.15; }
 
-    <a href="/admin/organizations" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500 group-hover:text-indigo-600">Organizations</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{.Stats.TotalOrganizations}}</p>
-            </div>
-            <div class="bg-orange-100 rounded-full p-3 group-hover:bg-orange-200 transition-colors">
-                <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-            </div>
-        </div>
-    </a>
+    /* ── Mini Cards ─────────────────────────────── */
+    .mini-card {
+        display: block; border-radius: 8px; padding: 14px 18px;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+        border: 1px solid rgba(51, 65, 85, 0.4);
+        text-decoration: none; transition: all 0.2s ease;
+    }
+    .mini-card:hover { border-color: rgba(139, 92, 246, 0.3); }
+    .mini-card .mc-label { font-size: 0.68rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+    .mini-card .mc-value { font-size: 1.25rem; font-weight: 700; color: #e2e8f0; margin-top: 4px; }
 
-    <a href="/admin/events" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500 group-hover:text-indigo-600">Events (24h)</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{.Stats.RecentEvents}}</p>
-            </div>
-            <div class="bg-yellow-100 rounded-full p-3 group-hover:bg-yellow-200 transition-colors">
-                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-            </div>
-        </div>
-    </a>
+    /* ── Panels ──────────────────────────────────── */
+    .panel {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(51, 65, 85, 0.6);
+        border-radius: 10px; padding: 24px;
+    }
+    .panel-title { font-size: 0.8rem; font-weight: 600; color: #f8fafc; margin-bottom: 18px; }
 
-    <a href="/admin/roles" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500 group-hover:text-indigo-600">Roles</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{.Stats.TotalRoles}}</p>
-            </div>
-            <div class="bg-teal-100 rounded-full p-3 group-hover:bg-teal-200 transition-colors">
-                <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-            </div>
-        </div>
-    </a>
+    /* ── Bar animation ──────────────────────────── */
+    .bar-grow { animation: grow 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards; transform-origin: bottom; }
+    @keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 
-    <a href="/admin/groups" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500 group-hover:text-indigo-600">Groups</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{.Stats.TotalGroups}}</p>
-            </div>
-            <div class="bg-pink-100 rounded-full p-3 group-hover:bg-pink-200 transition-colors">
-                <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-            </div>
-        </div>
-    </a>
+    /* ── Donut ──────────────────────────────────── */
+    .donut-seg { animation: donutIn 1s ease forwards; opacity: 0; }
+    @keyframes donutIn { from { opacity: 0; } to { opacity: 1; } }
 
-    <a href="/admin/clients" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500 group-hover:text-indigo-600">OAuth Clients</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{.Stats.TotalClients}}</p>
-            </div>
-            <div class="bg-indigo-100 rounded-full p-3 group-hover:bg-indigo-200 transition-colors">
-                <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-            </div>
+    /* ── Fade entrance ──────────────────────────── */
+    .fade-in { animation: fadeIn 0.5s ease forwards; opacity: 0; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Legend dot ──────────────────────────────── */
+    .ldot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; flex-shrink: 0; }
+    .legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+    .legend-name { font-size: 0.85rem; color: #cbd5e1; text-transform: capitalize; min-width: 60px; }
+    .legend-val { font-size: 0.75rem; color: #64748b; margin-left: 8px; }
+    .donut-wrap { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 8px 0; }
+</style>
+
+<div class="dash">
+    <!-- Primary Stat Cards -->
+    <div class="grid2 fade-in" style="animation-delay: 0s">
+        <a href="/admin/users" class="stat-card">
+            <p class="label">Total Users</p>
+            <p class="value mono">{{.Stats.TotalUsers}}</p>
+            <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#8b5cf6" stroke-width="2" points="0,35 30,30 60,32 90,25 120,22 150,18 180,20 200,12"/></svg>
+        </a>
+        <a href="/admin/sessions" class="stat-card">
+            <p class="label">Active Sessions</p>
+            <p class="value mono">{{.Stats.ActiveSessions}}</p>
+            <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#10b981" stroke-width="2" points="0,25 30,28 60,22 90,30 120,18 150,24 180,16 200,20"/></svg>
+        </a>
+        <a href="/admin/events" class="stat-card">
+            <p class="label">Events (24h)</p>
+            <p class="value mono">{{.Stats.RecentEvents}}</p>
+            <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#f59e0b" stroke-width="2" points="0,30 30,26 60,28 90,22 120,20 150,24 180,18 200,16"/></svg>
+        </a>
+        <a href="/admin/users" class="stat-card">
+            <p class="label">New Users (7d)</p>
+            <p class="value mono">{{.Stats.RecentUsers}}</p>
+            <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline fill="none" stroke="#0ea5e9" stroke-width="2" points="0,36 30,34 60,30 90,28 120,24 150,20 180,16 200,10"/></svg>
+        </a>
+    </div>
+
+    <!-- Secondary Stats -->
+    <div class="grid4 fade-in" style="animation-delay: 0.1s; margin-top: 12px;">
+        <a href="/admin/organizations" class="mini-card">
+            <span class="mc-label">Orgs</span>
+            <p class="mc-value mono">{{.Stats.TotalOrganizations}}</p>
+        </a>
+        <a href="/admin/roles" class="mini-card">
+            <span class="mc-label">Roles</span>
+            <p class="mc-value mono">{{.Stats.TotalRoles}}</p>
+        </a>
+        <a href="/admin/groups" class="mini-card">
+            <span class="mc-label">Groups</span>
+            <p class="mc-value mono">{{.Stats.TotalGroups}}</p>
+        </a>
+        <a href="/admin/clients" class="mini-card">
+            <span class="mc-label">OAuth Clients</span>
+            <p class="mc-value mono">{{.Stats.TotalClients}}</p>
+        </a>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid-charts fade-in" style="animation-delay: 0.2s; margin-top: 12px;">
+        <!-- Bar Chart -->
+        <div class="panel">
+            <p class="panel-title">Logins &mdash; Last 7 Days</p>
+            {{if .Stats.LoginCounts}}
+            {{$max := maxCount .Stats.LoginCounts}}
+            <svg viewBox="0 0 480 170" style="width: 100%; display: block;" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#8b5cf6"/>
+                        <stop offset="100%" stop-color="#6d28d9"/>
+                    </linearGradient>
+                </defs>
+                <!-- Grid -->
+                <line x1="38" y1="10" x2="470" y2="10" stroke="#334155" stroke-width="0.5"/>
+                <line x1="38" y1="50" x2="470" y2="50" stroke="#334155" stroke-width="0.5"/>
+                <line x1="38" y1="90" x2="470" y2="90" stroke="#334155" stroke-width="0.5"/>
+                <line x1="38" y1="130" x2="470" y2="130" stroke="#334155" stroke-width="0.5"/>
+                <!-- Y labels -->
+                <text x="34" y="14" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">{{$max}}</text>
+                <text x="34" y="94" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">{{barHeight $max 2 1}}</text>
+                <text x="34" y="134" text-anchor="end" fill="#64748b" font-size="9" font-family="ui-monospace, monospace">0</text>
+                <!-- Bars -->
+                {{range $i, $d := .Stats.LoginCounts}}
+                {{$h := barHeight $d.Count $max 115}}
+                <rect class="bar-grow" style="animation-delay: {{multiply $i 70}}ms"
+                      x="{{add (multiply $i 54) 46}}" y="{{subtract 130 $h}}"
+                      width="34" height="{{$h}}"
+                      rx="4" fill="url(#bg)" opacity="{{if eq $d.Count 0}}0.15{{else}}0.85{{end}}">
+                    <title>{{$d.Day}}: {{$d.Count}}</title>
+                </rect>
+                <text x="{{add (multiply $i 54) 63}}" y="150"
+                      text-anchor="middle" fill="#64748b" font-size="10"
+                      font-family="-apple-system, system-ui, sans-serif">{{$d.Day}}</text>
+                {{if gt $d.Count 0}}
+                <text x="{{add (multiply $i 54) 63}}" y="{{subtract 126 $h}}"
+                      text-anchor="middle" fill="#94a3b8" font-size="8"
+                      font-family="ui-monospace, monospace">{{$d.Count}}</text>
+                {{end}}
+                {{end}}
+            </svg>
+            {{else}}
+            <p style="color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0;">No login data yet</p>
+            {{end}}
         </div>
-    </a>
+
+        <!-- Donut Chart -->
+        <div class="panel">
+            <p class="panel-title">Users by Role</p>
+            {{if .Stats.RoleCounts}}
+            {{$total := roleTotal .Stats.RoleCounts}}
+            <div class="donut-wrap">
+                <svg width="130" height="130" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" stroke-width="12"/>
+                    {{range $i, $rc := $.Stats.RoleCounts}}
+                    <circle class="donut-seg" style="animation-delay: {{multiply $i 150}}ms"
+                            cx="50" cy="50" r="40" fill="none"
+                            stroke="{{roleColor $i}}" stroke-width="12"
+                            stroke-dasharray="{{donutDash $rc.Count $total 251.3}} 251.3"
+                            stroke-dashoffset="{{donutOffset $.Stats.RoleCounts $i $total 251.3}}"
+                            transform="rotate(-90 50 50)"/>
+                    {{end}}
+                    <text x="50" y="47" text-anchor="middle" fill="#f8fafc" font-size="16" font-weight="700" font-family="ui-monospace, monospace">{{$total}}</text>
+                    <text x="50" y="58" text-anchor="middle" fill="#64748b" font-size="7">total</text>
+                </svg>
+                <div>
+                    {{range $i, $rc := $.Stats.RoleCounts}}
+                    <div class="legend-row">
+                        <span class="ldot" style="background: {{roleColor $i}}"></span>
+                        <span class="legend-name">{{$rc.Role}}</span>
+                        <span class="legend-val mono">{{$rc.Count}} ({{pct $rc.Count $total}}%)</span>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{else}}
+            <p style="color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0;">No roles assigned</p>
+            {{end}}
+        </div>
+    </div>
 </div>
 {{end}}

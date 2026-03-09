@@ -153,6 +153,22 @@ type DashboardStats struct {
 	TotalRoles         int `json:"total_roles"`
 	TotalGroups        int `json:"total_groups"`
 	RecentEvents       int `json:"recent_events"`
+
+	// Chart data
+	LoginCounts []DayCount  `json:"login_counts"`
+	RoleCounts  []RoleCount `json:"role_counts"`
+}
+
+// DayCount holds an event count for a single day.
+type DayCount struct {
+	Day   string `json:"day"`
+	Count int    `json:"count"`
+}
+
+// RoleCount holds the number of users assigned to a role.
+type RoleCount struct {
+	Role  string `json:"role"`
+	Count int    `json:"count"`
 }
 
 // SessionResponse is a session representation for the admin API.
