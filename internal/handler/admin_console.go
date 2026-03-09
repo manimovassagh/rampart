@@ -1,13 +1,19 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -438,7 +444,7 @@ func (h *AdminConsoleHandler) Dashboard(w http.ResponseWriter, r *http.Request) 
 	loginCounts, _ := h.store.LoginCountsByDay(ctx, orgID, 7)
 	roleCounts, _ := h.store.UserCountsByRole(ctx, orgID)
 
-	h.render(w, r, "dashboard", &pageData{
+	data := &pageData{
 		Title:     "Dashboard",
 		ActiveNav: "dashboard",
 		Stats: &model.DashboardStats{
@@ -453,7 +459,125 @@ func (h *AdminConsoleHandler) Dashboard(w http.ResponseWriter, r *http.Request) 
 			LoginCounts:        loginCounts,
 			RoleCounts:         roleCounts,
 		},
-	})
+	}
+
+	// For htmx polling requests, return only the content block (no full page shell).
+	if r.Header.Get(headerHXRequest) != "" {
+		h.renderPartial(w, r, "dashboard", "content", data)
+		return
+	}
+	h.render(w, r, "dashboard", data)
+}
+
+// DashboardSSE streams real-time dashboard updates via Server-Sent Events.
+// It only pushes HTML when the underlying data actually changes, so idle
+// dashboards consume zero bandwidth beyond keep-alive comments.
+func (h *AdminConsoleHandler) DashboardSSE(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no") // disable nginx buffering
+
+	// Disable the server's WriteTimeout for this long-lived SSE connection.
+	rc := http.NewResponseController(w)
+	_ = rc.SetWriteDeadline(time.Time{}) // zero = no deadline
+
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	orgID := authUser.OrgID
+
+	var lastHash string
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	// Send initial data immediately
+	if html, hash, err := h.renderDashboardHTML(ctx, orgID); err == nil {
+		lastHash = hash
+		writeSSEEvent(w, "dashboard", html)
+		flusher.Flush()
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			html, hash, err := h.renderDashboardHTML(ctx, orgID)
+			if err != nil {
+				continue
+			}
+			if hash == lastHash {
+				// No change — send keep-alive comment
+				_, _ = fmt.Fprintf(w, ": keepalive\n\n")
+				flusher.Flush()
+				continue
+			}
+			lastHash = hash
+			writeSSEEvent(w, "dashboard", html)
+			flusher.Flush()
+		}
+	}
+}
+
+// renderDashboardHTML renders the dashboard content block to a string and returns its hash.
+func (h *AdminConsoleHandler) renderDashboardHTML(ctx context.Context, orgID uuid.UUID) (html, hash string, err error) {
+	totalUsers, _ := h.store.CountUsers(ctx, orgID)
+	activeSessions, _ := h.sessions.CountActive(ctx)
+	recentUsers, _ := h.store.CountRecentUsers(ctx, orgID, 7)
+	totalOrgs, _ := h.store.CountOrganizations(ctx)
+	totalClients, _ := h.store.CountOAuthClients(ctx, orgID)
+	totalRoles, _ := h.store.CountRoles(ctx, orgID)
+	totalGroups, _ := h.store.CountGroups(ctx, orgID)
+	recentEvents, _ := h.store.CountRecentEvents(ctx, orgID, 24)
+	loginCounts, _ := h.store.LoginCountsByDay(ctx, orgID, 7)
+	roleCounts, _ := h.store.UserCountsByRole(ctx, orgID)
+
+	data := &pageData{
+		Title:     "Dashboard",
+		ActiveNav: "dashboard",
+		Stats: &model.DashboardStats{
+			TotalUsers:         totalUsers,
+			ActiveSessions:     activeSessions,
+			RecentUsers:        recentUsers,
+			TotalOrganizations: totalOrgs,
+			TotalClients:       totalClients,
+			TotalRoles:         totalRoles,
+			TotalGroups:        totalGroups,
+			RecentEvents:       recentEvents,
+			LoginCounts:        loginCounts,
+			RoleCounts:         roleCounts,
+		},
+	}
+
+	tmpl, ok := h.pages["dashboard"]
+	if !ok {
+		return "", "", fmt.Errorf("dashboard template not found")
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "content", data); err != nil {
+		return "", "", err
+	}
+
+	html = buf.String()
+	sum := sha256.Sum256(buf.Bytes())
+	return html, hex.EncodeToString(sum[:8]), nil
+}
+
+// writeSSEEvent writes a properly formatted SSE event. Multi-line data gets
+// each line prefixed with "data: " per the SSE specification.
+func writeSSEEvent(w http.ResponseWriter, event, data string) {
+	_, _ = fmt.Fprintf(w, "event: %s\n", event)
+	for _, line := range strings.Split(data, "\n") {
+		_, _ = fmt.Fprintf(w, "data: %s\n", line) //nolint:gosec // data is from server-side template rendering, not user input
+	}
+	_, _ = fmt.Fprint(w, "\n")
 }
 
 // auditLog is a helper that extracts actor info from the request context and logs an audit event.

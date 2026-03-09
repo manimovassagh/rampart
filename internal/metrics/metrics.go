@@ -96,3 +96,16 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	}
 	return rw.ResponseWriter.Write(b)
 }
+
+// Flush delegates to the underlying ResponseWriter if it supports http.Flusher.
+func (rw *responseWriter) Flush() {
+	if f, ok := rw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Unwrap returns the underlying ResponseWriter, enabling http.ResponseController
+// to find and use interface implementations (SetWriteDeadline, etc.).
+func (rw *responseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
+}

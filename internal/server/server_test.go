@@ -608,6 +608,9 @@ type stubAdminConsoleEndpoints struct{}
 func (s *stubAdminConsoleEndpoints) Dashboard(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
+func (s *stubAdminConsoleEndpoints) DashboardSSE(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 func (s *stubAdminConsoleEndpoints) ListUsersPage(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }

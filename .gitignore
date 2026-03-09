@@ -62,6 +62,7 @@ plans/
 
 # Screenshots and snapshots (dev testing artifacts)
 *.png
+!docs/screenshots/*.png
 repo-snapshot.md
 SECURITY_AUDIT.md
 

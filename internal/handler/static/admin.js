@@ -106,4 +106,47 @@
       }
     });
   }
+  // ── Dashboard SSE (real-time updates) ──────────────────────────────────
+  var dashRoot = document.getElementById("dash-root");
+  var dashContent = document.getElementById("dash-content");
+
+  if (dashRoot && dashContent) {
+    var dot = document.getElementById("sse-dot");
+    var label = document.getElementById("sse-label");
+    var es;
+
+    function connectSSE() {
+      es = new EventSource("/admin/sse/dashboard");
+
+      es.addEventListener("dashboard", function (e) {
+        // Disable animations after first SSE swap for seamless live updates
+        dashRoot.classList.add("sse-live");
+        dashContent.innerHTML = e.data;
+        // Re-query status elements after swap and mark as live
+        var d = document.getElementById("sse-dot");
+        var l = document.getElementById("sse-label");
+        if (d) d.className = "sse-dot connected";
+        if (l) l.textContent = "Live";
+      });
+
+      es.onopen = function () {
+        // Re-query in case DOM was swapped
+        dot = document.getElementById("sse-dot");
+        label = document.getElementById("sse-label");
+        if (dot) dot.className = "sse-dot connected";
+        if (label) label.textContent = "Live";
+      };
+
+      es.onerror = function () {
+        dot = document.getElementById("sse-dot");
+        label = document.getElementById("sse-label");
+        if (dot) dot.className = "sse-dot disconnected";
+        if (label) label.textContent = "Reconnecting\u2026";
+        es.close();
+        setTimeout(connectSSE, 3000);
+      };
+    }
+
+    connectSSE();
+  }
 })();
