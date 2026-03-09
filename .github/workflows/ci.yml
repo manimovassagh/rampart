@@ -63,30 +63,33 @@ jobs:
           test_result="${{ needs.test.result }}"
           security_result="${{ needs.security.result }}"
 
-          icon_pass="✅"
-          icon_fail="❌"
+          icon() { [ "$1" = "success" ] && echo "✅" || echo "❌"; }
 
-          lint_icon=$([ "$lint_result" = "success" ] && echo "$icon_pass" || echo "$icon_fail")
-          test_icon=$([ "$test_result" = "success" ] && echo "$icon_pass" || echo "$icon_fail")
-          security_icon=$([ "$security_result" = "success" ] && echo "$icon_pass" || echo "$icon_fail")
+          lint_icon=$(icon "$lint_result")
+          test_icon=$(icon "$test_result")
+          security_icon=$(icon "$security_result")
 
           if [ "$lint_result" = "success" ] && [ "$test_result" = "success" ] && [ "$security_result" = "success" ]; then
-            overall="✅ **All checks passed**"
+            header="# ✅ Rampart CI — All Checks Passed"
           else
-            overall="❌ **Some checks failed**"
+            header="# ❌ Rampart CI — Some Checks Failed"
           fi
 
           cat >> "$GITHUB_STEP_SUMMARY" << EOF
-          ## Rampart CI Pipeline Summary
+          ${header}
 
-          ${overall}
+          | Stage | Tools | Status |
+          |-------|-------|--------|
+          | ${lint_icon} **Lint** | golangci-lint, go vet, gofmt | ${lint_result} |
+          | ${test_icon} **Test** | Unit tests, race detector, coverage, cross-compile (4 targets) | ${test_result} |
+          | ${security_icon} **Security** | govulncheck, gosec | ${security_result} |
 
-          | Stage | Status | Result |
-          |-------|--------|--------|
-          | ${lint_icon} Lint | \`golangci-lint\`, \`go vet\`, \`gofmt\` | ${lint_result} |
-          | ${test_icon} Test | Unit tests, coverage, cross-compile | ${test_result} |
-          | ${security_icon} Security | \`govulncheck\`, \`gosec\` | ${security_result} |
+          ---
 
-          **Commit:** \`${GITHUB_SHA::8}\` on \`${GITHUB_REF_NAME}\`
-          **Triggered by:** ${GITHUB_ACTOR}
+          | | |
+          |---|---|
+          | **Commit** | \`${GITHUB_SHA::8}\` |
+          | **Branch** | \`${GITHUB_REF_NAME}\` |
+          | **Actor** | @${GITHUB_ACTOR} |
+          | **Go** | $(cat go.mod 2>/dev/null | grep "^go " | awk '{print $2}' || echo "n/a") |
           EOF

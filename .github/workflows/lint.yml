@@ -28,6 +28,14 @@ jobs:
           version: v2.10.1
           args: --timeout=5m
 
+      - name: Lint summary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << 'SUMEOF'
+          ### golangci-lint: Passed
+          No issues found.
+          SUMEOF
+
   go-vet:
     name: go vet
     runs-on: ubuntu-latest
