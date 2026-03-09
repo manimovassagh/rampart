@@ -225,6 +225,23 @@ var adminFuncMap = template.FuncMap{
 		}
 		return s[start:end]
 	},
+	"donutDash": func(count, total int, circumference float64) float64 {
+		if total == 0 {
+			return 0
+		}
+		return float64(count) / float64(total) * circumference
+	},
+	"donutOffset": func(counts []model.RoleCount, index, total int, circumference float64) float64 {
+		offset := 0.0
+		for i := 0; i < index; i++ {
+			offset -= float64(counts[i].Count) / float64(total) * circumference
+		}
+		return offset
+	},
+	"roleColor": func(index int) string {
+		colors := []string{"#8b5cf6", "#6d28d9", "#a78bfa", "#7c3aed", "#c4b5fd", "#5b21b6"}
+		return colors[index%len(colors)]
+	},
 }
 
 // parseAdminPage builds a template set for a single page: base + partials + page.
