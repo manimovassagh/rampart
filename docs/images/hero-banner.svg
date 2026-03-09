@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <defs>
+    <!-- Purple radial glow behind center text -->
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="35%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.15"/>
+      <stop offset="60%" stop-color="#7c3aed" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Grid pattern -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="0.8" fill="#1e293b" opacity="0.6"/>
+    </pattern>
+
+    <!-- Subtle line grid -->
+    <pattern id="lineGrid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#1e293b" stroke-width="0.5" opacity="0.4"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="400" fill="#0f172a"/>
+
+  <!-- Grid patterns -->
+  <rect width="1200" height="400" fill="url(#lineGrid)"/>
+  <rect width="1200" height="400" fill="url(#grid)"/>
+
+  <!-- Purple glow behind center -->
+  <ellipse cx="600" cy="180" rx="400" ry="160" fill="url(#centerGlow)"/>
+
+  <!-- === LEFT SIDE: Castle/Fortress Silhouette === -->
+  <g transform="translate(100, 100)" fill="#8b5cf6" opacity="0.25">
+    <!-- Castle base -->
+    <rect x="0" y="120" width="140" height="80" rx="2"/>
+    <!-- Left tower -->
+    <rect x="0" y="60" width="30" height="140" rx="2"/>
+    <!-- Right tower -->
+    <rect x="110" y="60" width="30" height="140" rx="2"/>
+    <!-- Center tower (tallest) -->
+    <rect x="45" y="30" width="50" height="170" rx="2"/>
+    <!-- Battlements left tower -->
+    <rect x="0" y="50" width="8" height="15" rx="1"/>
+    <rect x="11" y="50" width="8" height="15" rx="1"/>
+    <rect x="22" y="50" width="8" height="15" rx="1"/>
+    <!-- Battlements right tower -->
+    <rect x="110" y="50" width="8" height="15" rx="1"/>
+    <rect x="121" y="50" width="8" height="15" rx="1"/>
+    <rect x="132" y="50" width="8" height="15" rx="1"/>
+    <!-- Battlements center tower -->
+    <rect x="45" y="18" width="10" height="16" rx="1"/>
+    <rect x="58" y="18" width="10" height="16" rx="1"/>
+    <rect x="71" y="18" width="10" height="16" rx="1"/>
+    <rect x="84" y="18" width="10" height="16" rx="1"/>
+    <!-- Gate arch -->
+    <rect x="55" y="150" width="30" height="50" rx="15" fill="#0f172a"/>
+    <!-- Windows -->
+    <rect x="58" y="80" width="8" height="12" rx="4" fill="#0f172a"/>
+    <rect x="74" y="80" width="8" height="12" rx="4" fill="#0f172a"/>
+    <rect x="58" y="110" width="8" height="12" rx="4" fill="#0f172a"/>
+    <rect x="74" y="110" width="8" height="12" rx="4" fill="#0f172a"/>
+  </g>
+
+  <!-- Castle accent glow -->
+  <ellipse cx="170" cy="200" rx="100" ry="80" fill="#8b5cf6" opacity="0.04"/>
+
+  <!-- === RIGHT SIDE: Shield with Keyhole === -->
+  <g transform="translate(960, 110)" fill="none" opacity="0.25">
+    <!-- Shield shape -->
+    <path d="M 70 0 L 140 30 L 140 100 Q 140 170 70 200 Q 0 170 0 100 L 0 30 Z"
+          fill="#8b5cf6" stroke="#c4b5fd" stroke-width="1.5"/>
+    <!-- Inner shield border -->
+    <path d="M 70 15 L 127 40 L 127 100 Q 127 158 70 185 Q 13 158 13 100 L 13 40 Z"
+          fill="none" stroke="#c4b5fd" stroke-width="0.8" opacity="0.5"/>
+    <!-- Keyhole circle -->
+    <circle cx="70" cy="85" r="20" fill="#0f172a" stroke="#c4b5fd" stroke-width="1.5"/>
+    <!-- Keyhole slot -->
+    <path d="M 63 95 L 70 130 L 77 95 Z" fill="#0f172a"/>
+    <!-- Keyhole inner highlight -->
+    <circle cx="70" cy="85" r="12" fill="none" stroke="#c4b5fd" stroke-width="0.5" opacity="0.6"/>
+  </g>
+
+  <!-- Shield accent glow -->
+  <ellipse cx="1030" cy="210" rx="100" ry="80" fill="#8b5cf6" opacity="0.04"/>
+
+  <!-- === CENTER TEXT === -->
+
+  <!-- "RAMPART" main title -->
+  <text x="600" y="175" text-anchor="middle"
+        font-family="'SF Pro Display', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif"
+        font-size="72" font-weight="800" letter-spacing="12" fill="white">
+    RAMPART
+  </text>
+
+  <!-- Subtle underline accent -->
+  <line x1="440" y1="195" x2="760" y2="195" stroke="#8b5cf6" stroke-width="2" opacity="0.4"/>
+
+  <!-- Subtitle -->
+  <text x="600" y="235" text-anchor="middle"
+        font-family="'SF Pro Display', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif"
+        font-size="20" font-weight="400" letter-spacing="1" fill="#94a3b8">
+    Open-source Identity &amp; Access Management
+  </text>
+
+  <!-- Feature tags -->
+  <text x="600" y="275" text-anchor="middle"
+        font-family="'SF Mono', 'JetBrains Mono', 'Fira Code', monospace"
+        font-size="14" font-weight="500" letter-spacing="2" fill="#c4b5fd" opacity="0.8">
+    OAuth 2.0  ·  OpenID Connect  ·  MFA  ·  RBAC
+  </text>
+
+  <!-- Decorative corner accents -->
+  <!-- Top-left -->
+  <line x1="30" y1="30" x2="80" y2="30" stroke="#8b5cf6" stroke-width="1" opacity="0.3"/>
+  <line x1="30" y1="30" x2="30" y2="80" stroke="#8b5cf6" stroke-width="1" opacity="0.3"/>
+  <!-- Top-right -->
+  <line x1="1120" y1="30" x2="1170" y2="30" stroke="#8b5cf6" stroke-width="1" opacity="0.3"/>
+  <line x1="1170" y1="30" x2="1170" y2="80" stroke="#8b5cf6" stroke-width="1" opacity="0.3"/>
+  <!-- Bottom-left -->
+  <line x1="30" y1="370" x2="80" y2="370" stroke="#8b5cf6" stroke-width="1" opacity="0.3"/>
+  <line x1="30" y1="320" x2="30" y2="370" stroke="#8b5cf6" stroke-width="1" opacity="0.3"/>
+  <!-- Bottom-right -->
+  <line x1="1120" y1="370" x2="1170" y2="370" stroke="#8b5cf6" stroke-width="1" opacity="0.3"/>
+  <line x1="1170" y1="320" x2="1170" y2="370" stroke="#8b5cf6" stroke-width="1" opacity="0.3"/>
+
+  <!-- Bottom edge gradient fade -->
+  <rect x="0" y="360" width="1200" height="40" fill="url(#centerGlow)" opacity="0.3"/>
+</svg>

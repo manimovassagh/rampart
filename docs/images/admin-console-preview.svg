@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600">
+  <defs>
+    <clipPath id="round-corners">
+      <rect x="0" y="0" width="1000" height="600" rx="12"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="600" rx="12" fill="#0f172a"/>
+
+  <!-- Top Bar -->
+  <rect x="0" y="0" width="1000" height="48" fill="#1e293b" rx="12"/>
+  <rect x="0" y="12" width="1000" height="36" fill="#1e293b"/>
+  <line x1="0" y1="48" x2="1000" y2="48" stroke="#334155" stroke-width="1"/>
+
+  <!-- Castle Icon -->
+  <g transform="translate(20, 10)">
+    <rect x="4" y="14" width="4" height="14" rx="1" fill="#8b5cf6"/>
+    <rect x="12" y="8" width="4" height="20" rx="1" fill="#8b5cf6"/>
+    <rect x="20" y="14" width="4" height="14" rx="1" fill="#8b5cf6"/>
+    <rect x="2" y="24" width="24" height="4" rx="1" fill="#8b5cf6"/>
+    <rect x="6" y="6" width="2" height="4" fill="#8b5cf6"/>
+    <rect x="13" y="0" width="2" height="4" fill="#8b5cf6"/>
+    <rect x="20" y="6" width="2" height="4" fill="#8b5cf6"/>
+  </g>
+
+  <!-- Title -->
+  <text x="52" y="30" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700">Rampart Admin</text>
+
+  <!-- User avatar -->
+  <circle cx="968" cy="24" r="14" fill="#334155"/>
+  <circle cx="968" cy="20" r="5" fill="#94a3b8"/>
+  <ellipse cx="968" cy="32" rx="8" ry="5" fill="#94a3b8"/>
+
+  <!-- Search bar placeholder -->
+  <rect x="400" y="12" width="220" height="24" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+  <text x="416" y="28" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Search...</text>
+
+  <!-- Left Sidebar -->
+  <rect x="0" y="48" width="180" height="552" fill="#1e293b"/>
+  <line x1="180" y1="48" x2="180" y2="600" stroke="#334155" stroke-width="1"/>
+
+  <!-- Sidebar Menu Items -->
+  <!-- Dashboard (active) -->
+  <rect x="8" y="60" width="164" height="36" rx="8" fill="#8b5cf6" opacity="0.15"/>
+  <rect x="8" y="60" width="3" height="36" rx="1.5" fill="#8b5cf6"/>
+  <!-- Grid icon -->
+  <rect x="24" y="70" width="7" height="7" rx="1.5" fill="#8b5cf6"/>
+  <rect x="33" y="70" width="7" height="7" rx="1.5" fill="#8b5cf6"/>
+  <rect x="24" y="79" width="7" height="7" rx="1.5" fill="#8b5cf6"/>
+  <rect x="33" y="79" width="7" height="7" rx="1.5" fill="#8b5cf6"/>
+  <text x="50" y="83" fill="#8b5cf6" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Dashboard</text>
+
+  <!-- Users -->
+  <g opacity="0.7">
+    <!-- Person icon -->
+    <circle cx="31" cy="110" r="4" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <path d="M24 124 Q31 118 38 124" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="50" y="119" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13">Users</text>
+  </g>
+
+  <!-- Applications -->
+  <g opacity="0.7">
+    <rect x="25" y="137" width="12" height="12" rx="2" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="25" y1="143" x2="37" y2="143" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="50" y="148" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13">Applications</text>
+  </g>
+
+  <!-- Roles -->
+  <g opacity="0.7">
+    <circle cx="31" cy="172" r="6" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <path d="M29 172 L31 174 L34 170" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="50" y="176" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13">Roles</text>
+  </g>
+
+  <!-- Sessions -->
+  <g opacity="0.7">
+    <rect x="25" y="195" width="12" height="9" rx="2" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="28" y1="199" x2="34" y2="199" stroke="#94a3b8" stroke-width="1"/>
+    <text x="50" y="204" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13">Sessions</text>
+  </g>
+
+  <!-- Audit Log -->
+  <g opacity="0.7">
+    <rect x="26" y="222" width="10" height="13" rx="2" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="29" y1="227" x2="33" y2="227" stroke="#94a3b8" stroke-width="1"/>
+    <line x1="29" y1="230" x2="33" y2="230" stroke="#94a3b8" stroke-width="1"/>
+    <text x="50" y="233" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13">Audit Log</text>
+  </g>
+
+  <!-- Sidebar bottom section -->
+  <line x1="12" y1="540" x2="168" y2="540" stroke="#334155" stroke-width="1"/>
+  <text x="24" y="562" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Rampart v2.0.0</text>
+
+  <!-- ===== MAIN CONTENT AREA ===== -->
+
+  <!-- Page title -->
+  <text x="200" y="82" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="20" font-weight="700">Dashboard</text>
+  <text x="200" y="100" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">Overview of your IAM server</text>
+
+  <!-- ===== STAT CARDS ROW ===== -->
+
+  <!-- Card 1: Total Users -->
+  <rect x="200" y="116" width="185" height="88" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="216" y="140" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Total Users</text>
+  <text x="216" y="172" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="28" font-weight="700">1,247</text>
+  <!-- Up arrow + percentage -->
+  <polygon points="348,137 352,131 356,137" fill="#10b981"/>
+  <text x="358" y="140" fill="#10b981" font-family="system-ui, sans-serif" font-size="11" font-weight="600">+12%</text>
+  <!-- Sparkline -->
+  <polyline points="216,192 230,190 244,188 258,191 272,186 286,183 300,180 314,176 328,178 342,172 356,168 370,164" fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Card 2: Active Sessions -->
+  <rect x="395" y="116" width="185" height="88" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="411" y="140" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Active Sessions</text>
+  <text x="411" y="172" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="28" font-weight="700">342</text>
+  <!-- Dot indicator -->
+  <circle cx="549" cy="136" r="4" fill="#8b5cf6" opacity="0.6"/>
+  <circle cx="549" cy="136" r="2" fill="#8b5cf6"/>
+  <polyline points="411,192 425,189 439,192 453,187 467,190 481,185 495,188 509,183 523,186 537,181 551,184 565,180" fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Card 3: Applications -->
+  <rect x="590" y="116" width="185" height="88" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="606" y="140" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Applications</text>
+  <text x="606" y="172" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="28" font-weight="700">12</text>
+  <polyline points="606,192 620,190 634,191 648,189 662,190 676,188 690,189 704,187 718,188 732,186 746,187 760,185" fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Card 4: Failed Logins -->
+  <rect x="785" y="116" width="185" height="88" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="801" y="140" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Failed Logins (24h)</text>
+  <text x="801" y="172" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="28" font-weight="700">8</text>
+  <!-- Down arrow (good) -->
+  <polygon points="933,133 937,139 929,139" fill="#10b981"/>
+  <text x="940" y="140" fill="#10b981" font-family="system-ui, sans-serif" font-size="11" font-weight="600">-24%</text>
+  <polyline points="801,192 815,186 829,188 843,185 857,189 871,192 885,190 899,193 913,191 927,194 941,192 955,195" fill="none" stroke="#10b981" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- ===== BAR CHART SECTION ===== -->
+  <rect x="200" y="220" width="380" height="180" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="216" y="246" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Logins — Last 7 Days</text>
+
+  <!-- Y-axis labels -->
+  <text x="224" y="272" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">400</text>
+  <text x="224" y="302" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">200</text>
+  <text x="232" y="332" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">0</text>
+
+  <!-- Grid lines -->
+  <line x1="248" y1="269" x2="560" y2="269" stroke="#334155" stroke-width="0.5"/>
+  <line x1="248" y1="299" x2="560" y2="299" stroke="#334155" stroke-width="0.5"/>
+  <line x1="248" y1="332" x2="560" y2="332" stroke="#334155" stroke-width="0.5"/>
+
+  <!-- Bars -->
+  <rect x="264" y="283" width="32" height="49" rx="3" fill="#8b5cf6" opacity="0.7"/>
+  <rect x="308" y="274" width="32" height="58" rx="3" fill="#8b5cf6" opacity="0.8"/>
+  <rect x="352" y="289" width="32" height="43" rx="3" fill="#8b5cf6" opacity="0.65"/>
+  <rect x="396" y="263" width="32" height="69" rx="3" fill="#8b5cf6" opacity="0.9"/>
+  <rect x="440" y="270" width="32" height="62" rx="3" fill="#8b5cf6" opacity="0.85"/>
+  <rect x="484" y="278" width="32" height="54" rx="3" fill="#8b5cf6" opacity="0.75"/>
+  <rect x="528" y="258" width="32" height="74" rx="3" fill="#8b5cf6"/>
+
+  <!-- Day labels -->
+  <text x="272" y="348" fill="#64748b" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Mon</text>
+  <text x="316" y="348" fill="#64748b" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Tue</text>
+  <text x="360" y="348" fill="#64748b" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Wed</text>
+  <text x="404" y="348" fill="#64748b" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Thu</text>
+  <text x="448" y="348" fill="#64748b" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Fri</text>
+  <text x="492" y="348" fill="#64748b" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Sat</text>
+  <text x="536" y="348" fill="#64748b" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Sun</text>
+
+  <!-- ===== DONUT CHART SECTION ===== -->
+  <rect x="590" y="220" width="380" height="180" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="606" y="246" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Users by Role</text>
+
+  <!-- Donut chart -->
+  <circle cx="720" cy="320" r="45" fill="none" stroke="#334155" stroke-width="14"/>
+  <!-- Admin segment -->
+  <circle cx="720" cy="320" r="45" fill="none" stroke="#8b5cf6" stroke-width="14" stroke-dasharray="42 241" stroke-dashoffset="0" transform="rotate(-90 720 320)"/>
+  <!-- Editor segment -->
+  <circle cx="720" cy="320" r="45" fill="none" stroke="#6d28d9" stroke-width="14" stroke-dasharray="85 198" stroke-dashoffset="-42" transform="rotate(-90 720 320)"/>
+  <!-- Viewer segment -->
+  <circle cx="720" cy="320" r="45" fill="none" stroke="#a78bfa" stroke-width="14" stroke-dasharray="156 127" stroke-dashoffset="-127" transform="rotate(-90 720 320)"/>
+
+  <!-- Legend -->
+  <rect x="810" y="278" width="10" height="10" rx="2" fill="#8b5cf6"/>
+  <text x="826" y="288" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">Admin (15%)</text>
+  <rect x="810" y="298" width="10" height="10" rx="2" fill="#6d28d9"/>
+  <text x="826" y="308" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">Editor (30%)</text>
+  <rect x="810" y="318" width="10" height="10" rx="2" fill="#a78bfa"/>
+  <text x="826" y="328" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">Viewer (55%)</text>
+
+  <!-- Center label -->
+  <text x="720" y="317" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="16" font-weight="700" text-anchor="middle">1,247</text>
+  <text x="720" y="332" fill="#64748b" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">total</text>
+
+  <!-- ===== TABLE SECTION ===== -->
+  <rect x="200" y="414" width="770" height="172" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="216" y="440" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Recent Users</text>
+
+  <!-- Table Header -->
+  <rect x="200" y="450" width="770" height="30" fill="#0f172a" opacity="0.5"/>
+  <text x="224" y="469" fill="#64748b" font-family="system-ui, sans-serif" font-size="11" font-weight="600">User</text>
+  <text x="400" y="469" fill="#64748b" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Email</text>
+  <text x="640" y="469" fill="#64748b" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Role</text>
+  <text x="800" y="469" fill="#64748b" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Last Login</text>
+
+  <!-- Row 1 -->
+  <line x1="216" y1="480" x2="954" y2="480" stroke="#334155" stroke-width="0.5"/>
+  <circle cx="234" cy="500" r="12" fill="#8b5cf6" opacity="0.2"/>
+  <text x="234" y="504" fill="#8b5cf6" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">AJ</text>
+  <text x="256" y="504" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="12">Alice Johnson</text>
+  <text x="400" y="504" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="12">alice@example.com</text>
+  <rect x="640" y="491" width="48" height="20" rx="10" fill="#8b5cf6" opacity="0.15"/>
+  <text x="652" y="505" fill="#8b5cf6" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Admin</text>
+  <text x="800" y="504" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="12">2 min ago</text>
+
+  <!-- Row 2 -->
+  <line x1="216" y1="520" x2="954" y2="520" stroke="#334155" stroke-width="0.5"/>
+  <circle cx="234" cy="540" r="12" fill="#6d28d9" opacity="0.2"/>
+  <text x="234" y="544" fill="#6d28d9" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">BS</text>
+  <text x="256" y="544" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="12">Bob Smith</text>
+  <text x="400" y="544" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="12">bob@example.com</text>
+  <rect x="640" y="531" width="48" height="20" rx="10" fill="#6d28d9" opacity="0.15"/>
+  <text x="650" y="545" fill="#a78bfa" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Editor</text>
+  <text x="800" y="544" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="12">15 min ago</text>
+
+  <!-- Row 3 -->
+  <line x1="216" y1="560" x2="954" y2="560" stroke="#334155" stroke-width="0.5"/>
+  <circle cx="234" cy="575" r="12" fill="#a78bfa" opacity="0.2"/>
+  <text x="234" y="579" fill="#a78bfa" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">CW</text>
+  <text x="256" y="579" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="12">Carol Williams</text>
+  <text x="400" y="579" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="12">carol@example.com</text>
+  <rect x="640" y="566" width="52" height="20" rx="10" fill="#334155" opacity="0.5"/>
+  <text x="650" y="580" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Viewer</text>
+  <text x="800" y="579" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="12">1 hour ago</text>
+</svg>
