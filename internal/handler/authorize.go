@@ -539,6 +539,20 @@ func (h *AuthorizeHandler) Consent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
+
+	// Re-validate client and redirect_uri BEFORE any redirect — including denial.
+	// This prevents open-redirect attacks via unvalidated redirect_uri (see #130).
+	client, err := h.store.GetOAuthClient(ctx, clientID)
+	if err != nil || client == nil {
+		h.renderError(w, http.StatusBadRequest, "Unknown client.")
+		return
+	}
+	if !database.ValidateRedirectURI(client, redirectURI) {
+		h.renderError(w, http.StatusBadRequest, "Invalid redirect_uri.")
+		return
+	}
+
 	// Read user_id from server-set HttpOnly cookie — NOT from the form.
 	// This prevents user_id forgery via hidden form field manipulation.
 	userID := middleware.GetConsentUserID(r)
@@ -556,19 +570,6 @@ func (h *AuthorizeHandler) Consent(w http.ResponseWriter, r *http.Request) {
 			"state":             {state},
 		}
 		http.Redirect(w, r, redirectURI+"?"+params.Encode(), http.StatusFound)
-		return
-	}
-
-	ctx := r.Context()
-
-	// Re-validate client
-	client, err := h.store.GetOAuthClient(ctx, clientID)
-	if err != nil || client == nil {
-		h.renderError(w, http.StatusBadRequest, "Unknown client.")
-		return
-	}
-	if !database.ValidateRedirectURI(client, redirectURI) {
-		h.renderError(w, http.StatusBadRequest, "Invalid redirect_uri.")
 		return
 	}
 

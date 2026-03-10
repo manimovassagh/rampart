@@ -598,6 +598,68 @@ func TestConsentAcceptsValidCookie(t *testing.T) {
 	}
 }
 
+func TestConsentDenialWithInvalidRedirectURI(t *testing.T) {
+	orgID := uuid.New()
+	userID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":    {"test-client"},
+		"redirect_uri": {"http://evil.example.com/phish"}, // not in registered URIs
+		"scope":        {"openid"},
+		"state":        {"abc"},
+		"consent":      {"deny"},
+	}
+
+	req := newPostRequestWithCSRF(t, "/oauth/consent", form)
+	req.AddCookie(&http.Cookie{Name: "rampart_consent_uid", Value: userID.String()})
+	w := httptest.NewRecorder()
+
+	h.Consent(w, req)
+
+	// Must NOT redirect to the unvalidated URI — should render an error page instead
+	if w.Code == http.StatusFound {
+		t.Errorf("expected error page, got redirect to %s", w.Header().Get("Location"))
+	}
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(w.Body.String(), "Invalid redirect_uri") {
+		t.Error("expected 'Invalid redirect_uri' error message")
+	}
+}
+
+func TestConsentDenialWithUnknownClient(t *testing.T) {
+	store := &mockAuthorizeStore{
+		oauthClient: nil, // client not found
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":    {"unknown-client"},
+		"redirect_uri": {"http://evil.example.com/phish"},
+		"scope":        {"openid"},
+		"state":        {"abc"},
+		"consent":      {"deny"},
+	}
+
+	req := newPostRequestWithCSRF(t, "/oauth/consent", form)
+	req.AddCookie(&http.Cookie{Name: "rampart_consent_uid", Value: uuid.New().String()})
+	w := httptest.NewRecorder()
+
+	h.Consent(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(w.Body.String(), "Unknown client") {
+		t.Error("expected 'Unknown client' error message")
+	}
+}
+
 func TestAuthorizeGetMissingState(t *testing.T) {
 	orgID := uuid.New()
 	store := &mockAuthorizeStore{
