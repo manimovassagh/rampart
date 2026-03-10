@@ -192,8 +192,8 @@ type AdminConsoleHandler struct {
 }
 
 const (
-	maxSSEGlobal  = 20
-	maxSSEPerUser = 3
+	maxSSEGlobal   = 20
+	maxSSEPerUser  = 3
 	maxSSELifetime = 30 * time.Minute
 )
 
