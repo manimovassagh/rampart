@@ -437,38 +437,59 @@ func (h *AdminConsoleHandler) renderPartial(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// fetchDashboardStats collects all dashboard statistics, logging any query failures.
+func (h *AdminConsoleHandler) fetchDashboardStats(ctx context.Context, orgID uuid.UUID) *model.DashboardStats {
+	logErr := func(query string, err error) {
+		if err != nil {
+			h.logger.Warn("dashboard query failed", "query", query, "error", err)
+		}
+	}
+
+	totalUsers, err := h.store.CountUsers(ctx, orgID)
+	logErr("CountUsers", err)
+	activeSessions, err := h.sessions.CountActive(ctx)
+	logErr("CountActive", err)
+	recentUsers, err := h.store.CountRecentUsers(ctx, orgID, 7)
+	logErr("CountRecentUsers", err)
+	totalOrgs, err := h.store.CountOrganizations(ctx)
+	logErr("CountOrganizations", err)
+	totalClients, err := h.store.CountOAuthClients(ctx, orgID)
+	logErr("CountOAuthClients", err)
+	totalRoles, err := h.store.CountRoles(ctx, orgID)
+	logErr("CountRoles", err)
+	totalGroups, err := h.store.CountGroups(ctx, orgID)
+	logErr("CountGroups", err)
+	recentEvents, err := h.store.CountRecentEvents(ctx, orgID, 24)
+	logErr("CountRecentEvents", err)
+	loginCounts, err := h.store.LoginCountsByDay(ctx, orgID, 7)
+	logErr("LoginCountsByDay", err)
+	roleCounts, err := h.store.UserCountsByRole(ctx, orgID)
+	logErr("UserCountsByRole", err)
+
+	return &model.DashboardStats{
+		TotalUsers:         totalUsers,
+		ActiveSessions:     activeSessions,
+		RecentUsers:        recentUsers,
+		TotalOrganizations: totalOrgs,
+		TotalClients:       totalClients,
+		TotalRoles:         totalRoles,
+		TotalGroups:        totalGroups,
+		RecentEvents:       recentEvents,
+		LoginCounts:        loginCounts,
+		RoleCounts:         roleCounts,
+	}
+}
+
 // Dashboard handles GET /admin/
 func (h *AdminConsoleHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	authUser := middleware.GetAuthenticatedUser(ctx)
 	orgID := authUser.OrgID
 
-	totalUsers, _ := h.store.CountUsers(ctx, orgID)
-	activeSessions, _ := h.sessions.CountActive(ctx)
-	recentUsers, _ := h.store.CountRecentUsers(ctx, orgID, 7)
-	totalOrgs, _ := h.store.CountOrganizations(ctx)
-	totalClients, _ := h.store.CountOAuthClients(ctx, orgID)
-	totalRoles, _ := h.store.CountRoles(ctx, orgID)
-	totalGroups, _ := h.store.CountGroups(ctx, orgID)
-	recentEvents, _ := h.store.CountRecentEvents(ctx, orgID, 24)
-	loginCounts, _ := h.store.LoginCountsByDay(ctx, orgID, 7)
-	roleCounts, _ := h.store.UserCountsByRole(ctx, orgID)
-
 	data := &pageData{
 		Title:     "Dashboard",
 		ActiveNav: "dashboard",
-		Stats: &model.DashboardStats{
-			TotalUsers:         totalUsers,
-			ActiveSessions:     activeSessions,
-			RecentUsers:        recentUsers,
-			TotalOrganizations: totalOrgs,
-			TotalClients:       totalClients,
-			TotalRoles:         totalRoles,
-			TotalGroups:        totalGroups,
-			RecentEvents:       recentEvents,
-			LoginCounts:        loginCounts,
-			RoleCounts:         roleCounts,
-		},
+		Stats:     h.fetchDashboardStats(ctx, orgID),
 	}
 
 	// For htmx polling requests, return only the content block (no full page shell).
@@ -569,32 +590,10 @@ func (h *AdminConsoleHandler) DashboardSSE(w http.ResponseWriter, r *http.Reques
 
 // renderDashboardHTML renders the dashboard content block to a string and returns its hash.
 func (h *AdminConsoleHandler) renderDashboardHTML(ctx context.Context, orgID uuid.UUID) (html, hash string, err error) {
-	totalUsers, _ := h.store.CountUsers(ctx, orgID)
-	activeSessions, _ := h.sessions.CountActive(ctx)
-	recentUsers, _ := h.store.CountRecentUsers(ctx, orgID, 7)
-	totalOrgs, _ := h.store.CountOrganizations(ctx)
-	totalClients, _ := h.store.CountOAuthClients(ctx, orgID)
-	totalRoles, _ := h.store.CountRoles(ctx, orgID)
-	totalGroups, _ := h.store.CountGroups(ctx, orgID)
-	recentEvents, _ := h.store.CountRecentEvents(ctx, orgID, 24)
-	loginCounts, _ := h.store.LoginCountsByDay(ctx, orgID, 7)
-	roleCounts, _ := h.store.UserCountsByRole(ctx, orgID)
-
 	data := &pageData{
 		Title:     "Dashboard",
 		ActiveNav: "dashboard",
-		Stats: &model.DashboardStats{
-			TotalUsers:         totalUsers,
-			ActiveSessions:     activeSessions,
-			RecentUsers:        recentUsers,
-			TotalOrganizations: totalOrgs,
-			TotalClients:       totalClients,
-			TotalRoles:         totalRoles,
-			TotalGroups:        totalGroups,
-			RecentEvents:       recentEvents,
-			LoginCounts:        loginCounts,
-			RoleCounts:         roleCounts,
-		},
+		Stats:     h.fetchDashboardStats(ctx, orgID),
 	}
 
 	tmpl, ok := h.pages["dashboard"]
