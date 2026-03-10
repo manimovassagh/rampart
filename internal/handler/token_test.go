@@ -176,7 +176,7 @@ func TestTokenWrongClientID(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 	}
 	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
@@ -207,7 +207,7 @@ func TestTokenWrongRedirectURI(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 	}
 	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
@@ -239,7 +239,7 @@ func TestTokenWrongCodeVerifier(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 	}
 	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
@@ -288,7 +288,7 @@ func TestTokenValidExchange(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: user,
 	}
@@ -430,7 +430,7 @@ func TestTokenUserDisabledAfterCodeExchange(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: disabledUser,
 	}
@@ -470,7 +470,7 @@ func TestTokenUserNotFoundAfterCodeExchange(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: nil, // user deleted between auth and token exchange
 	}
@@ -502,7 +502,7 @@ func TestTokenUserFetchError(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByIDErr: fmt.Errorf("db error"),
 	}
@@ -543,7 +543,7 @@ func TestTokenSessionCreateError(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: user,
 	}
@@ -585,7 +585,7 @@ func TestTokenWithOrgSettings(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: user,
 		orgSettings: &model.OrgSettings{
@@ -644,7 +644,7 @@ func TestTokenWithAdminClientIncludesAdminRole(t *testing.T) {
 			OrgID:         orgID,
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: user,
 		roles:    []string{"admin", "user"},
@@ -757,7 +757,7 @@ func TestTokenValidExchangeReturnsIDToken(t *testing.T) {
 			RedirectURI:   "http://localhost:3002/callback",
 			CodeChallenge: challenge,
 			Scope:         "openid",
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: user,
 	}
