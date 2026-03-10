@@ -161,4 +161,3 @@ func writeRateLimitError(w http.ResponseWriter) {
 		slog.Error("failed to encode rate limit error response", "error", err)
 	}
 }
-
