@@ -21,6 +21,16 @@ type rateLimitEntry struct {
 }
 
 // RateLimiter provides per-IP rate limiting using a sliding window.
+//
+// IMPORTANT: This is an in-memory, single-instance rate limiter. Each server
+// instance maintains its own independent counters, so when running K instances
+// behind a load balancer the effective rate limit becomes K × the configured
+// limit (requests may be distributed across instances).
+//
+// For multi-instance / high-availability deployments, enforce rate limiting at
+// the ingress layer instead (e.g., nginx limit_req, AWS WAF, Cloudflare Rate
+// Limiting, or your cloud load balancer). This keeps the application stateless
+// and avoids the complexity of a distributed rate-limiting backend.
 type RateLimiter struct {
 	mu       sync.Mutex
 	entries  map[string]*rateLimitEntry
