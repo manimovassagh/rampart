@@ -162,6 +162,10 @@ func computeAtHash(accessToken string) string {
 	return strings.TrimRight(base64.URLEncoding.EncodeToString(leftHalf), "=")
 }
 
+// MFAAudience is the audience value for MFA challenge tokens.
+// It prevents MFA tokens from being confused with other token types.
+const MFAAudience = "rampart:mfa"
+
 // MFAClaims are the JWT claims for short-lived MFA challenge tokens.
 type MFAClaims struct {
 	jwt.RegisteredClaims
@@ -176,6 +180,7 @@ func GenerateMFAToken(key *rsa.PrivateKey, kid, issuer string, userID uuid.UUID)
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    issuer,
 			Subject:   userID.String(),
+			Audience:  jwt.ClaimStrings{MFAAudience},
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
 		},
@@ -196,7 +201,8 @@ func GenerateMFAToken(key *rsa.PrivateKey, kid, issuer string, userID uuid.UUID)
 func VerifyMFAToken(pubKey *rsa.PublicKey, tokenString string) (uuid.UUID, error) {
 	tok, err := jwt.ParseWithClaims(tokenString, &MFAClaims{}, func(_ *jwt.Token) (any, error) {
 		return pubKey, nil
-	}, jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
+		jwt.WithAudience(MFAAudience))
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("parsing MFA token: %w", err)
 	}

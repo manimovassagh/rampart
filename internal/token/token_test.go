@@ -291,6 +291,122 @@ func TestComputeAtHash(t *testing.T) {
 	}
 }
 
+func TestGenerateMFAToken_HasAudienceClaim(t *testing.T) {
+	userID := uuid.New()
+
+	tokenStr, err := GenerateMFAToken(testPrivKey, testKID, testIssuer, userID)
+	if err != nil {
+		t.Fatalf("GenerateMFAToken: %v", err)
+	}
+
+	// Parse without validation to inspect raw claims
+	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
+	tok, _, err := parser.ParseUnverified(tokenStr, &MFAClaims{})
+	if err != nil {
+		t.Fatalf("parsing token: %v", err)
+	}
+
+	claims, ok := tok.Claims.(*MFAClaims)
+	if !ok {
+		t.Fatal("unexpected claims type")
+	}
+
+	aud, _ := claims.GetAudience()
+	if len(aud) != 1 || aud[0] != MFAAudience {
+		t.Errorf("audience = %v, want [%s]", aud, MFAAudience)
+	}
+}
+
+func TestVerifyMFAToken_ValidToken(t *testing.T) {
+	userID := uuid.New()
+
+	tokenStr, err := GenerateMFAToken(testPrivKey, testKID, testIssuer, userID)
+	if err != nil {
+		t.Fatalf("GenerateMFAToken: %v", err)
+	}
+
+	got, err := VerifyMFAToken(testPubKey, tokenStr)
+	if err != nil {
+		t.Fatalf("VerifyMFAToken: %v", err)
+	}
+	if got != userID {
+		t.Errorf("userID = %v, want %v", got, userID)
+	}
+}
+
+func TestVerifyMFAToken_RejectsTokenWithoutAudience(t *testing.T) {
+	userID := uuid.New()
+
+	// Manually craft an MFA token without the audience claim
+	now := time.Now()
+	claims := MFAClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    testIssuer,
+			Subject:   userID.String(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
+		},
+		Purpose: "mfa_challenge",
+	}
+
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = testKID
+	tokenStr, err := tok.SignedString(testPrivKey)
+	if err != nil {
+		t.Fatalf("signing token: %v", err)
+	}
+
+	_, err = VerifyMFAToken(testPubKey, tokenStr)
+	if err == nil {
+		t.Fatal("expected error for token without audience, got nil")
+	}
+}
+
+func TestVerifyMFAToken_RejectsWrongAudience(t *testing.T) {
+	userID := uuid.New()
+
+	// Craft a token with a wrong audience
+	now := time.Now()
+	claims := MFAClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    testIssuer,
+			Subject:   userID.String(),
+			Audience:  jwt.ClaimStrings{"wrong-audience"},
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
+		},
+		Purpose: "mfa_challenge",
+	}
+
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = testKID
+	tokenStr, err := tok.SignedString(testPrivKey)
+	if err != nil {
+		t.Fatalf("signing token: %v", err)
+	}
+
+	_, err = VerifyMFAToken(testPubKey, tokenStr)
+	if err == nil {
+		t.Fatal("expected error for token with wrong audience, got nil")
+	}
+}
+
+func TestVerifyMFAToken_RejectsAccessTokenAsMFA(t *testing.T) {
+	userID := uuid.New()
+	orgID := uuid.New()
+
+	// Generate a regular access token and try to use it as an MFA token
+	accessToken, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, 15*time.Minute, userID, orgID, "testuser", "test@example.com", true, "Test", "User", "user")
+	if err != nil {
+		t.Fatalf("GenerateAccessToken: %v", err)
+	}
+
+	_, err = VerifyMFAToken(testPubKey, accessToken)
+	if err == nil {
+		t.Fatal("expected error when verifying access token as MFA token, got nil")
+	}
+}
+
 func TestGenerateRefreshToken(t *testing.T) {
 	tok1, err := GenerateRefreshToken()
 	if err != nil {
