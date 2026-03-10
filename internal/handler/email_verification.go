@@ -110,10 +110,9 @@ func (h *EmailVerificationHandler) processVerificationRequest(email string) {
 
 	// Send email
 	if !h.email.Enabled() {
-		h.logger.Warn("SMTP not configured, logging verification token",
+		h.logger.Warn("SMTP not configured — email verification token generated but cannot be delivered",
 			"user_id", user.ID,
-			"token", token,
-			"expires_at", expiresAt,
+			"token_prefix", token[:8],
 		)
 		return
 	}
@@ -147,10 +146,9 @@ func (h *EmailVerificationHandler) SendVerificationForUser(user *model.User) {
 		}
 
 		if !h.email.Enabled() {
-			h.logger.Warn("SMTP not configured, logging verification token",
+			h.logger.Warn("SMTP not configured — email verification token generated but cannot be delivered",
 				"user_id", user.ID,
-				"token", token,
-				"expires_at", expiresAt,
+				"token_prefix", token[:8],
 			)
 			return
 		}
