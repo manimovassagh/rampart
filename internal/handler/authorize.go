@@ -367,7 +367,8 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			middleware.SetOAuthCSRFCookie(w, consentCSRF)
-			h.renderConsentPage(w, client, user.ID, scope, state, codeChallenge, nonce, redirectURI, consentCSRF)
+			middleware.SetConsentUserCookie(w, user.ID)
+			h.renderConsentPage(w, client, scope, state, codeChallenge, nonce, redirectURI, consentCSRF)
 			return
 		}
 	}
@@ -456,7 +457,6 @@ type consentPageData struct {
 	State             string
 	CodeChallenge     string
 	Nonce             string
-	UserID            string
 	CSRFToken         string
 	ScopeDetails      []scopeDetail
 }
@@ -476,7 +476,7 @@ var knownScopes = map[string]scopeDetail{
 
 var consentTemplate = template.Must(template.ParseFS(consentFS, "templates/consent/consent.html"))
 
-func (h *AuthorizeHandler) renderConsentPage(w http.ResponseWriter, client *model.OAuthClient, userID uuid.UUID, scope, state, codeChallenge, nonce, redirectURI, csrfToken string) {
+func (h *AuthorizeHandler) renderConsentPage(w http.ResponseWriter, client *model.OAuthClient, scope, state, codeChallenge, nonce, redirectURI, csrfToken string) {
 	var details []scopeDetail
 	for _, s := range strings.Split(scope, " ") {
 		s = strings.TrimSpace(s)
@@ -499,7 +499,6 @@ func (h *AuthorizeHandler) renderConsentPage(w http.ResponseWriter, client *mode
 		State:             state,
 		CodeChallenge:     codeChallenge,
 		Nonce:             nonce,
-		UserID:            userID.String(),
 		CSRFToken:         csrfToken,
 		ScopeDetails:      details,
 	}
@@ -534,12 +533,20 @@ func (h *AuthorizeHandler) Consent(w http.ResponseWriter, r *http.Request) {
 	state := r.FormValue("state")
 	codeChallenge := r.FormValue("code_challenge")
 	nonce := r.FormValue("nonce")
-	userIDStr := r.FormValue("user_id")
 
-	if clientID == "" || redirectURI == "" || state == "" || userIDStr == "" {
+	if clientID == "" || redirectURI == "" || state == "" {
 		h.renderError(w, http.StatusBadRequest, "Missing required parameters.")
 		return
 	}
+
+	// Read user_id from server-set HttpOnly cookie — NOT from the form.
+	// This prevents user_id forgery via hidden form field manipulation.
+	userID := middleware.GetConsentUserID(r)
+	if userID == uuid.Nil {
+		h.renderError(w, http.StatusBadRequest, "Invalid or expired consent session.")
+		return
+	}
+	middleware.ClearConsentUserCookie(w)
 
 	// If user denied consent, redirect with access_denied error
 	if consent != "allow" {
@@ -562,12 +569,6 @@ func (h *AuthorizeHandler) Consent(w http.ResponseWriter, r *http.Request) {
 	}
 	if !database.ValidateRedirectURI(client, redirectURI) {
 		h.renderError(w, http.StatusBadRequest, "Invalid redirect_uri.")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		h.renderError(w, http.StatusBadRequest, "Invalid user.")
 		return
 	}
 
