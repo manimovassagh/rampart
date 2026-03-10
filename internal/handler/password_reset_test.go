@@ -16,9 +16,10 @@ import (
 )
 
 type mockResetStore struct {
-	user     *model.User
-	tokenErr error
-	userID   uuid.UUID
+	user        *model.User
+	tokenErr    error
+	userID      uuid.UUID
+	orgSettings *model.OrgSettings
 }
 
 func (m *mockResetStore) FindUserByEmail(_ context.Context, _ string) (*model.User, error) {
@@ -40,10 +41,22 @@ func (m *mockResetStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte
 	return nil
 }
 
+// ── stub methods to satisfy store.OrgSettingsReadWriter ──
+
+func (m *mockResetStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {
+	return m.orgSettings, nil
+}
+func (m *mockResetStore) UpdateOrgSettings(_ context.Context, _ uuid.UUID, _ *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	return nil, nil
+}
+
 // ── stub methods to satisfy store.UserReader ──
 
-func (m *mockResetStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) {
-	return nil, nil
+func (m *mockResetStore) GetUserByID(_ context.Context, id uuid.UUID) (*model.User, error) {
+	if m.user != nil {
+		return m.user, nil
+	}
+	return &model.User{ID: id, OrgID: uuid.New(), Enabled: true}, nil
 }
 func (m *mockResetStore) GetUserByEmail(_ context.Context, _ string, _ uuid.UUID) (*model.User, error) {
 	return nil, nil
@@ -167,6 +180,55 @@ func TestResetPasswordInvalidToken(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestResetPasswordRejectsWeakPasswordPerOrgPolicy(t *testing.T) {
+	uid := uuid.New()
+	orgID := uuid.New()
+
+	ms := &mockResetStore{
+		userID: uid,
+		orgSettings: &model.OrgSettings{
+			OrgID:                   orgID,
+			PasswordMinLength:       12,
+			PasswordRequireUppercase: true,
+			PasswordRequireLowercase: true,
+			PasswordRequireNumbers:   true,
+			PasswordRequireSymbols:   true,
+		},
+	}
+
+	// Override GetUserByID to return a user with our specific orgID.
+	ms.user = &model.User{ID: uid, OrgID: orgID, Enabled: true}
+
+	sender := &mockEmailSender{}
+	h := NewPasswordResetHandler(ms, sender, slog.Default(), "http://localhost:8080")
+
+	tests := []struct {
+		name     string
+		password string
+		wantCode int
+	}{
+		{"too short for org policy", "Abc1!", http.StatusBadRequest},
+		{"no uppercase", "abcdefgh1234!", http.StatusBadRequest},
+		{"no digit", "Abcdefghijklm!", http.StatusBadRequest},
+		{"no symbol", "Abcdefgh1234", http.StatusBadRequest},
+		{"meets org policy", "Abcdefgh123!", http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := `{"token":"valid-token","new_password":"` + tt.password + `"}`
+			req := httptest.NewRequest(http.MethodPost, "/reset-password", strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			h.ResetPassword(rr, req)
+
+			if rr.Code != tt.wantCode {
+				t.Errorf("password %q: expected %d, got %d: %s", tt.password, tt.wantCode, rr.Code, rr.Body.String())
+			}
+		})
 	}
 }
 

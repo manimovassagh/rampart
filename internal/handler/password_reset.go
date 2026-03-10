@@ -30,6 +30,7 @@ type PasswordResetHandlerStore interface {
 	store.UserReader
 	store.UserWriter
 	store.PasswordResetTokenStore
+	store.OrgSettingsReadWriter
 }
 
 // PasswordResetHandler handles forgot-password and reset-password flows.
@@ -148,16 +149,39 @@ func (h *PasswordResetHandler) ResetPassword(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if len(req.NewPassword) < 8 {
-		apierror.Write(w, http.StatusBadRequest, "invalid_request", "Password must be at least 8 characters.")
-		return
-	}
-
 	ctx := r.Context()
 
 	userID, err := h.store.ConsumePasswordResetToken(ctx, req.Token)
 	if err != nil {
 		apierror.Write(w, http.StatusBadRequest, "invalid_token", "Invalid, expired, or already-used reset token.")
+		return
+	}
+
+	// Look up user to determine their organization.
+	user, err := h.store.GetUserByID(ctx, userID)
+	if err != nil || user == nil {
+		h.logger.Error("failed to find user for password policy lookup", "error", err, "user_id", userID)
+		apierror.Write(w, http.StatusInternalServerError, "server_error", "Internal server error.")
+		return
+	}
+
+	// Fetch per-org password policy (fall back to defaults if settings not found).
+	passwordPolicy := auth.DefaultPasswordPolicy()
+	if settings, sErr := h.store.GetOrgSettings(ctx, user.OrgID); sErr != nil {
+		h.logger.Warn("failed to fetch org settings for password reset, using defaults", "error", sErr)
+	} else if settings != nil {
+		passwordPolicy = auth.PasswordPolicy{
+			MinLength:        settings.PasswordMinLength,
+			RequireUppercase: settings.PasswordRequireUppercase,
+			RequireLowercase: settings.PasswordRequireLowercase,
+			RequireNumbers:   settings.PasswordRequireNumbers,
+			RequireSymbols:   settings.PasswordRequireSymbols,
+		}
+	}
+
+	// Validate new password against org policy.
+	if fe := auth.ValidatePasswordWithPolicy(req.NewPassword, passwordPolicy); fe != nil {
+		apierror.WriteValidation(w, []apierror.FieldError{{Field: fe.Field, Message: fe.Message}})
 		return
 	}
 
