@@ -368,7 +368,7 @@ function CTASection(): React.JSX.Element {
           marginBottom: '1rem',
           lineHeight: 1.2,
         }}>
-        Ready to ditch{' '}
+        Get Started with{' '}
         <span
           style={{
             background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
@@ -376,9 +376,8 @@ function CTASection(): React.JSX.Element {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-          Keycloak
+          Rampart
         </span>
-        ?
       </h2>
       <p
         style={{
@@ -387,7 +386,7 @@ function CTASection(): React.JSX.Element {
           marginBottom: '2rem',
           lineHeight: 1.6,
         }}>
-        Deploy Rampart in under a minute. One binary, no JVM, no YAML nightmares.
+        Deploy in under a minute. One binary, simple configuration, production-ready.
       </p>
       <div style={{display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap'}}>
         <Link
@@ -423,7 +422,7 @@ export default function Home(): React.JSX.Element {
   return (
     <Layout
       title={`${siteConfig.title} - Modern IAM Server`}
-      description="Modern, lightweight identity and access management server. The open-source Keycloak alternative with OAuth 2.0, OIDC, single binary deployment, and beautiful admin UI.">
+      description="Modern, lightweight identity and access management server with OAuth 2.0, OIDC, single binary deployment, and beautiful admin UI.">
       <main>
         <HeroSection />
         <MetricsSection />

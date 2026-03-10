@@ -41,7 +41,7 @@
 
 ## Why Rampart
 
-Most IAM solutions are either **too complex** to self-host or **too limited** to use in production. Rampart is different — it ships as a **single Go binary** that gives you a complete identity platform out of the box. No microservice sprawl, no JVM overhead, no vendor lock-in.
+Rampart ships as a **single Go binary** that gives you a complete identity platform out of the box. Lightweight, easy to deploy, and designed for both simplicity and production-grade security.
 
 Deploy it on Docker, bare metal, or Kubernetes — and get OAuth 2.0, OpenID Connect, MFA, RBAC, and a built-in admin console in under a minute.
 
