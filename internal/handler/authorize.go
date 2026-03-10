@@ -30,7 +30,7 @@ var loginThemeFS embed.FS
 var consentFS embed.FS
 
 const (
-	authCodeTTL       = 10 * time.Minute
+	authCodeTTL       = 60 * time.Second
 	scopeOpenID       = "openid"
 	themeDefault      = "default"
 	themeDark         = "dark"

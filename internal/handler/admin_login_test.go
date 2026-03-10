@@ -317,7 +317,7 @@ func TestAdminCallbackClientIDMismatch(t *testing.T) {
 			OrgID:         uuid.New(),
 			RedirectURI:   testIssuer + "/admin/callback",
 			CodeChallenge: "test-challenge",
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 	}
 	sessions := &mockSessionStore{}
@@ -348,7 +348,7 @@ func TestAdminCallbackRedirectURIMismatch(t *testing.T) {
 			OrgID:         uuid.New(),
 			RedirectURI:   "http://wrong.example.com/callback",
 			CodeChallenge: "test-challenge",
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 	}
 	sessions := &mockSessionStore{}
@@ -383,7 +383,7 @@ func TestAdminCallbackPKCEFailure(t *testing.T) {
 			OrgID:         uuid.New(),
 			RedirectURI:   testIssuer + "/admin/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 	}
 	sessions := &mockSessionStore{}
@@ -417,7 +417,7 @@ func TestAdminCallbackUserNotFound(t *testing.T) {
 			OrgID:         uuid.New(),
 			RedirectURI:   testIssuer + "/admin/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: nil,
 	}
@@ -454,7 +454,7 @@ func TestAdminCallbackDisabledUser(t *testing.T) {
 			OrgID:         user.OrgID,
 			RedirectURI:   testIssuer + "/admin/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: user,
 	}
@@ -490,7 +490,7 @@ func TestAdminCallbackSuccess(t *testing.T) {
 			OrgID:         user.OrgID,
 			RedirectURI:   testIssuer + "/admin/callback",
 			CodeChallenge: challenge,
-			ExpiresAt:     time.Now().Add(10 * time.Minute),
+			ExpiresAt:     time.Now().Add(60 * time.Second),
 		},
 		userByID: user,
 	}
