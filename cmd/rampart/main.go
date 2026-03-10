@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -288,10 +289,19 @@ func run(_ *slog.Logger) error {
 	leaderElector := cluster.NewLeader(db.Pool, logger)
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
 	defer cleanupCancel()
-	go leaderElector.Run(cleanupCtx)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		leaderElector.Run(cleanupCtx)
+	}()
 
 	// Background cleanup for expired authorization codes (leader-only)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		ticker := time.NewTicker(10 * time.Minute)
 		defer ticker.Stop()
 		for {
@@ -332,7 +342,9 @@ func run(_ *slog.Logger) error {
 	}()
 
 	// Background worker for webhook delivery retries (leader-only)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -367,6 +379,14 @@ func run(_ *slog.Logger) error {
 		}
 	}
 
+	// Graceful shutdown sequence:
+	// 1. Cancel background worker context so goroutines stop issuing DB queries
+	cleanupCancel()
+	// 2. Wait for all background goroutines to finish
+	wg.Wait()
+	logger.Info("background workers stopped")
+	// 3. Shutdown HTTP server (drains in-flight requests)
+	// 4. db.Close() fires via defer — safe now that all workers have exited
 	return srv.Shutdown()
 }
 
