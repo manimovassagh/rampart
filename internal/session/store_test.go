@@ -57,6 +57,13 @@ func (m *mockStore) FindByRefreshToken(ctx context.Context, refreshToken string)
 	return nil, nil
 }
 
+func (m *mockStore) RotateRefreshToken(_ context.Context, sessionID uuid.UUID, newRefreshToken string) error {
+	if sess, ok := m.sessions[sessionID]; ok {
+		sess.RefreshTokenHash = HashToken(newRefreshToken)
+	}
+	return nil
+}
+
 func (m *mockStore) Delete(ctx context.Context, sessionID uuid.UUID) error {
 	if m.deleteErr != nil {
 		return m.deleteErr
