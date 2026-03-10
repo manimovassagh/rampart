@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -185,7 +187,15 @@ type AdminConsoleHandler struct {
 	pages          map[string]*template.Template
 	socialRegistry *social.Registry
 	plugins        *plugin.Registry
+	sseGlobal      atomic.Int32
+	ssePerUser     sync.Map // uuid.UUID → *atomic.Int32
 }
+
+const (
+	maxSSEGlobal   = 20
+	maxSSEPerUser  = 3
+	maxSSELifetime = 30 * time.Minute
+)
 
 var adminFuncMap = template.FuncMap{
 	"add":      func(a, b int) int { return a + b },
@@ -479,6 +489,31 @@ func (h *AdminConsoleHandler) DashboardSSE(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	if authUser == nil {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	// Enforce global connection limit.
+	if h.sseGlobal.Add(1) > maxSSEGlobal {
+		h.sseGlobal.Add(-1)
+		http.Error(w, "too many SSE connections", http.StatusTooManyRequests)
+		return
+	}
+	defer h.sseGlobal.Add(-1)
+
+	// Enforce per-user connection limit.
+	counter, _ := h.ssePerUser.LoadOrStore(authUser.UserID, &atomic.Int32{})
+	userCounter := counter.(*atomic.Int32)
+	if userCounter.Add(1) > maxSSEPerUser {
+		userCounter.Add(-1)
+		http.Error(w, "too many SSE connections for this user", http.StatusTooManyRequests)
+		return
+	}
+	defer userCounter.Add(-1)
+
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -488,13 +523,15 @@ func (h *AdminConsoleHandler) DashboardSSE(w http.ResponseWriter, r *http.Reques
 	rc := http.NewResponseController(w)
 	_ = rc.SetWriteDeadline(time.Time{}) // zero = no deadline
 
-	ctx := r.Context()
-	authUser := middleware.GetAuthenticatedUser(ctx)
 	orgID := authUser.OrgID
 
 	var lastHash string
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
+
+	// Cap connection lifetime to prevent zombie connections.
+	lifetime := time.NewTimer(maxSSELifetime)
+	defer lifetime.Stop()
 
 	// Send initial data immediately
 	if html, hash, err := h.renderDashboardHTML(ctx, orgID); err == nil {
@@ -506,6 +543,11 @@ func (h *AdminConsoleHandler) DashboardSSE(w http.ResponseWriter, r *http.Reques
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-lifetime.C:
+			// Connection exceeded maximum lifetime — close gracefully.
+			writeSSEEvent(w, "reconnect", "lifetime exceeded")
+			flusher.Flush()
 			return
 		case <-ticker.C:
 			html, hash, err := h.renderDashboardHTML(ctx, orgID)
