@@ -126,41 +126,16 @@ func (rl *RateLimiter) Middleware() func(http.Handler) http.Handler {
 	}
 }
 
-// clientIP extracts the client IP address from the request.
-// It checks X-Forwarded-For first (for proxied environments), then falls
-// back to X-Real-Ip, and finally RemoteAddr.
+// clientIP extracts the client IP from r.RemoteAddr, which chi's RealIP
+// middleware has already set from trusted proxy headers.
+// We do NOT read X-Forwarded-For or X-Real-Ip directly because an attacker
+// can spoof those headers to bypass rate limiting.
 func clientIP(r *http.Request) string {
-	// chi's RealIP middleware sets RemoteAddr from X-Forwarded-For/X-Real-Ip,
-	// but we also handle it here for defense in depth.
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// Take the first (leftmost) IP — the original client
-		if i := indexOf(xff, ','); i >= 0 {
-			xff = xff[:i]
-		}
-		if ip := trimSpace(xff); ip != "" {
-			return ip
-		}
-	}
-
-	if xri := r.Header.Get("X-Real-Ip"); xri != "" {
-		return trimSpace(xri)
-	}
-
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
 	}
 	return host
-}
-
-// indexOf returns the index of the first occurrence of sep in s, or -1.
-func indexOf(s string, sep byte) int {
-	for i := range len(s) {
-		if s[i] == sep {
-			return i
-		}
-	}
-	return -1
 }
 
 // rateLimitErrorResponse matches the apierror.Error structure to avoid import cycles.
@@ -187,15 +162,3 @@ func writeRateLimitError(w http.ResponseWriter) {
 	}
 }
 
-// trimSpace trims leading and trailing ASCII whitespace.
-func trimSpace(s string) string {
-	start := 0
-	for start < len(s) && s[start] == ' ' {
-		start++
-	}
-	end := len(s)
-	for end > start && s[end-1] == ' ' {
-		end--
-	}
-	return s[start:end]
-}
