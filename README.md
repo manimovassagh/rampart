@@ -53,32 +53,32 @@ Deploy it on Docker, bare metal, or Kubernetes — and get OAuth 2.0, OpenID Con
 <tr>
 <td width="50%" valign="top">
 
-### 🔐 Authentication
+### Authentication
 **OAuth 2.0 & OpenID Connect** — Authorization Code + PKCE, Client Credentials, Device Flow, and full JWKS rotation.
 
-### 🏢 Enterprise SSO
+### Enterprise SSO
 **SAML 2.0 & SCIM 2.0** — Service Provider bridge for single sign-on, automated user and group provisioning.
 
-### 🛡️ Multi-Factor Auth
+### Multi-Factor Auth
 **WebAuthn & TOTP** — Passkeys, hardware keys, and time-based OTP with backup codes.
 
-### 🌐 Social Login
-**Google, GitHub, Apple** — One-click social sign-in with automatic account linking.
+### Social Login
+**Google, GitHub, Apple** — One-click social sign-in with automatic account linking and email verification.
 
 </td>
 <td width="50%" valign="top">
 
-### 👥 Access Control
+### Access Control
 **Roles & Permissions** — Fine-grained RBAC with group support and scope-based authorization.
 
-### 📊 Observability
-**Metrics & Audit** — Prometheus `/metrics` endpoint, structured audit logging, and compliance dashboards.
+### Security Hardening
+**Defense in depth** — Refresh token rotation, CSRF protection, per-endpoint rate limiting, configurable password policies, HSTS, encryption at rest, and OAuth consent flow protection.
 
-### 🔗 Extensibility
-**Webhooks & Plugins** — HMAC-signed event delivery and custom plugin extensions.
+### Observability
+**Metrics & Audit** — Prometheus `/metrics` endpoint, structured audit logging, compliance dashboards (SOC 2, GDPR, HIPAA), and HMAC-signed webhook delivery.
 
-### ⚡ High Availability
-**Clustering** — PostgreSQL-based leader election. No Redis, no external dependencies.
+### High Availability
+**Clustering** — PostgreSQL-based leader election with graceful shutdown. No Redis, no external dependencies.
 
 </td>
 </tr>
@@ -137,14 +137,14 @@ go build ./cmd/rampart
 ```bash
 curl -X POST http://localhost:8080/register \
   -H 'Content-Type: application/json' \
-  -d '{"email": "user@example.com", "password": "securepassword"}'
+  -d '{"email": "user@example.com", "password": "S3cure!Pass"}'
 ```
 
 **2. Login and get tokens**
 ```bash
 curl -X POST http://localhost:8080/login \
   -H 'Content-Type: application/json' \
-  -d '{"email": "user@example.com", "password": "securepassword"}'
+  -d '{"email": "user@example.com", "password": "S3cure!Pass"}'
 ```
 
 **3. Call your API with the token**
@@ -164,14 +164,31 @@ curl -X POST http://localhost:8080/token \
 
 ## Configuration
 
-| Variable | Description | Example |
+| Variable | Description | Default |
 |---|---|---|
-| `RAMPART_DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@localhost:5432/rampart` |
-| `RAMPART_ISSUER` | OIDC issuer URL | `http://localhost:8080` |
-| `RAMPART_ENCRYPTION_KEY` | Key for encrypting secrets at rest | 32-byte hex string |
+| `RAMPART_DB_URL` | PostgreSQL connection string (required) | — |
 | `RAMPART_PORT` | HTTP listen port | `8080` |
+| `RAMPART_ISSUER` | OIDC issuer URL | `http://localhost:8080` |
+| `RAMPART_SIGNING_KEY_PATH` | RSA signing key (auto-generated if missing) | `rampart-signing-key.pem` |
+| `RAMPART_ACCESS_TOKEN_TTL` | Access token lifetime in seconds | `900` (15 min) |
+| `RAMPART_REFRESH_TOKEN_TTL` | Refresh token lifetime in seconds | `604800` (7 days) |
+| `RAMPART_ENCRYPTION_KEY` | Hex-encoded 32-byte key for secrets at rest | — |
+| `RAMPART_HSTS_ENABLED` | Enable HSTS header | `false` |
+| `RAMPART_SECURE_COOKIES` | Set Secure flag on cookies (requires HTTPS) | `false` |
+| `RAMPART_RATE_LIMIT_LOGIN` | Login attempts per minute per IP | `10` |
+| `RAMPART_RATE_LIMIT_REGISTER` | Registrations per minute per IP | `5` |
+| `RAMPART_RATE_LIMIT_TOKEN` | Token requests per minute per IP | `10` |
+| `RAMPART_LOG_LEVEL` | Log level (`debug`, `info`, `warn`, `error`) | `info` |
+| `RAMPART_LOG_FORMAT` | Log format (`pretty`, `text`, `json`) | `pretty` |
+| `RAMPART_ALLOWED_ORIGINS` | Comma-separated CORS origins | — |
+| `RAMPART_SMTP_HOST` | SMTP server for transactional emails | — |
+| `RAMPART_SMTP_PORT` | SMTP port | `587` |
+| `RAMPART_SMTP_FROM` | From address for emails | — |
+| `RAMPART_GOOGLE_CLIENT_ID` | Google OAuth client ID | — |
+| `RAMPART_GITHUB_CLIENT_ID` | GitHub OAuth client ID | — |
+| `RAMPART_APPLE_CLIENT_ID` | Apple Sign-In client ID | — |
 
-See `docker-compose.yml` and `.env.example` for the full set of environment variables.
+See `.env.example` for the full set including SMTP credentials and social login secrets.
 
 ---
 
@@ -217,6 +234,18 @@ Full documentation is available at **[manimovassagh.github.io/rampart](https://m
     <img src="https://img.shields.io/badge/Read_the_Docs-%E2%86%92-blue?style=for-the-badge&logo=github" alt="Documentation" />
   </a>
 </p>
+
+---
+
+## Sample Apps
+
+The [`samples/`](samples/) directory contains working integration examples:
+
+| Sample | Description | Port |
+|--------|-------------|------|
+| [express-backend](samples/express-backend/) | Express API with JWT verification via `@rampart/node` | 3001 |
+| [web-frontend](samples/web-frontend/) | Browser app with login/logout UI via `@rampart/web` | 3000 |
+| [react-app](samples/react-app/) | React SPA with routing, auth, and RBAC via `@rampart/react` | 3002 |
 
 ---
 
