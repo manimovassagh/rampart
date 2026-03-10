@@ -493,6 +493,111 @@ func TestAuthorizePostReRenderIncludesCSRFToken(t *testing.T) {
 	}
 }
 
+func TestConsentRejectsWithoutConsentCookie(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":    {"test-client"},
+		"redirect_uri": {"http://localhost:3002/callback"},
+		"scope":        {"openid"},
+		"state":        {"abc"},
+		"consent":      {"allow"},
+	}
+
+	req := newPostRequestWithCSRF(t, "/oauth/consent", form)
+	w := httptest.NewRecorder()
+
+	h.Consent(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(w.Body.String(), "Invalid or expired consent session") {
+		t.Error("expected consent session error when no cookie is present")
+	}
+}
+
+func TestConsentRejectsForgedUserID(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":    {"test-client"},
+		"redirect_uri": {"http://localhost:3002/callback"},
+		"scope":        {"openid"},
+		"state":        {"abc"},
+		"consent":      {"allow"},
+		"user_id":      {uuid.New().String()}, // attacker tries to inject user_id via form
+	}
+
+	req := newPostRequestWithCSRF(t, "/oauth/consent", form)
+	w := httptest.NewRecorder()
+
+	h.Consent(w, req)
+
+	// Without the consent cookie, the handler must reject — even with user_id in form
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(w.Body.String(), "Invalid or expired consent session") {
+		t.Error("expected consent session error; form-based user_id must be ignored")
+	}
+}
+
+func TestConsentAcceptsValidCookie(t *testing.T) {
+	orgID := uuid.New()
+	userID := uuid.New()
+	hash, _ := auth.HashPassword("Str0ng!Pass")
+	user := &model.User{
+		ID:           userID,
+		OrgID:        orgID,
+		Username:     "testuser",
+		Email:        "test@example.com",
+		PasswordHash: []byte(hash),
+		Enabled:      true,
+	}
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+		emailUser:   user,
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":      {"test-client"},
+		"redirect_uri":   {"http://localhost:3002/callback"},
+		"scope":          {"openid"},
+		"state":          {"mystate"},
+		"code_challenge": {"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"},
+		"consent":        {"allow"},
+	}
+
+	req := newPostRequestWithCSRF(t, "/oauth/consent", form)
+	// Add the consent user cookie (simulating server-side flow)
+	req.AddCookie(&http.Cookie{Name: "rampart_consent_uid", Value: userID.String()})
+	w := httptest.NewRecorder()
+
+	h.Consent(w, req)
+
+	// Should redirect to callback with an authorization code
+	if w.Code != http.StatusFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusFound)
+	}
+	location := w.Header().Get("Location")
+	if !strings.HasPrefix(location, "http://localhost:3002/callback?code=") {
+		t.Errorf("Location = %q, want redirect to callback with code", location)
+	}
+	if !strings.Contains(location, "state=mystate") {
+		t.Error("expected state in redirect URL")
+	}
+}
+
 func TestAuthorizeGetMissingState(t *testing.T) {
 	orgID := uuid.New()
 	store := &mockAuthorizeStore{

@@ -250,6 +250,49 @@ func SetOAuthCSRFCookie(w http.ResponseWriter, csrfToken string) {
 	})
 }
 
+const oauthConsentUserCookie = "rampart_consent_uid"
+
+// SetConsentUserCookie stores the authenticated user's ID in an HttpOnly cookie
+// during the consent flow. This prevents user_id forgery via hidden form fields.
+func SetConsentUserCookie(w http.ResponseWriter, userID uuid.UUID) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     oauthConsentUserCookie,
+		Value:    userID.String(),
+		Path:     "/oauth/",
+		MaxAge:   600, // 10 minutes
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   secureCookies,
+	})
+}
+
+// GetConsentUserID reads the authenticated user's ID from the consent cookie.
+// Returns uuid.Nil if the cookie is missing or invalid.
+func GetConsentUserID(r *http.Request) uuid.UUID {
+	cookie, err := r.Cookie(oauthConsentUserCookie)
+	if err != nil || cookie.Value == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(cookie.Value)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
+}
+
+// ClearConsentUserCookie removes the consent user cookie.
+func ClearConsentUserCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     oauthConsentUserCookie,
+		Value:    "",
+		Path:     "/oauth/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   secureCookies,
+	})
+}
+
 // ValidateOAuthCSRF checks the CSRF token from the form against the cookie.
 // Returns true if the tokens match.
 func ValidateOAuthCSRF(r *http.Request, formToken string) bool {
