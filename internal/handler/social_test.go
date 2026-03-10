@@ -34,6 +34,9 @@ type mockSocialStore struct {
 	storeErr         error
 	orgSettings      *model.OrgSettings
 	orgSettErr       error
+
+	// capturedUser records the user passed to CreateUser for assertions.
+	capturedUser *model.User
 }
 
 func (m *mockSocialStore) GetOAuthClient(_ context.Context, _ string) (*model.OAuthClient, error) {
@@ -49,6 +52,7 @@ func (m *mockSocialStore) GetUserByEmail(_ context.Context, _ string, _ uuid.UUI
 }
 
 func (m *mockSocialStore) CreateUser(_ context.Context, u *model.User) (*model.User, error) {
+	m.capturedUser = u
 	if m.createdUser != nil {
 		return m.createdUser, m.createErr
 	}
@@ -654,6 +658,58 @@ func TestCookieVerifyMalformedPayload(t *testing.T) {
 	_, err = h.verifyCookiePayload("validbase64.invalidhex!!!")
 	if err == nil {
 		t.Error("expected error for invalid hex signature")
+	}
+}
+
+func TestSocialCallbackNewUserHasNonEmptyPasswordHash(t *testing.T) {
+	orgID := uuid.New()
+	st := &mockSocialStore{
+		oauthClient:  newSocialTestOAuthClient(orgID),
+		defaultOrgID: orgID,
+		emailUser:    nil, // no existing user — triggers user creation
+	}
+	hmacKey := []byte("test-hmac-key")
+	reg := newTestSocialRegistry(&mockProvider{name: "google", authURL: "https://accounts.google.com/auth"})
+	h := NewSocialHandler(st, reg, noopLogger(), nil, hmacKey, "http://localhost:8080")
+
+	payload := socialCookiePayload{
+		ClientID:      "test-client",
+		RedirectURI:   "http://localhost:3002/callback",
+		Scope:         "openid",
+		State:         "original-state",
+		CodeChallenge: "xyz",
+		ProviderState: "provider-state-pw",
+	}
+	cookieValue, err := h.signCookiePayload(&payload)
+	if err != nil {
+		t.Fatalf("failed to sign cookie: %v", err)
+	}
+
+	r := chi.NewRouter()
+	r.Get("/oauth/social/{provider}/callback", h.Callback)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/social/google/callback?code=authcode&state=provider-state-pw", http.NoBody)
+	req.AddCookie(&http.Cookie{
+		Name:  socialCookieName,
+		Value: cookieValue,
+	})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d; body = %s", w.Code, http.StatusFound, w.Body.String())
+	}
+
+	// The user created via social login must have a non-empty password hash
+	// so that password-based login is impossible for social-only accounts.
+	if st.capturedUser == nil {
+		t.Fatal("expected CreateUser to be called for new social user")
+	}
+	if len(st.capturedUser.PasswordHash) == 0 {
+		t.Error("social-created user must have a non-empty PasswordHash to prevent password bypass")
+	}
+	if !strings.HasPrefix(string(st.capturedUser.PasswordHash), "$argon2id$") {
+		t.Errorf("PasswordHash = %q, want argon2id-formatted hash", string(st.capturedUser.PasswordHash))
 	}
 }
 
