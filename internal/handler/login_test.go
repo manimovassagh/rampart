@@ -249,6 +249,10 @@ func (m *mockSessionStore) FindByRefreshToken(_ context.Context, _ string) (*ses
 	return m.found, m.findErr
 }
 
+func (m *mockSessionStore) RotateRefreshToken(_ context.Context, _ uuid.UUID, _ string) error {
+	return nil
+}
+
 func (m *mockSessionStore) Delete(_ context.Context, _ uuid.UUID) error {
 	return m.deleteErr
 }
@@ -509,6 +513,12 @@ func TestRefreshSuccess(t *testing.T) {
 	}
 	if resp.AccessToken == "" {
 		t.Error("expected non-empty access token")
+	}
+	if resp.RefreshToken == "" {
+		t.Error("expected non-empty rotated refresh token")
+	}
+	if resp.RefreshToken == "some-refresh-token" {
+		t.Error("rotated refresh token should differ from the original")
 	}
 }
 

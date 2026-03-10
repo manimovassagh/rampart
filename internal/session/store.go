@@ -35,6 +35,7 @@ type WithUser struct {
 type Store interface {
 	Create(ctx context.Context, userID uuid.UUID, refreshToken string, expiresAt time.Time) (*Session, error)
 	FindByRefreshToken(ctx context.Context, refreshToken string) (*Session, error)
+	RotateRefreshToken(ctx context.Context, sessionID uuid.UUID, newRefreshToken string) error
 	Delete(ctx context.Context, sessionID uuid.UUID) error
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
 }
@@ -94,6 +95,19 @@ func (s *PGStore) FindByRefreshToken(ctx context.Context, refreshToken string) (
 		return nil, fmt.Errorf("finding session by refresh token: %w", err)
 	}
 	return &sess, nil
+}
+
+// RotateRefreshToken atomically replaces the refresh token hash for a session.
+func (s *PGStore) RotateRefreshToken(ctx context.Context, sessionID uuid.UUID, newRefreshToken string) error {
+	hash := HashToken(newRefreshToken)
+	_, err := s.pool.Exec(ctx,
+		"UPDATE sessions SET refresh_token_hash = $1 WHERE id = $2",
+		hash, sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("rotating refresh token: %w", err)
+	}
+	return nil
 }
 
 // Delete removes a session by ID.

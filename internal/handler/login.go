@@ -64,9 +64,10 @@ type RefreshRequest struct {
 
 // RefreshResponse is returned on successful token refresh.
 type RefreshResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
 }
 
 // LogoutRequest is the expected JSON body for POST /logout.
@@ -407,10 +408,24 @@ func (h *LoginHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Rotate refresh token: generate a new one and invalidate the old.
+	newRefreshToken, err := token.GenerateRefreshToken()
+	if err != nil {
+		h.logger.Error("failed to generate new refresh token", "error", err)
+		apierror.InternalError(w)
+		return
+	}
+	if err := h.sessions.RotateRefreshToken(ctx, sess.ID, newRefreshToken); err != nil {
+		h.logger.Error("failed to rotate refresh token", "error", err)
+		apierror.InternalError(w)
+		return
+	}
+
 	resp := RefreshResponse{
-		AccessToken: accessToken,
-		TokenType:   tokenTypeBearer,
-		ExpiresIn:   int(h.accessTTL.Seconds()),
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
+		TokenType:    tokenTypeBearer,
+		ExpiresIn:    int(h.accessTTL.Seconds()),
 	}
 
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
