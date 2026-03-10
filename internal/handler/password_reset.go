@@ -64,6 +64,7 @@ type ResetPasswordRequest struct {
 // ForgotPassword handles POST /forgot-password.
 // Always returns 200 to prevent email enumeration.
 func (h *PasswordResetHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ForgotPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apierror.Write(w, http.StatusBadRequest, "invalid_request", "Invalid request body.")
@@ -135,6 +136,7 @@ func (h *PasswordResetHandler) processResetRequest(email string) {
 
 // ResetPassword handles POST /reset-password.
 func (h *PasswordResetHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apierror.Write(w, http.StatusBadRequest, "invalid_request", "Invalid request body.")
