@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: Introduction
-description: Rampart is a lightweight, modern identity and access management server — an open-source alternative to Keycloak built with Go, PostgreSQL, and Redis.
+description: Rampart is a lightweight, modern identity and access management server built with Go and PostgreSQL.
 ---
 
 # Introduction
@@ -28,7 +28,7 @@ Built in Go with PostgreSQL and Redis, Rampart starts in under 1 second and runs
 
 - **Application developers** who need authentication and authorization without building it from scratch
 - **Platform teams** who want a self-hosted identity provider that is easy to deploy and operate
-- **Organizations** migrating away from Keycloak or other heavyweight IAM solutions
+- **Organizations** looking for a lightweight, self-hosted IAM solution
 - **Startups** that need production-grade auth from day one without the operational overhead
 
 ## How It Compares

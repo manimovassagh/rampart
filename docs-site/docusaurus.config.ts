@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Rampart',
-  tagline: 'Modern Identity & Access Management — the lightweight Keycloak alternative',
+  tagline: 'Modern Identity & Access Management — lightweight, fast, and easy to deploy',
   favicon: 'img/favicon.ico',
   future: { v4: true },
 

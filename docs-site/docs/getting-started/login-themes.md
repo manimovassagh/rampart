@@ -130,15 +130,6 @@ curl -X PUT https://rampart.example.com/api/v1/admin/organizations/{org_id}/sett
   }'
 ```
 
-## Comparison with Keycloak
+## Theming Approach
 
-In Keycloak, theming the login page requires:
-
-1. Writing FreeMarker `.ftl` templates
-2. Packaging them into a JAR or WAR overlay
-3. Deploying the overlay to the server
-4. Restarting the server to pick up changes
-
-This process is widely cited as one of Keycloak's biggest pain points.
-
-**In Rampart, it is one API call.** Pick a built-in theme, set your logo and colors, and you are done. For deeper customization, override CSS variables — no server restart, no template language, no build step.
+Rampart makes theming simple — pick a built-in theme, set your logo and colors, and you are done. For deeper customization, override CSS variables. No server restart, no template language, no build step required.

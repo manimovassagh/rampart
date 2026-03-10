@@ -161,8 +161,6 @@ The seed file is applied once when the organization does not yet exist. Subseque
 | Sessions | No | Sessions are instance-specific |
 | Audit logs | No | Logs are append-only and instance-specific |
 
-## Comparison with Keycloak
+## Export Design
 
-Keycloak's realm export is notoriously fragile and does not include all configuration. It requires a running server, often misses client secrets and federated identity config, and the import can fail silently on version mismatches.
-
-**Rampart exports everything in one clean JSON file.** The format is stable, human-readable, and version-controlled. Import is deterministic — it either succeeds fully or returns clear errors.
+Rampart exports everything in one clean JSON file. The format is stable, human-readable, and version-controlled. Import is deterministic — it either succeeds fully or returns clear errors.
