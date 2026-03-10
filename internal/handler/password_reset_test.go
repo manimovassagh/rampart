@@ -232,6 +232,37 @@ func TestResetPasswordRejectsWeakPasswordPerOrgPolicy(t *testing.T) {
 	}
 }
 
+func TestBuildResetEmail_HTMLEscapesName(t *testing.T) {
+	body := buildResetEmail(`<script>alert("xss")</script>`, "https://example.com/reset?token=abc")
+
+	if strings.Contains(body, "<script>") {
+		t.Fatal("expected <script> tag to be HTML-escaped, but found raw <script> in email body")
+	}
+	if !strings.Contains(body, "&lt;script&gt;") {
+		t.Fatal("expected HTML-escaped name (&lt;script&gt;) in email body")
+	}
+	if !strings.Contains(body, "Hi &lt;script&gt;") {
+		t.Fatal("expected escaped name after 'Hi ' greeting")
+	}
+}
+
+func TestBuildResetEmail_NormalNameUnchanged(t *testing.T) {
+	body := buildResetEmail("Alice", "https://example.com/reset?token=abc")
+	if !strings.Contains(body, "Hi Alice,") {
+		t.Fatal("expected normal name to appear unchanged in email body")
+	}
+}
+
+func TestBuildResetEmail_AmpersandEscaped(t *testing.T) {
+	body := buildResetEmail("Tom & Jerry", "https://example.com/reset?token=abc")
+	if strings.Contains(body, "Tom & Jerry") {
+		t.Fatal("expected ampersand to be escaped")
+	}
+	if !strings.Contains(body, "Tom &amp; Jerry") {
+		t.Fatal("expected &amp; in email body")
+	}
+}
+
 var errInvalidToken = &resetError{"invalid token"}
 
 type resetError struct{ msg string }

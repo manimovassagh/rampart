@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"html"
 	"log/slog"
 	"net/http"
 	"time"
@@ -200,6 +201,7 @@ func buildVerificationEmail(name, verifyURL string) string {
 	if name == "" {
 		name = "there"
 	}
+	name = html.EscapeString(name)
 	return `<!DOCTYPE html>
 <html>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

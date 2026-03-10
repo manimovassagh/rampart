@@ -178,6 +178,37 @@ func TestSendVerification_AlwaysReturns200(t *testing.T) {
 	}
 }
 
+func TestBuildVerificationEmail_HTMLEscapesName(t *testing.T) {
+	body := buildVerificationEmail(`<script>alert("xss")</script>`, "https://example.com/verify?token=abc")
+
+	if strings.Contains(body, "<script>") {
+		t.Fatal("expected <script> tag to be HTML-escaped, but found raw <script> in email body")
+	}
+	if !strings.Contains(body, "&lt;script&gt;") {
+		t.Fatal("expected HTML-escaped name (&lt;script&gt;) in email body")
+	}
+	if !strings.Contains(body, "Hi &lt;script&gt;") {
+		t.Fatal("expected escaped name after 'Hi ' greeting")
+	}
+}
+
+func TestBuildVerificationEmail_NormalNameUnchanged(t *testing.T) {
+	body := buildVerificationEmail("Alice", "https://example.com/verify?token=abc")
+	if !strings.Contains(body, "Hi Alice,") {
+		t.Fatal("expected normal name to appear unchanged in email body")
+	}
+}
+
+func TestBuildVerificationEmail_AmpersandEscaped(t *testing.T) {
+	body := buildVerificationEmail("Tom & Jerry", "https://example.com/verify?token=abc")
+	if strings.Contains(body, "Tom & Jerry") {
+		t.Fatal("expected ampersand to be escaped")
+	}
+	if !strings.Contains(body, "Tom &amp; Jerry") {
+		t.Fatal("expected &amp; in email body")
+	}
+}
+
 func TestSendVerification_MissingEmail(t *testing.T) {
 	h := NewEmailVerificationHandler(&mockEmailVerificationStore{}, &noopEmailSender{}, noopLogger(), "http://localhost")
 
