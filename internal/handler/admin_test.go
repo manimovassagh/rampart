@@ -43,6 +43,7 @@ type mockAdminUserStore struct {
 	countOrgsErr   error
 	orgSettings    *model.OrgSettings
 	orgSettingsErr error
+	lastOrgID      uuid.UUID
 }
 
 func (m *mockAdminUserStore) GetUserByID(_ context.Context, _ uuid.UUID) (*model.User, error) {
@@ -78,7 +79,8 @@ func (m *mockAdminUserStore) DeleteUser(_ context.Context, _ uuid.UUID) error {
 func (m *mockAdminUserStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
 	return m.updatePwErr
 }
-func (m *mockAdminUserStore) CountUsers(_ context.Context, _ uuid.UUID) (int, error) {
+func (m *mockAdminUserStore) CountUsers(_ context.Context, orgID uuid.UUID) (int, error) {
+	m.lastOrgID = orgID
 	return m.countUsers, m.countUsersErr
 }
 func (m *mockAdminUserStore) CountRecentUsers(_ context.Context, _ uuid.UUID, _ int) (int, error) {
@@ -913,14 +915,15 @@ func TestAdminRevokeSessionsError(t *testing.T) {
 	}
 }
 
-func TestAdminResolveOrgIDWithHeader(t *testing.T) {
+func TestAdminResolveOrgIDIgnoresHeaderWithoutSuperAdmin(t *testing.T) {
 	orgID := uuid.New()
 	headerOrgID := uuid.New()
 	store := &mockAdminUserStore{countUsers: 5, countRecent: 1, countOrgs: 1}
 	sessions := &mockAdminSessionStore{countActive: 2}
 	h := newTestAdminHandler(store, sessions)
 
-	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
+	// User without super_admin role — header should be ignored
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID, Roles: []string{"admin"}}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
 	req.Header.Set("X-Org-Context", headerOrgID.String())
 	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
@@ -931,6 +934,38 @@ func TestAdminResolveOrgIDWithHeader(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	// Verify the store was queried with the user's own org, not the header value
+	if store.lastOrgID != orgID {
+		t.Errorf("org = %s, want %s (user's own org, not header)", store.lastOrgID, orgID)
+	}
+}
+
+func TestAdminResolveOrgIDAllowsSuperAdmin(t *testing.T) {
+	orgID := uuid.New()
+	headerOrgID := uuid.New()
+	store := &mockAdminUserStore{countUsers: 5, countRecent: 1, countOrgs: 1}
+	sessions := &mockAdminSessionStore{countActive: 2}
+	h := newTestAdminHandler(store, sessions)
+
+	// User with super_admin role — header should be honored
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID, Roles: []string{"super_admin"}}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/stats", http.NoBody)
+	req.Header.Set("X-Org-Context", headerOrgID.String())
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.Stats(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	// Verify the store was queried with the header org
+	if store.lastOrgID != headerOrgID {
+		t.Errorf("org = %s, want %s (header org for super_admin)", store.lastOrgID, headerOrgID)
 	}
 }
 

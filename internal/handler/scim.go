@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/store"
 )
@@ -549,11 +550,15 @@ func (h *SCIMHandler) scimError(w http.ResponseWriter, status int, detail string
 	})
 }
 
-// scimOrgID extracts the organization ID from the X-Org-Context header or uses default.
+// scimOrgID extracts the organization ID for this SCIM request.
+// Only super_admin users may switch orgs via the X-Org-Context header.
 func scimOrgID(r *http.Request) uuid.UUID {
 	if orgStr := r.Header.Get("X-Org-Context"); orgStr != "" {
 		if id, err := uuid.Parse(orgStr); err == nil {
-			return id
+			authUser := middleware.GetAuthenticatedUser(r.Context())
+			if authUser != nil && authUser.HasRole("super_admin") {
+				return id
+			}
 		}
 	}
 	// Fall back to org ID from authenticated context

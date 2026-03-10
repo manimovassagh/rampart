@@ -461,11 +461,11 @@ func (h *AdminHandler) RevokeSessions(w http.ResponseWriter, r *http.Request) {
 // --- Helpers ---
 
 // resolveOrgID returns the org context for this request.
-// If the X-Org-Context header is set to a valid UUID, that is used (org switching).
-// Otherwise falls back to the authenticated user's own org from the JWT.
+// Only super_admin users may switch orgs via the X-Org-Context header.
+// All other users are restricted to their own organization.
 func resolveOrgID(r *http.Request, authUser *middleware.AuthenticatedUser) uuid.UUID {
 	if header := r.Header.Get("X-Org-Context"); header != "" {
-		if parsed, err := uuid.Parse(header); err == nil {
+		if parsed, err := uuid.Parse(header); err == nil && authUser.HasRole("super_admin") {
 			return parsed
 		}
 	}
