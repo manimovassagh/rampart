@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -710,6 +711,160 @@ func TestSocialCallbackNewUserHasNonEmptyPasswordHash(t *testing.T) {
 	}
 	if !strings.HasPrefix(string(st.capturedUser.PasswordHash), "$argon2id$") {
 		t.Errorf("PasswordHash = %q, want argon2id-formatted hash", string(st.capturedUser.PasswordHash))
+	}
+}
+
+// mockExchangeProvider returns configurable UserInfo from Exchange.
+type mockExchangeProvider struct {
+	name     string
+	userInfo *social.UserInfo
+	err      error
+}
+
+func (p *mockExchangeProvider) Name() string { return p.name }
+func (p *mockExchangeProvider) AuthURL(state, redirectURL string) string {
+	return "https://provider.example.com/auth?state=" + state
+}
+func (p *mockExchangeProvider) Exchange(_ context.Context, _, _ string) (*social.UserInfo, error) {
+	return p.userInfo, p.err
+}
+
+func TestResolveUser_UnverifiedEmail_NoAutoLink(t *testing.T) {
+	orgID := uuid.New()
+	existingUser := &model.User{
+		ID:       uuid.New(),
+		OrgID:    orgID,
+		Username: "victim",
+		Email:    "victim@example.com",
+		Enabled:  true,
+	}
+
+	store := &mockSocialStore{
+		defaultOrgID: orgID,
+		emailUser:    existingUser, // existing user with this email
+	}
+
+	reg := social.NewRegistry()
+	h := NewSocialHandler(store, reg, noopLogger(), nil, []byte("test-hmac-key"), "http://localhost:8080")
+
+	r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+
+	// Attempt to resolve with an UNVERIFIED email that matches an existing user.
+	userInfo := &social.UserInfo{
+		ProviderUserID: "attacker-123",
+		Email:          "victim@example.com",
+		EmailVerified:  false,
+		Name:           "Attacker",
+	}
+
+	_, _, err := h.resolveUser(r.Context(), r, "evil-provider", userInfo)
+	if !errors.Is(err, errSocialEmailNotVerified) {
+		t.Fatalf("expected errSocialEmailNotVerified, got: %v", err)
+	}
+}
+
+func TestResolveUser_VerifiedEmail_AutoLinks(t *testing.T) {
+	orgID := uuid.New()
+	existingUser := &model.User{
+		ID:       uuid.New(),
+		OrgID:    orgID,
+		Username: "alice",
+		Email:    "alice@example.com",
+		Enabled:  true,
+	}
+
+	store := &mockSocialStore{
+		defaultOrgID: orgID,
+		emailUser:    existingUser, // existing user with this email
+	}
+
+	reg := social.NewRegistry()
+	h := NewSocialHandler(store, reg, noopLogger(), nil, []byte("test-hmac-key"), "http://localhost:8080")
+
+	r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+
+	userInfo := &social.UserInfo{
+		ProviderUserID: "alice-google-123",
+		Email:          "alice@example.com",
+		EmailVerified:  true,
+		Name:           "Alice",
+	}
+
+	user, returnedOrgID, err := h.resolveUser(r.Context(), r, "google", userInfo)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if user.ID != existingUser.ID {
+		t.Fatalf("expected user ID %s, got %s", existingUser.ID, user.ID)
+	}
+	if returnedOrgID != orgID {
+		t.Fatalf("expected org ID %s, got %s", orgID, returnedOrgID)
+	}
+}
+
+func TestCallback_UnverifiedEmail_Returns403(t *testing.T) {
+	orgID := uuid.New()
+	existingUser := &model.User{
+		ID:       uuid.New(),
+		OrgID:    orgID,
+		Username: "victim",
+		Email:    "victim@example.com",
+		Enabled:  true,
+	}
+
+	store := &mockSocialStore{
+		oauthClient:  newSocialTestOAuthClient(orgID),
+		defaultOrgID: orgID,
+		emailUser:    existingUser,
+	}
+
+	provider := &mockExchangeProvider{
+		name: "evil-provider",
+		userInfo: &social.UserInfo{
+			ProviderUserID: "attacker-456",
+			Email:          "victim@example.com",
+			EmailVerified:  false,
+			Name:           "Attacker",
+		},
+	}
+
+	reg := social.NewRegistry()
+	reg.Register(provider)
+
+	hmacKey := []byte("test-hmac-key")
+	h := NewSocialHandler(store, reg, noopLogger(), nil, hmacKey, "http://localhost:8080")
+
+	// Build a valid signed cookie
+	payload := socialCookiePayload{
+		ClientID:      "test-client",
+		RedirectURI:   "http://localhost:3002/callback",
+		Scope:         "openid",
+		State:         "original-state",
+		CodeChallenge: "challenge",
+		ProviderState: "provider-state-abc",
+	}
+	cookieValue, err := h.signCookiePayload(&payload)
+	if err != nil {
+		t.Fatalf("failed to sign cookie: %v", err)
+	}
+
+	r := chi.NewRouter()
+	r.Get("/oauth/social/{provider}/callback", h.Callback)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/social/evil-provider/callback?code=authcode&state=provider-state-abc", http.NoBody)
+	req.AddCookie(&http.Cookie{
+		Name:  socialCookieName,
+		Value: cookieValue,
+	})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403 Forbidden, got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	if !strings.Contains(w.Body.String(), "not been verified") {
+		t.Fatalf("expected body to mention email not verified, got: %s", w.Body.String())
 	}
 }
 
