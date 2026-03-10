@@ -520,8 +520,8 @@ func TestCSRFProtectSetsCSRFCookieOnGET(t *testing.T) {
 	if found == nil {
 		t.Fatal("expected CSRF cookie to be set on GET")
 	}
-	if found.HttpOnly {
-		t.Error("CSRF cookie should not be HttpOnly")
+	if !found.HttpOnly {
+		t.Error("CSRF cookie should be HttpOnly")
 	}
 }
 

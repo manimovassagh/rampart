@@ -326,7 +326,7 @@ func ensureCSRFCookie(w http.ResponseWriter, r *http.Request) {
 		Value:    tok,
 		Path:     AdminCookiePath,
 		MaxAge:   3600,
-		HttpOnly: false, // Must be readable by forms via template
+		HttpOnly: true, // Token is injected server-side via Go templates
 		SameSite: http.SameSiteLaxMode,
 		Secure:   secureCookies,
 	})
