@@ -113,7 +113,7 @@ func TestRateLimiterMiddlewareReturns429(t *testing.T) {
 	}
 }
 
-func TestRateLimiterMiddlewareXForwardedFor(t *testing.T) {
+func TestRateLimiterIgnoresXForwardedFor(t *testing.T) {
 	rl := NewRateLimiter(1, time.Minute)
 	defer rl.Close()
 
@@ -121,13 +121,14 @@ func TestRateLimiterMiddlewareXForwardedFor(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	// Two requests from different X-Forwarded-For IPs
+	// Two requests with different X-Forwarded-For but same RemoteAddr.
+	// The rate limiter should use RemoteAddr only (set by chi's RealIP middleware).
 	req1 := httptest.NewRequest(http.MethodPost, "/login", http.NoBody)
-	req1.Header.Set("X-Forwarded-For", "203.0.113.1, 10.0.0.1")
+	req1.Header.Set("X-Forwarded-For", "203.0.113.1")
 	req1.RemoteAddr = "10.0.0.1:9999"
 
 	req2 := httptest.NewRequest(http.MethodPost, "/login", http.NoBody)
-	req2.Header.Set("X-Forwarded-For", "203.0.113.2, 10.0.0.1")
+	req2.Header.Set("X-Forwarded-For", "203.0.113.2")
 	req2.RemoteAddr = "10.0.0.1:9999"
 
 	rec1 := httptest.NewRecorder()
@@ -138,8 +139,8 @@ func TestRateLimiterMiddlewareXForwardedFor(t *testing.T) {
 
 	rec2 := httptest.NewRecorder()
 	handler.ServeHTTP(rec2, req2)
-	if rec2.Code != http.StatusOK {
-		t.Errorf("req2 from different IP should be allowed, got %d", rec2.Code)
+	if rec2.Code != http.StatusTooManyRequests {
+		t.Errorf("req2 should be rate-limited (same RemoteAddr), got %d", rec2.Code)
 	}
 }
 
@@ -165,7 +166,7 @@ func TestRateLimiterStaleCleanup(t *testing.T) {
 	}
 }
 
-func TestClientIPExtraction(t *testing.T) {
+func TestClientIPUsesOnlyRemoteAddr(t *testing.T) {
 	tests := []struct {
 		name       string
 		remoteAddr string
@@ -174,34 +175,21 @@ func TestClientIPExtraction(t *testing.T) {
 		wantIP     string
 	}{
 		{
-			name:       "RemoteAddrOnly",
+			name:       "RemoteAddrWithPort",
 			remoteAddr: "192.168.1.1:12345",
 			wantIP:     "192.168.1.1",
 		},
 		{
-			name:       "XForwardedForSingle",
+			name:       "IgnoresXForwardedFor",
 			remoteAddr: "10.0.0.1:9999",
 			xff:        "203.0.113.50",
-			wantIP:     "203.0.113.50",
+			wantIP:     "10.0.0.1",
 		},
 		{
-			name:       "XForwardedForMultiple",
-			remoteAddr: "10.0.0.1:9999",
-			xff:        "203.0.113.50, 70.41.3.18, 150.172.238.178",
-			wantIP:     "203.0.113.50",
-		},
-		{
-			name:       "XRealIP",
+			name:       "IgnoresXRealIP",
 			remoteAddr: "10.0.0.1:9999",
 			xri:        "198.51.100.1",
-			wantIP:     "198.51.100.1",
-		},
-		{
-			name:       "XForwardedForTakesPrecedence",
-			remoteAddr: "10.0.0.1:9999",
-			xff:        "203.0.113.50",
-			xri:        "198.51.100.1",
-			wantIP:     "203.0.113.50",
+			wantIP:     "10.0.0.1",
 		},
 		{
 			name:       "RemoteAddrNoPort",
