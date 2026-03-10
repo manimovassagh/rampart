@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/audit"
+	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/database"
 	"github.com/manimovassagh/rampart/internal/metrics"
 	"github.com/manimovassagh/rampart/internal/model"
@@ -331,11 +332,25 @@ func (h *SocialHandler) resolveUser(ctx context.Context, r *http.Request, provid
 	}
 
 	// Step 4: Create a new user
+	// Generate a random, unguessable password hash so the social-only user can
+	// never authenticate via the password login flow.  Without this, the
+	// password_hash column would be empty, which could allow a bypass if
+	// VerifyPassword mishandles empty hashes.
+	randomToken := make([]byte, 64)
+	if _, err := rand.Read(randomToken); err != nil {
+		return nil, uuid.Nil, fmt.Errorf("generating random password token: %w", err)
+	}
+	randomHash, err := auth.HashPassword(base64.RawURLEncoding.EncodeToString(randomToken))
+	if err != nil {
+		return nil, uuid.Nil, fmt.Errorf("hashing random password: %w", err)
+	}
+
 	username := deriveUsername(userInfo.Email)
 	newUser := &model.User{
 		OrgID:         orgID,
 		Username:      username,
 		Email:         strings.ToLower(userInfo.Email),
+		PasswordHash:  []byte(randomHash),
 		EmailVerified: userInfo.EmailVerified,
 		GivenName:     userInfo.GivenName,
 		FamilyName:    userInfo.FamilyName,
