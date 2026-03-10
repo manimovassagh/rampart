@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -27,6 +28,11 @@ import (
 	"github.com/manimovassagh/rampart/internal/social"
 	"github.com/manimovassagh/rampart/internal/store"
 )
+
+// errSocialEmailNotVerified is returned when a social provider reports an
+// unverified email that matches an existing user account. Auto-linking is
+// refused to prevent account takeover.
+var errSocialEmailNotVerified = errors.New("social provider email is not verified")
 
 const (
 	socialCookieName   = "_rampart_social"
@@ -240,6 +246,13 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	// Resolve user via account linking logic
 	user, orgID, err := h.resolveUser(ctx, r, providerName, userInfo)
 	if err != nil {
+		if errors.Is(err, errSocialEmailNotVerified) {
+			h.logger.Warn("social login blocked: email not verified at provider", "provider", providerName, "email", userInfo.Email)
+			h.audit.Log(ctx, r, uuid.Nil, model.EventSocialLoginFailed, nil, "", "social", "", providerName, map[string]any{"reason": "email_not_verified", "provider": providerName})
+			metrics.AuthTotal.WithLabelValues("failure").Inc()
+			http.Error(w, "Your email address has not been verified by the social provider. Please verify your email and try again.", http.StatusForbidden)
+			return
+		}
 		h.logger.Error("failed to resolve social user", "error", err)
 		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
 		return
@@ -312,6 +325,14 @@ func (h *SocialHandler) resolveUser(ctx context.Context, r *http.Request, provid
 	}
 
 	if user != nil {
+		// Prevent account takeover: only auto-link when the social provider
+		// has verified the email address. Without this check an attacker
+		// could register with a victim's email at a provider that does not
+		// verify emails and gain access to the victim's account.
+		if !userInfo.EmailVerified {
+			return nil, uuid.Nil, errSocialEmailNotVerified
+		}
+
 		// Link social account to existing user
 		socialAccount := &model.SocialAccount{
 			UserID:         user.ID,
