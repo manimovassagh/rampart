@@ -99,7 +99,7 @@ func (m *mockDB) UpdateUser(_ context.Context, _, _ uuid.UUID, _ *model.UpdateUs
 }
 func (m *mockDB) DeleteUser(_ context.Context, _, _ uuid.UUID) error               { return nil }
 func (m *mockDB) UpdatePassword(_ context.Context, _, _ uuid.UUID, _ []byte) error { return nil }
-func (m *mockDB) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error        { return nil }
+func (m *mockDB) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error           { return nil }
 func (m *mockDB) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
 	return nil
 }

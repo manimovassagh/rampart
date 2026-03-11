@@ -190,8 +190,8 @@ func TestResetPasswordRejectsWeakPasswordPerOrgPolicy(t *testing.T) {
 	ms := &mockResetStore{
 		userID: uid,
 		orgSettings: &model.OrgSettings{
-			OrgID:                   orgID,
-			PasswordMinLength:       12,
+			OrgID:                    orgID,
+			PasswordMinLength:        12,
 			PasswordRequireUppercase: true,
 			PasswordRequireLowercase: true,
 			PasswordRequireNumbers:   true,
