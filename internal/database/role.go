@@ -92,18 +92,18 @@ func (db *DB) CreateRole(ctx context.Context, role *model.Role) (*model.Role, er
 	return &r, nil
 }
 
-// UpdateRole updates mutable fields on a role.
-func (db *DB) UpdateRole(ctx context.Context, id uuid.UUID, req *model.UpdateRoleRequest) (*model.Role, error) {
+// UpdateRole updates mutable fields on a role, scoped to the given organization.
+func (db *DB) UpdateRole(ctx context.Context, id, orgID uuid.UUID, req *model.UpdateRoleRequest) (*model.Role, error) {
 	query := `
 		UPDATE roles
 		SET name = COALESCE(NULLIF($2, ''), name),
 		    description = $3,
 		    updated_at = now()
-		WHERE id = $1
+		WHERE id = $1 AND org_id = $4
 		RETURNING id, org_id, name, description, builtin, created_at, updated_at`
 
 	var r model.Role
-	err := db.Pool.QueryRow(ctx, query, id, req.Name, req.Description).Scan(
+	err := db.Pool.QueryRow(ctx, query, id, req.Name, req.Description, orgID).Scan(
 		&r.ID, &r.OrgID, &r.Name, &r.Description, &r.Builtin, &r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -114,9 +114,9 @@ func (db *DB) UpdateRole(ctx context.Context, id uuid.UUID, req *model.UpdateRol
 	return &r, nil
 }
 
-// DeleteRole removes a role by ID. Rejects deletion of builtin roles.
-func (db *DB) DeleteRole(ctx context.Context, id uuid.UUID) error {
-	tag, err := db.Pool.Exec(ctx, "DELETE FROM roles WHERE id = $1 AND builtin = false", id)
+// DeleteRole removes a role by ID, scoped to the given organization. Rejects deletion of builtin roles.
+func (db *DB) DeleteRole(ctx context.Context, id, orgID uuid.UUID) error {
+	tag, err := db.Pool.Exec(ctx, "DELETE FROM roles WHERE id = $1 AND org_id = $2 AND builtin = false", id, orgID)
 	if err != nil {
 		return fmt.Errorf("deleting role: %w", err)
 	}

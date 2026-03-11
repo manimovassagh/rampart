@@ -152,11 +152,11 @@ type AdminConsoleStore interface {
 type AdminConsoleSessionStore interface {
 	ListByUserID(ctx context.Context, userID uuid.UUID) ([]*session.Session, error)
 	CountByUserID(ctx context.Context, userID uuid.UUID) (int, error)
-	CountActive(ctx context.Context) (int, error)
+	CountActive(ctx context.Context, orgID uuid.UUID) (int, error)
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
 	Delete(ctx context.Context, sessionID uuid.UUID) error
-	ListAll(ctx context.Context, search string, limit, offset int) ([]*session.WithUser, int, error)
-	DeleteAll(ctx context.Context) error
+	ListAll(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*session.WithUser, int, error)
+	DeleteAll(ctx context.Context, orgID uuid.UUID) error
 }
 
 // SocialProviderInfo holds display data for a social provider on the admin page.
@@ -447,7 +447,7 @@ func (h *AdminConsoleHandler) fetchDashboardStats(ctx context.Context, orgID uui
 
 	totalUsers, err := h.store.CountUsers(ctx, orgID)
 	logErr("CountUsers", err)
-	activeSessions, err := h.sessions.CountActive(ctx)
+	activeSessions, err := h.sessions.CountActive(ctx, orgID)
 	logErr("CountActive", err)
 	recentUsers, err := h.store.CountRecentUsers(ctx, orgID, 7)
 	logErr("CountRecentUsers", err)

@@ -109,11 +109,11 @@ func (m *mockSocialStore) FindUserByEmail(_ context.Context, _ string) (*model.U
 
 // ── stub methods to satisfy store.UserWriter ──
 
-func (m *mockSocialStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+func (m *mockSocialStore) UpdateUser(_ context.Context, _, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockSocialStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
-func (m *mockSocialStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
+func (m *mockSocialStore) DeleteUser(_ context.Context, _, _ uuid.UUID) error { return nil }
+func (m *mockSocialStore) UpdatePassword(_ context.Context, _, _ uuid.UUID, _ []byte) error {
 	return nil
 }
 func (m *mockSocialStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {

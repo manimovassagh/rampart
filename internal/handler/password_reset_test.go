@@ -37,7 +37,7 @@ func (m *mockResetStore) ConsumePasswordResetToken(_ context.Context, _ string) 
 	return m.userID, nil
 }
 
-func (m *mockResetStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
+func (m *mockResetStore) UpdatePassword(_ context.Context, _, _ uuid.UUID, _ []byte) error {
 	return nil
 }
 
@@ -70,10 +70,10 @@ func (m *mockResetStore) GetUserByUsername(_ context.Context, _ string, _ uuid.U
 func (m *mockResetStore) CreateUser(_ context.Context, _ *model.User) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockResetStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+func (m *mockResetStore) UpdateUser(_ context.Context, _, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockResetStore) DeleteUser(_ context.Context, _ uuid.UUID) error        { return nil }
+func (m *mockResetStore) DeleteUser(_ context.Context, _, _ uuid.UUID) error     { return nil }
 func (m *mockResetStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error { return nil }
 func (m *mockResetStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
 	return nil
@@ -190,8 +190,8 @@ func TestResetPasswordRejectsWeakPasswordPerOrgPolicy(t *testing.T) {
 	ms := &mockResetStore{
 		userID: uid,
 		orgSettings: &model.OrgSettings{
-			OrgID:                   orgID,
-			PasswordMinLength:       12,
+			OrgID:                    orgID,
+			PasswordMinLength:        12,
 			PasswordRequireUppercase: true,
 			PasswordRequireLowercase: true,
 			PasswordRequireNumbers:   true,

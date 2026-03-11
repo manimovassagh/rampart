@@ -99,12 +99,12 @@ func (m *mockUserStore) FindUserByEmail(_ context.Context, _ string) (*model.Use
 
 // ── stub methods to satisfy store.UserWriter ──
 
-func (m *mockUserStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+func (m *mockUserStore) UpdateUser(_ context.Context, _, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockUserStore) DeleteUser(_ context.Context, _ uuid.UUID) error               { return nil }
-func (m *mockUserStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error { return nil }
-func (m *mockUserStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error        { return nil }
+func (m *mockUserStore) DeleteUser(_ context.Context, _, _ uuid.UUID) error               { return nil }
+func (m *mockUserStore) UpdatePassword(_ context.Context, _, _ uuid.UUID, _ []byte) error { return nil }
+func (m *mockUserStore) UpdateLastLoginAt(_ context.Context, _ uuid.UUID) error           { return nil }
 func (m *mockUserStore) IncrementFailedLogins(_ context.Context, _ uuid.UUID, _ int, _ time.Duration) error {
 	return nil
 }

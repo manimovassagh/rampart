@@ -167,8 +167,10 @@ func (h *AdminConsoleHandler) UserDetailPage(w http.ResponseWriter, r *http.Requ
 
 	ctx := r.Context()
 
+	authUser := middleware.GetAuthenticatedUser(ctx)
+
 	user, err := h.store.GetUserByID(ctx, userID)
-	if err != nil || user == nil {
+	if err != nil || user == nil || user.OrgID != authUser.OrgID {
 		middleware.SetFlash(w, "User not found.")
 		http.Redirect(w, r, pathAdminUsers, http.StatusFound)
 		return
@@ -178,8 +180,6 @@ func (h *AdminConsoleHandler) UserDetailPage(w http.ResponseWriter, r *http.Requ
 	sessions, _ := h.sessions.ListByUserID(ctx, userID)
 	userRoles, _ := h.store.GetUserRoles(ctx, userID)
 	userGroups, _ := h.store.GetUserGroups(ctx, userID)
-
-	authUser := middleware.GetAuthenticatedUser(ctx)
 	allRoles, _, _ := h.store.ListRoles(ctx, authUser.OrgID, "", 100, 0)
 
 	h.render(w, r, "user_detail", &pageData{
@@ -216,14 +216,14 @@ func (h *AdminConsoleHandler) UpdateUserAction(w http.ResponseWriter, r *http.Re
 		EmailVerified: r.FormValue("email_verified") == formValueTrue,
 	}
 
-	if _, err := h.store.UpdateUser(r.Context(), userID, req); err != nil {
+	authUser := middleware.GetAuthenticatedUser(r.Context())
+	if _, err := h.store.UpdateUser(r.Context(), userID, authUser.OrgID, req); err != nil {
 		h.logger.Error("failed to update user", "error", err)
 		middleware.SetFlash(w, "Failed to update user.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
-	authUser := middleware.GetAuthenticatedUser(r.Context())
 	h.auditLog(r, authUser.OrgID, model.EventUserUpdated, "user", userID.String(), req.Username)
 	middleware.SetFlash(w, "User updated successfully.")
 	http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
@@ -252,7 +252,7 @@ func (h *AdminConsoleHandler) DeleteUserAction(w http.ResponseWriter, r *http.Re
 	} else {
 		metrics.ActiveSessions.Sub(float64(sessionCount))
 	}
-	if err := h.store.DeleteUser(ctx, userID); err != nil {
+	if err := h.store.DeleteUser(ctx, userID, authUser.OrgID); err != nil {
 		h.logger.Error("failed to delete user", "error", err)
 		middleware.SetFlash(w, "Failed to delete user.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
@@ -293,7 +293,8 @@ func (h *AdminConsoleHandler) ResetPasswordAction(w http.ResponseWriter, r *http
 		return
 	}
 
-	if err := h.store.UpdatePassword(r.Context(), userID, []byte(hash)); err != nil {
+	pwOrgUser := middleware.GetAuthenticatedUser(r.Context())
+	if err := h.store.UpdatePassword(r.Context(), userID, pwOrgUser.OrgID, []byte(hash)); err != nil {
 		h.logger.Error("failed to update password", "error", err)
 		middleware.SetFlash(w, "Failed to reset password.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)

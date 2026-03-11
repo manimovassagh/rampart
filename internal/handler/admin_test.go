@@ -70,13 +70,13 @@ func (m *mockAdminUserStore) CreateUser(_ context.Context, user *model.User) (*m
 func (m *mockAdminUserStore) ListUsers(_ context.Context, _ uuid.UUID, _, _ string, _, _ int) ([]*model.User, int, error) {
 	return m.listUsers, m.listTotal, m.listErr
 }
-func (m *mockAdminUserStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+func (m *mockAdminUserStore) UpdateUser(_ context.Context, _, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
 	return m.updatedUser, m.updateErr
 }
-func (m *mockAdminUserStore) DeleteUser(_ context.Context, _ uuid.UUID) error {
+func (m *mockAdminUserStore) DeleteUser(_ context.Context, _, _ uuid.UUID) error {
 	return m.deleteErr
 }
-func (m *mockAdminUserStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
+func (m *mockAdminUserStore) UpdatePassword(_ context.Context, _, _ uuid.UUID, _ []byte) error {
 	return m.updatePwErr
 }
 func (m *mockAdminUserStore) CountUsers(_ context.Context, orgID uuid.UUID) (int, error) {
@@ -136,7 +136,7 @@ func (m *mockAdminSessionStore) ListByUserID(_ context.Context, _ uuid.UUID) ([]
 func (m *mockAdminSessionStore) CountByUserID(_ context.Context, _ uuid.UUID) (int, error) {
 	return m.countByUser, m.countByUserErr
 }
-func (m *mockAdminSessionStore) CountActive(_ context.Context) (int, error) {
+func (m *mockAdminSessionStore) CountActive(_ context.Context, _ uuid.UUID) (int, error) {
 	return m.countActive, m.countActiveErr
 }
 func (m *mockAdminSessionStore) DeleteByUserID(_ context.Context, _ uuid.UUID) error {
@@ -308,7 +308,10 @@ func TestAdminGetUserSuccess(t *testing.T) {
 	r := chi.NewRouter()
 	r.Get("/api/v1/admin/users/{id}", h.GetUser)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+user.ID.String(), http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -336,7 +339,10 @@ func TestAdminGetUserNotFound(t *testing.T) {
 	r := chi.NewRouter()
 	r.Get("/api/v1/admin/users/{id}", h.GetUser)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: uuid.New()}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+uuid.New().String(), http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -371,8 +377,11 @@ func TestAdminUpdateUserSuccess(t *testing.T) {
 	r := chi.NewRouter()
 	r.Put("/api/v1/admin/users/{id}", h.UpdateUser)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
 	body := []byte(`{"username":"updated","email":"updated@test.com","given_name":"Up","family_name":"Dated","enabled":true,"email_verified":true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+user.ID.String(), bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -436,8 +445,11 @@ func TestAdminResetPasswordSuccess(t *testing.T) {
 	r := chi.NewRouter()
 	r.Post("/api/v1/admin/users/{id}/reset-password", h.ResetPassword)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
 	body := []byte(`{"password":"NewStr0ng!Pass"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/"+user.ID.String()+"/reset-password", bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -720,8 +732,11 @@ func TestAdminUpdateUserNotFound(t *testing.T) {
 	r := chi.NewRouter()
 	r.Put("/api/v1/admin/users/{id}", h.UpdateUser)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: uuid.New()}
 	body := []byte(`{"username":"updated","email":"updated@test.com","given_name":"Up","family_name":"Dated","enabled":true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+uuid.New().String(), bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -738,8 +753,11 @@ func TestAdminUpdateUserStoreError(t *testing.T) {
 	r := chi.NewRouter()
 	r.Put("/api/v1/admin/users/{id}", h.UpdateUser)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: uuid.New()}
 	body := []byte(`{"username":"updated","email":"updated@test.com","given_name":"Up","family_name":"Dated","enabled":true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+uuid.New().String(), bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -756,8 +774,11 @@ func TestAdminDeleteUserNoAuth(t *testing.T) {
 	r := chi.NewRouter()
 	r.Delete("/api/v1/admin/users/{id}", h.DeleteUser)
 
+	// Provide auth context since resolveOrgID requires it
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: uuid.New()}
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+uuid.New().String(), http.NoBody)
-	// No auth context set — should proceed without self-deletion check
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -818,8 +839,11 @@ func TestAdminResetPasswordNotFound(t *testing.T) {
 	r := chi.NewRouter()
 	r.Post("/api/v1/admin/users/{id}/reset-password", h.ResetPassword)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: uuid.New()}
 	body := []byte(`{"password":"NewStr0ng!Pass"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/"+uuid.New().String()+"/reset-password", bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -854,8 +878,11 @@ func TestAdminResetPasswordUpdateError(t *testing.T) {
 	r := chi.NewRouter()
 	r.Post("/api/v1/admin/users/{id}/reset-password", h.ResetPassword)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
 	body := []byte(`{"password":"NewStr0ng!Pass"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/"+user.ID.String()+"/reset-password", bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -872,7 +899,10 @@ func TestAdminGetUserStoreError(t *testing.T) {
 	r := chi.NewRouter()
 	r.Get("/api/v1/admin/users/{id}", h.GetUser)
 
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: uuid.New()}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+uuid.New().String(), http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

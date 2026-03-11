@@ -169,21 +169,24 @@ func (s *PGStore) CountByUserID(ctx context.Context, userID uuid.UUID) (int, err
 	return count, nil
 }
 
-// CountActive returns the total number of active sessions across all users.
-func (s *PGStore) CountActive(ctx context.Context) (int, error) {
+// CountActive returns the total number of active sessions for an organization.
+func (s *PGStore) CountActive(ctx context.Context, orgID uuid.UUID) (int, error) {
 	var count int
-	err := s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM sessions WHERE expires_at > now()").Scan(&count)
+	err := s.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM sessions s
+		 JOIN users u ON u.id = s.user_id
+		 WHERE s.expires_at > now() AND u.org_id = $1`, orgID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("counting active sessions: %w", err)
 	}
 	return count, nil
 }
 
-// ListAll returns all active sessions with user info, paginated and searchable.
-func (s *PGStore) ListAll(ctx context.Context, search string, limit, offset int) ([]*WithUser, int, error) {
-	baseWhere := "s.expires_at > now()"
-	args := []any{}
-	paramIdx := 1
+// ListAll returns all active sessions with user info for an organization, paginated and searchable.
+func (s *PGStore) ListAll(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*WithUser, int, error) {
+	baseWhere := "s.expires_at > now() AND u.org_id = $1"
+	args := []any{orgID}
+	paramIdx := 2
 
 	if search != "" {
 		baseWhere += fmt.Sprintf(" AND (u.username ILIKE $%d OR u.email ILIKE $%d)", paramIdx, paramIdx)
@@ -226,9 +229,11 @@ func (s *PGStore) ListAll(ctx context.Context, search string, limit, offset int)
 	return sessions, total, nil
 }
 
-// DeleteAll removes all active sessions.
-func (s *PGStore) DeleteAll(ctx context.Context) error {
-	_, err := s.pool.Exec(ctx, "DELETE FROM sessions WHERE expires_at > now()")
+// DeleteAll removes all active sessions for an organization.
+func (s *PGStore) DeleteAll(ctx context.Context, orgID uuid.UUID) error {
+	_, err := s.pool.Exec(ctx,
+		`DELETE FROM sessions WHERE expires_at > now()
+		 AND user_id IN (SELECT id FROM users WHERE org_id = $1)`, orgID)
 	if err != nil {
 		return fmt.Errorf("deleting all sessions: %w", err)
 	}

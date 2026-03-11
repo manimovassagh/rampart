@@ -193,7 +193,7 @@ func (h *PasswordResetHandler) ResetPassword(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := h.store.UpdatePassword(ctx, userID, []byte(hash)); err != nil {
+	if err := h.store.UpdatePassword(ctx, userID, user.OrgID, []byte(hash)); err != nil {
 		h.logger.Error("failed to update password", "error", err)
 		apierror.Write(w, http.StatusInternalServerError, "server_error", "Internal server error.")
 		return

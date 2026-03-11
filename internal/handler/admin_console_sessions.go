@@ -15,12 +15,13 @@ import (
 
 // ListSessionsPage handles GET /admin/sessions
 func (h *AdminConsoleHandler) ListSessionsPage(w http.ResponseWriter, r *http.Request) {
+	authUser := middleware.GetAuthenticatedUser(r.Context())
 	search := r.URL.Query().Get("search")
 	page := queryInt(r, "page", 1)
 	limit := 50
 	offset := (page - 1) * limit
 
-	sessions, total, err := h.sessions.ListAll(r.Context(), search, limit, offset)
+	sessions, total, err := h.sessions.ListAll(r.Context(), authUser.OrgID, search, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to list sessions", "error", err)
 		h.render(w, r, "sessions_list", &pageData{Title: "Sessions", ActiveNav: navSessions, Error: "Failed to load sessions."})
@@ -66,7 +67,8 @@ func (h *AdminConsoleHandler) RevokeSessionAction(w http.ResponseWriter, r *http
 
 // RevokeAllSessionsAction handles POST /admin/sessions/revoke-all
 func (h *AdminConsoleHandler) RevokeAllSessionsAction(w http.ResponseWriter, r *http.Request) {
-	if err := h.sessions.DeleteAll(r.Context()); err != nil {
+	revokeAllAuthUser := middleware.GetAuthenticatedUser(r.Context())
+	if err := h.sessions.DeleteAll(r.Context(), revokeAllAuthUser.OrgID); err != nil {
 		h.logger.Error("failed to revoke all sessions", "error", err)
 		middleware.SetFlash(w, "Failed to revoke sessions.")
 	} else {

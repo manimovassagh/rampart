@@ -101,11 +101,11 @@ func (m *mockAuthorizeStore) FindUserByEmail(_ context.Context, _ string) (*mode
 func (m *mockAuthorizeStore) CreateUser(_ context.Context, _ *model.User) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockAuthorizeStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+func (m *mockAuthorizeStore) UpdateUser(_ context.Context, _, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockAuthorizeStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
-func (m *mockAuthorizeStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
+func (m *mockAuthorizeStore) DeleteUser(_ context.Context, _, _ uuid.UUID) error { return nil }
+func (m *mockAuthorizeStore) UpdatePassword(_ context.Context, _, _ uuid.UUID, _ []byte) error {
 	return nil
 }
 
