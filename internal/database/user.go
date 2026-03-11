@@ -259,8 +259,9 @@ func (db *DB) ListUsers(ctx context.Context, orgID uuid.UUID, search, status str
 	return users, total, nil
 }
 
-// UpdateUser updates mutable fields on a user.
-func (db *DB) UpdateUser(ctx context.Context, id uuid.UUID, req *model.UpdateUserRequest) (*model.User, error) {
+// UpdateUser updates mutable fields on a user. The orgID parameter ensures
+// the operation is scoped to a single organization (prevents cross-tenant IDOR).
+func (db *DB) UpdateUser(ctx context.Context, id, orgID uuid.UUID, req *model.UpdateUserRequest) (*model.User, error) {
 	query := `
 		UPDATE users
 		SET username = COALESCE(NULLIF($2, ''), username),
@@ -270,7 +271,7 @@ func (db *DB) UpdateUser(ctx context.Context, id uuid.UUID, req *model.UpdateUse
 		    enabled = $6,
 		    email_verified = $7,
 		    updated_at = now()
-		WHERE id = $1
+		WHERE id = $1 AND org_id = $8
 		RETURNING id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		          enabled, mfa_enabled, last_login_at, created_at, updated_at`
 
@@ -278,7 +279,7 @@ func (db *DB) UpdateUser(ctx context.Context, id uuid.UUID, req *model.UpdateUse
 	err := db.Pool.QueryRow(ctx, query,
 		id, req.Username, req.Email,
 		req.GivenName, req.FamilyName,
-		req.Enabled, req.EmailVerified,
+		req.Enabled, req.EmailVerified, orgID,
 	).Scan(
 		&u.ID, &u.OrgID, &u.Username, &u.Email, &u.EmailVerified,
 		&u.GivenName, &u.FamilyName, &u.Enabled, &u.MFAEnabled,
@@ -293,9 +294,9 @@ func (db *DB) UpdateUser(ctx context.Context, id uuid.UUID, req *model.UpdateUse
 	return &u, nil
 }
 
-// DeleteUser removes a user by ID.
-func (db *DB) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	tag, err := db.Pool.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
+// DeleteUser removes a user by ID, scoped to the given organization.
+func (db *DB) DeleteUser(ctx context.Context, id, orgID uuid.UUID) error {
+	tag, err := db.Pool.Exec(ctx, "DELETE FROM users WHERE id = $1 AND org_id = $2", id, orgID)
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}
@@ -305,9 +306,9 @@ func (db *DB) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// UpdatePassword sets a new password hash for a user.
-func (db *DB) UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash []byte) error {
-	_, err := db.Pool.Exec(ctx, "UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1", id, passwordHash)
+// UpdatePassword sets a new password hash for a user, scoped to the given organization.
+func (db *DB) UpdatePassword(ctx context.Context, id, orgID uuid.UUID, passwordHash []byte) error {
+	_, err := db.Pool.Exec(ctx, "UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1 AND org_id = $3", id, passwordHash, orgID)
 	if err != nil {
 		return fmt.Errorf("updating password: %w", err)
 	}

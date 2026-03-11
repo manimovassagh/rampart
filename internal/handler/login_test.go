@@ -144,11 +144,11 @@ func (m *mockLoginStore) GetOrganizationByID(_ context.Context, _ uuid.UUID) (*m
 func (m *mockLoginStore) CreateUser(_ context.Context, _ *model.User) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockLoginStore) UpdateUser(_ context.Context, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
+func (m *mockLoginStore) UpdateUser(_ context.Context, _, _ uuid.UUID, _ *model.UpdateUserRequest) (*model.User, error) {
 	return nil, nil
 }
-func (m *mockLoginStore) DeleteUser(_ context.Context, _ uuid.UUID) error { return nil }
-func (m *mockLoginStore) UpdatePassword(_ context.Context, _ uuid.UUID, _ []byte) error {
+func (m *mockLoginStore) DeleteUser(_ context.Context, _, _ uuid.UUID) error { return nil }
+func (m *mockLoginStore) UpdatePassword(_ context.Context, _, _ uuid.UUID, _ []byte) error {
 	return nil
 }
 

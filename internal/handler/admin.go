@@ -38,7 +38,7 @@ type AdminUserStore interface {
 type AdminSessionStore interface {
 	ListByUserID(ctx context.Context, userID uuid.UUID) ([]*session.Session, error)
 	CountByUserID(ctx context.Context, userID uuid.UUID) (int, error)
-	CountActive(ctx context.Context) (int, error)
+	CountActive(ctx context.Context, orgID uuid.UUID) (int, error)
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -72,7 +72,7 @@ func (h *AdminHandler) Stats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	activeSessions, err := h.sessions.CountActive(ctx)
+	activeSessions, err := h.sessions.CountActive(ctx, orgID)
 	if err != nil {
 		h.logger.Error("failed to count active sessions", "error", err)
 		apierror.InternalError(w)
@@ -269,13 +269,16 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
+	authUserGet := middleware.GetAuthenticatedUser(ctx)
+	orgID := resolveOrgID(r, authUserGet)
+
 	user, err := h.store.GetUserByID(ctx, userID)
 	if err != nil {
 		h.logger.Error("failed to get user", "error", err)
 		apierror.InternalError(w)
 		return
 	}
-	if user == nil {
+	if user == nil || user.OrgID != orgID {
 		apierror.NotFound(w)
 		return
 	}
@@ -309,8 +312,10 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	req.FamilyName = strings.TrimSpace(req.FamilyName)
 
 	ctx := r.Context()
+	authUserUpdate := middleware.GetAuthenticatedUser(ctx)
+	updateOrgID := resolveOrgID(r, authUserUpdate)
 
-	updated, err := h.store.UpdateUser(ctx, userID, &req)
+	updated, err := h.store.UpdateUser(ctx, userID, updateOrgID, &req)
 	if err != nil {
 		h.logger.Error("failed to update user", "error", err)
 		apierror.InternalError(w)
@@ -344,6 +349,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	deleteOrgID := resolveOrgID(r, authUser)
 
 	// Delete sessions first.
 	delCount, _ := h.sessions.CountByUserID(ctx, userID)
@@ -354,7 +360,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	metrics.ActiveSessions.Sub(float64(delCount))
 
-	if err := h.store.DeleteUser(ctx, userID); err != nil {
+	if err := h.store.DeleteUser(ctx, userID, deleteOrgID); err != nil {
 		h.logger.Error("failed to delete user", "error", err)
 		apierror.InternalError(w)
 		return
@@ -384,6 +390,8 @@ func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	resetAuthUser := middleware.GetAuthenticatedUser(ctx)
+	resetOrgID := resolveOrgID(r, resetAuthUser)
 
 	user, err := h.store.GetUserByID(ctx, userID)
 	if err != nil {
@@ -391,7 +399,7 @@ func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		apierror.InternalError(w)
 		return
 	}
-	if user == nil {
+	if user == nil || user.OrgID != resetOrgID {
 		apierror.NotFound(w)
 		return
 	}
@@ -403,7 +411,7 @@ func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.UpdatePassword(ctx, userID, []byte(hash)); err != nil {
+	if err := h.store.UpdatePassword(ctx, userID, resetOrgID, []byte(hash)); err != nil {
 		h.logger.Error("failed to update password", "error", err)
 		apierror.InternalError(w)
 		return

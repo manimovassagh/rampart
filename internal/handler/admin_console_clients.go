@@ -165,8 +165,10 @@ func (h *AdminConsoleHandler) ClientDetailPage(w http.ResponseWriter, r *http.Re
 	}
 
 	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+
 	client, err := h.store.GetOAuthClient(ctx, clientID)
-	if err != nil || client == nil {
+	if err != nil || client == nil || client.OrgID != authUser.OrgID {
 		middleware.SetFlash(w, "Client not found.")
 		http.Redirect(w, r, pathAdminClients, http.StatusFound)
 		return
@@ -200,7 +202,8 @@ func (h *AdminConsoleHandler) UpdateClientAction(w http.ResponseWriter, r *http.
 		Enabled:      r.FormValue("enabled") == formValueTrue,
 	}
 
-	if _, err := h.store.UpdateOAuthClient(r.Context(), clientID, req); err != nil {
+	updateAuthUser := middleware.GetAuthenticatedUser(r.Context())
+	if _, err := h.store.UpdateOAuthClient(r.Context(), clientID, updateAuthUser.OrgID, req); err != nil {
 		h.logger.Error("failed to update client", "error", err)
 		middleware.SetFlash(w, "Failed to update client.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
@@ -219,7 +222,8 @@ func (h *AdminConsoleHandler) DeleteClientAction(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := h.store.DeleteOAuthClient(r.Context(), clientID); err != nil {
+	deleteAuthUser := middleware.GetAuthenticatedUser(r.Context())
+	if err := h.store.DeleteOAuthClient(r.Context(), clientID, deleteAuthUser.OrgID); err != nil {
 		h.logger.Error("failed to delete client", "error", err)
 		middleware.SetFlash(w, "Failed to delete client.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)
@@ -239,8 +243,10 @@ func (h *AdminConsoleHandler) RegenerateSecretAction(w http.ResponseWriter, r *h
 	}
 
 	ctx := r.Context()
+	regenAuthUser := middleware.GetAuthenticatedUser(ctx)
+
 	client, err := h.store.GetOAuthClient(ctx, clientID)
-	if err != nil || client == nil {
+	if err != nil || client == nil || client.OrgID != regenAuthUser.OrgID {
 		middleware.SetFlash(w, "Client not found.")
 		http.Redirect(w, r, pathAdminClients, http.StatusFound)
 		return
@@ -268,7 +274,7 @@ func (h *AdminConsoleHandler) RegenerateSecretAction(w http.ResponseWriter, r *h
 		return
 	}
 
-	if err := h.store.UpdateClientSecret(ctx, clientID, hash); err != nil {
+	if err := h.store.UpdateClientSecret(ctx, clientID, regenAuthUser.OrgID, hash); err != nil {
 		h.logger.Error("failed to update client secret", "error", err)
 		middleware.SetFlash(w, msgRegenFailed)
 		http.Redirect(w, r, fmt.Sprintf(pathAdminClientFmt, clientID), http.StatusFound)

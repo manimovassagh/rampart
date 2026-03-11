@@ -126,8 +126,8 @@ func (db *DB) CreateOAuthClient(ctx context.Context, client *model.OAuthClient) 
 	return &c, nil
 }
 
-// UpdateOAuthClient updates mutable fields on an OAuth client.
-func (db *DB) UpdateOAuthClient(ctx context.Context, clientID string, req *model.UpdateClientRequest) (*model.OAuthClient, error) {
+// UpdateOAuthClient updates mutable fields on an OAuth client, scoped to the given organization.
+func (db *DB) UpdateOAuthClient(ctx context.Context, clientID string, orgID uuid.UUID, req *model.UpdateClientRequest) (*model.OAuthClient, error) {
 	uris := parseRedirectURIs(req.RedirectURIs)
 
 	query := `
@@ -137,13 +137,13 @@ func (db *DB) UpdateOAuthClient(ctx context.Context, clientID string, req *model
 		    redirect_uris = $4,
 		    enabled = $5,
 		    updated_at = now()
-		WHERE id = $1
+		WHERE id = $1 AND org_id = $6
 		RETURNING id, org_id, name, client_type, redirect_uris,
 		          COALESCE(client_secret_hash, ''::bytea), COALESCE(description, ''),
 		          enabled, first_party, created_at, updated_at`
 
 	var c model.OAuthClient
-	err := db.Pool.QueryRow(ctx, query, clientID, req.Name, req.Description, uris, req.Enabled).Scan(
+	err := db.Pool.QueryRow(ctx, query, clientID, req.Name, req.Description, uris, req.Enabled, orgID).Scan(
 		&c.ID, &c.OrgID, &c.Name, &c.ClientType, &c.RedirectURIs,
 		&c.ClientSecretHash, &c.Description, &c.Enabled, &c.FirstParty, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
@@ -155,9 +155,9 @@ func (db *DB) UpdateOAuthClient(ctx context.Context, clientID string, req *model
 	return &c, nil
 }
 
-// DeleteOAuthClient removes an OAuth client by ID.
-func (db *DB) DeleteOAuthClient(ctx context.Context, clientID string) error {
-	tag, err := db.Pool.Exec(ctx, "DELETE FROM oauth_clients WHERE id = $1", clientID)
+// DeleteOAuthClient removes an OAuth client by ID, scoped to the given organization.
+func (db *DB) DeleteOAuthClient(ctx context.Context, clientID string, orgID uuid.UUID) error {
+	tag, err := db.Pool.Exec(ctx, "DELETE FROM oauth_clients WHERE id = $1 AND org_id = $2", clientID, orgID)
 	if err != nil {
 		return fmt.Errorf("deleting oauth client: %w", err)
 	}
@@ -167,11 +167,11 @@ func (db *DB) DeleteOAuthClient(ctx context.Context, clientID string) error {
 	return nil
 }
 
-// UpdateClientSecret sets a new secret hash for a confidential client.
-func (db *DB) UpdateClientSecret(ctx context.Context, clientID string, secretHash []byte) error {
+// UpdateClientSecret sets a new secret hash for a confidential client, scoped to the given organization.
+func (db *DB) UpdateClientSecret(ctx context.Context, clientID string, orgID uuid.UUID, secretHash []byte) error {
 	_, err := db.Pool.Exec(ctx,
-		"UPDATE oauth_clients SET client_secret_hash = $2, updated_at = now() WHERE id = $1",
-		clientID, secretHash)
+		"UPDATE oauth_clients SET client_secret_hash = $2, updated_at = now() WHERE id = $1 AND org_id = $3",
+		clientID, secretHash, orgID)
 	if err != nil {
 		return fmt.Errorf("updating client secret: %w", err)
 	}

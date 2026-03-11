@@ -170,8 +170,9 @@ func (h *SCIMHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orgID := scimOrgID(r)
 	user, err := h.store.GetUserByID(r.Context(), id)
-	if err != nil || user == nil {
+	if err != nil || user == nil || user.OrgID != orgID {
 		h.scimError(w, http.StatusNotFound, "User not found.")
 		return
 	}
@@ -220,6 +221,7 @@ func (h *SCIMHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 // UpdateUser handles PUT /scim/v2/Users/{id}.
 func (h *SCIMHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	orgID := scimOrgID(r)
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		h.scimError(w, http.StatusBadRequest, "Invalid user ID.")
@@ -237,7 +239,7 @@ func (h *SCIMHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		email = req.Emails[0].Value
 	}
 
-	user, err := h.store.UpdateUser(ctx, id, &model.UpdateUserRequest{
+	user, err := h.store.UpdateUser(ctx, id, orgID, &model.UpdateUserRequest{
 		Username:   req.UserName,
 		Email:      email,
 		GivenName:  req.Name.GivenName,
@@ -256,6 +258,7 @@ func (h *SCIMHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // PatchUser handles PATCH /scim/v2/Users/{id}.
 func (h *SCIMHandler) PatchUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	patchOrgID := scimOrgID(r)
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		h.scimError(w, http.StatusBadRequest, "Invalid user ID.")
@@ -291,7 +294,7 @@ func (h *SCIMHandler) PatchUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	user, err := h.store.UpdateUser(ctx, id, updateReq)
+	user, err := h.store.UpdateUser(ctx, id, patchOrgID, updateReq)
 	if err != nil {
 		h.logger.Error("SCIM: failed to patch user", "error", err)
 		h.scimError(w, http.StatusInternalServerError, "Failed to patch user.")
@@ -309,7 +312,8 @@ func (h *SCIMHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.DeleteUser(r.Context(), id); err != nil {
+	delOrgID := scimOrgID(r)
+	if err := h.store.DeleteUser(r.Context(), id, delOrgID); err != nil {
 		h.logger.Error("SCIM: failed to delete user", "error", err)
 		h.scimError(w, http.StatusInternalServerError, "Failed to delete user.")
 		return

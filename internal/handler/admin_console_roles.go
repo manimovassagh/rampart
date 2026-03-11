@@ -110,8 +110,10 @@ func (h *AdminConsoleHandler) RoleDetailPage(w http.ResponseWriter, r *http.Requ
 	}
 
 	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+
 	role, err := h.store.GetRoleByID(ctx, roleID)
-	if err != nil || role == nil {
+	if err != nil || role == nil || role.OrgID != authUser.OrgID {
 		middleware.SetFlash(w, "Role not found.")
 		http.Redirect(w, r, pathAdminRoles, http.StatusFound)
 		return
@@ -147,7 +149,8 @@ func (h *AdminConsoleHandler) UpdateRoleAction(w http.ResponseWriter, r *http.Re
 		Description: strings.TrimSpace(r.FormValue("description")),
 	}
 
-	if _, err := h.store.UpdateRole(r.Context(), roleID, req); err != nil {
+	updateRoleAuthUser := middleware.GetAuthenticatedUser(r.Context())
+	if _, err := h.store.UpdateRole(r.Context(), roleID, updateRoleAuthUser.OrgID, req); err != nil {
 		h.logger.Error("failed to update role", "error", err)
 		middleware.SetFlash(w, "Failed to update role.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminRoleFmt, roleID), http.StatusFound)
@@ -166,7 +169,8 @@ func (h *AdminConsoleHandler) DeleteRoleAction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if err := h.store.DeleteRole(r.Context(), roleID); err != nil {
+	deleteRoleAuthUser := middleware.GetAuthenticatedUser(r.Context())
+	if err := h.store.DeleteRole(r.Context(), roleID, deleteRoleAuthUser.OrgID); err != nil {
 		if strings.Contains(err.Error(), "builtin") {
 			middleware.SetFlash(w, "Cannot delete built-in roles.")
 		} else {

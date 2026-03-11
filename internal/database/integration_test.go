@@ -323,7 +323,7 @@ func TestUserCRUD(t *testing.T) {
 			}
 
 			// Update
-			updated, err := db.UpdateUser(ctx, created.ID, &model.UpdateUserRequest{
+			updated, err := db.UpdateUser(ctx, created.ID, org.ID, &model.UpdateUserRequest{
 				Username:      created.Username,
 				Email:         created.Email,
 				GivenName:     "Updated",
@@ -342,7 +342,7 @@ func TestUserCRUD(t *testing.T) {
 			}
 
 			// Update password
-			err = db.UpdatePassword(ctx, created.ID, []byte("$2a$10$newhash"))
+			err = db.UpdatePassword(ctx, created.ID, org.ID, []byte("$2a$10$newhash"))
 			if err != nil {
 				t.Fatalf("UpdatePassword: %v", err)
 			}
@@ -358,7 +358,7 @@ func TestUserCRUD(t *testing.T) {
 			}
 
 			// Delete
-			err = db.DeleteUser(ctx, created.ID)
+			err = db.DeleteUser(ctx, created.ID, org.ID)
 			if err != nil {
 				t.Fatalf("DeleteUser: %v", err)
 			}
@@ -462,7 +462,7 @@ func TestDeleteNonexistentUser(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
 
-	err := db.DeleteUser(ctx, uuid.New())
+	err := db.DeleteUser(ctx, uuid.New(), uuid.New())
 	if err == nil {
 		t.Fatal("expected error deleting nonexistent user")
 	}
@@ -509,7 +509,7 @@ func TestRoleCRUD(t *testing.T) {
 			}
 
 			// Update
-			updated, err := db.UpdateRole(ctx, created.ID, &model.UpdateRoleRequest{
+			updated, err := db.UpdateRole(ctx, created.ID, org.ID, &model.UpdateRoleRequest{
 				Name: tc.name, Description: "Updated desc",
 			})
 			if err != nil {
@@ -547,7 +547,7 @@ func TestRoleCRUD(t *testing.T) {
 			}
 
 			// Delete
-			err = db.DeleteRole(ctx, created.ID)
+			err = db.DeleteRole(ctx, created.ID, org.ID)
 			if err != nil {
 				t.Fatalf("DeleteRole: %v", err)
 			}
@@ -575,7 +575,7 @@ func TestRoleListSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateRole: %v", err)
 	}
-	t.Cleanup(func() { _ = db.DeleteRole(ctx, role.ID) })
+	t.Cleanup(func() { _ = db.DeleteRole(ctx, role.ID, org.ID) })
 
 	roles, total, err := db.ListRoles(ctx, org.ID, "searchrole", 100, 0)
 	if err != nil {
@@ -1025,7 +1025,7 @@ func TestOAuthClientCRUD(t *testing.T) {
 			}
 
 			// Update
-			updated, err := db.UpdateOAuthClient(ctx, created.ID, &model.UpdateClientRequest{
+			updated, err := db.UpdateOAuthClient(ctx, created.ID, org.ID, &model.UpdateClientRequest{
 				Name:         created.Name,
 				Description:  "updated desc",
 				RedirectURIs: "https://new.example.com/cb",
@@ -1066,13 +1066,13 @@ func TestOAuthClientCRUD(t *testing.T) {
 			}
 
 			// Update secret
-			err = db.UpdateClientSecret(ctx, created.ID, []byte("$2a$10$fakesecret"))
+			err = db.UpdateClientSecret(ctx, created.ID, org.ID, []byte("$2a$10$fakesecret"))
 			if err != nil {
 				t.Fatalf("UpdateClientSecret: %v", err)
 			}
 
 			// Delete
-			err = db.DeleteOAuthClient(ctx, created.ID)
+			err = db.DeleteOAuthClient(ctx, created.ID, org.ID)
 			if err != nil {
 				t.Fatalf("DeleteOAuthClient: %v", err)
 			}
@@ -1101,7 +1101,7 @@ func TestOAuthClientListSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateOAuthClient: %v", err)
 	}
-	t.Cleanup(func() { _ = db.DeleteOAuthClient(ctx, client.ID) })
+	t.Cleanup(func() { _ = db.DeleteOAuthClient(ctx, client.ID, org.ID) })
 
 	clients, total, err := db.ListOAuthClients(ctx, org.ID, "searchclient", 100, 0)
 	if err != nil {
@@ -1125,7 +1125,7 @@ func TestDeleteNonexistentOAuthClient(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
 
-	err := db.DeleteOAuthClient(ctx, "nonexistent-client-id-12345")
+	err := db.DeleteOAuthClient(ctx, "nonexistent-client-id-12345", uuid.New())
 	if err == nil {
 		t.Fatal("expected error deleting nonexistent client")
 	}

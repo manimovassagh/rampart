@@ -28,9 +28,9 @@ type UserReader interface {
 // UserWriter provides user mutation operations.
 type UserWriter interface {
 	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, req *model.UpdateUserRequest) (*model.User, error)
-	DeleteUser(ctx context.Context, id uuid.UUID) error
-	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash []byte) error
+	UpdateUser(ctx context.Context, id, orgID uuid.UUID, req *model.UpdateUserRequest) (*model.User, error)
+	DeleteUser(ctx context.Context, id, orgID uuid.UUID) error
+	UpdatePassword(ctx context.Context, id, orgID uuid.UUID, passwordHash []byte) error
 	UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error
 	IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error
 	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
@@ -87,8 +87,8 @@ type RoleReader interface {
 // RoleWriter provides role mutation operations.
 type RoleWriter interface {
 	CreateRole(ctx context.Context, role *model.Role) (*model.Role, error)
-	UpdateRole(ctx context.Context, id uuid.UUID, req *model.UpdateRoleRequest) (*model.Role, error)
-	DeleteRole(ctx context.Context, id uuid.UUID) error
+	UpdateRole(ctx context.Context, id, orgID uuid.UUID, req *model.UpdateRoleRequest) (*model.Role, error)
+	DeleteRole(ctx context.Context, id, orgID uuid.UUID) error
 	AssignRole(ctx context.Context, userID, roleID uuid.UUID) error
 	UnassignRole(ctx context.Context, userID, roleID uuid.UUID) error
 }
@@ -138,9 +138,9 @@ type OAuthClientReader interface {
 // OAuthClientWriter provides OAuth client mutations.
 type OAuthClientWriter interface {
 	CreateOAuthClient(ctx context.Context, client *model.OAuthClient) (*model.OAuthClient, error)
-	UpdateOAuthClient(ctx context.Context, clientID string, req *model.UpdateClientRequest) (*model.OAuthClient, error)
-	DeleteOAuthClient(ctx context.Context, clientID string) error
-	UpdateClientSecret(ctx context.Context, clientID string, secretHash []byte) error
+	UpdateOAuthClient(ctx context.Context, clientID string, orgID uuid.UUID, req *model.UpdateClientRequest) (*model.OAuthClient, error)
+	DeleteOAuthClient(ctx context.Context, clientID string, orgID uuid.UUID) error
+	UpdateClientSecret(ctx context.Context, clientID string, orgID uuid.UUID, secretHash []byte) error
 }
 
 // OAuthClientLister provides paginated OAuth client listing.
