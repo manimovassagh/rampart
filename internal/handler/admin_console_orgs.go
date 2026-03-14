@@ -4,6 +4,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 // ListOrgsPage handles GET /admin/organizations
@@ -91,7 +93,7 @@ func (h *AdminConsoleHandler) CreateOrgAction(w http.ResponseWriter, r *http.Req
 
 	newOrg, err := h.store.CreateOrganization(r.Context(), req)
 	if err != nil {
-		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
+		if errors.Is(err, store.ErrDuplicateKey) {
 			formErrors["slug"] = "An organization with this slug already exists."
 			h.render(w, r, tmplOrgCreate, &pageData{Title: titleCreateOrg, ActiveNav: navOrganizations, FormErrors: formErrors, FormValues: formValues})
 			return
@@ -239,7 +241,7 @@ func (h *AdminConsoleHandler) DeleteOrgAction(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.store.DeleteOrganization(r.Context(), orgID); err != nil {
-		if strings.Contains(err.Error(), "default") {
+		if errors.Is(err, store.ErrDefaultOrg) {
 			middleware.SetFlash(w, "Cannot delete the default organization.")
 		} else {
 			h.logger.Error("failed to delete organization", "error", err)

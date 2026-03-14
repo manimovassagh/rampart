@@ -8,8 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 // ListGroups returns a paginated, searchable list of groups for an org.
@@ -83,6 +85,10 @@ func (db *DB) CreateGroup(ctx context.Context, group *model.Group) (*model.Group
 		group.OrgID, group.Name, group.Description,
 	).Scan(&g.ID, &g.OrgID, &g.Name, &g.Description, &g.CreatedAt, &g.UpdatedAt)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return nil, fmt.Errorf("inserting group: %w", store.ErrDuplicateKey)
+		}
 		return nil, fmt.Errorf("inserting group: %w", err)
 	}
 	return &g, nil

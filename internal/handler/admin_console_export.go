@@ -4,9 +4,9 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -14,6 +14,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 // ExportOrgAction handles GET /admin/organizations/{id}/export — downloads org config as JSON.
@@ -164,7 +165,7 @@ func (h *AdminConsoleHandler) ImportOrgAction(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		h.logger.Error("failed to import organization", "error", err)
 		msg := "Failed to create organization."
-		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
+		if errors.Is(err, store.ErrDuplicateKey) {
 			msg = "An organization with this slug already exists."
 		}
 		h.render(w, r, tmplOrgImport, &pageData{

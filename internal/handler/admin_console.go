@@ -41,7 +41,6 @@ const (
 	msgInternalErr    = "Internal error."
 	msgInvalidRole    = "Invalid role."
 	msgRegenFailed    = "Failed to regenerate secret."
-	msgDuplicateKey   = "duplicate key"
 	msgInvalidJSON    = "Invalid or malformed JSON request body."
 	msgAuthRequired   = "Authentication required."
 	msgInternalServer = "Internal server error."
@@ -439,8 +438,10 @@ func (h *AdminConsoleHandler) renderPartial(w http.ResponseWriter, r *http.Reque
 
 // fetchDashboardStats collects all dashboard statistics, logging any query failures.
 func (h *AdminConsoleHandler) fetchDashboardStats(ctx context.Context, orgID uuid.UUID) *model.DashboardStats {
+	var queryErrors int
 	logErr := func(query string, err error) {
 		if err != nil {
+			queryErrors++
 			h.logger.Warn("dashboard query failed", "query", query, "error", err)
 		}
 	}
@@ -477,6 +478,7 @@ func (h *AdminConsoleHandler) fetchDashboardStats(ctx context.Context, orgID uui
 		RecentEvents:       recentEvents,
 		LoginCounts:        loginCounts,
 		RoleCounts:         roleCounts,
+		QueryErrors:        queryErrors,
 	}
 }
 

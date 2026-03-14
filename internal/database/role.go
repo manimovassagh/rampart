@@ -8,8 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 // ListRoles returns a paginated, searchable list of roles for an org.
@@ -87,6 +89,10 @@ func (db *DB) CreateRole(ctx context.Context, role *model.Role) (*model.Role, er
 	err := db.Pool.QueryRow(ctx, query, role.OrgID, role.Name, role.Description).Scan(
 		&r.ID, &r.OrgID, &r.Name, &r.Description, &r.Builtin, &r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return nil, fmt.Errorf("inserting role: %w", store.ErrDuplicateKey)
+		}
 		return nil, fmt.Errorf("inserting role: %w", err)
 	}
 	return &r, nil
@@ -116,12 +122,25 @@ func (db *DB) UpdateRole(ctx context.Context, id, orgID uuid.UUID, req *model.Up
 
 // DeleteRole removes a role by ID, scoped to the given organization. Rejects deletion of builtin roles.
 func (db *DB) DeleteRole(ctx context.Context, id, orgID uuid.UUID) error {
+	// Distinguish "not found" from "is builtin" before attempting delete.
+	var builtin bool
+	err := db.Pool.QueryRow(ctx, "SELECT builtin FROM roles WHERE id = $1 AND org_id = $2", id, orgID).Scan(&builtin)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return store.ErrNotFound
+		}
+		return fmt.Errorf("checking role: %w", err)
+	}
+	if builtin {
+		return store.ErrBuiltinRole
+	}
+
 	tag, err := db.Pool.Exec(ctx, "DELETE FROM roles WHERE id = $1 AND org_id = $2 AND builtin = false", id, orgID)
 	if err != nil {
 		return fmt.Errorf("deleting role: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("role not found or is builtin")
+		return store.ErrNotFound
 	}
 	return nil
 }

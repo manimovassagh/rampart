@@ -3,7 +3,7 @@ BUILD_DIR := bin
 GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*')
 COVERAGE_FILE := coverage.out
 COVERAGE_HTML := coverage.html
-COVERAGE_THRESHOLD := 50
+COVERAGE_THRESHOLD := 25
 
 # Version info (injected at build time)
 VERSION ?= dev

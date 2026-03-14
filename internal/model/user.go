@@ -157,6 +157,9 @@ type DashboardStats struct {
 	// Chart data
 	LoginCounts []DayCount  `json:"login_counts"`
 	RoleCounts  []RoleCount `json:"role_counts"`
+
+	// QueryErrors counts how many stat queries failed (0 = all OK).
+	QueryErrors int `json:"query_errors,omitempty"`
 }
 
 // DayCount holds an event count for a single day.

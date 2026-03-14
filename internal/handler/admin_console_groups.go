@@ -5,6 +5,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 // ListGroupsPage handles GET /admin/groups
@@ -88,7 +90,7 @@ func (h *AdminConsoleHandler) CreateGroupAction(w http.ResponseWriter, r *http.R
 	}
 
 	if _, err := h.store.CreateGroup(ctx, group); err != nil {
-		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
+		if errors.Is(err, store.ErrDuplicateKey) {
 			h.render(w, r, tmplGroupCreate, &pageData{Title: titleCreateGroup, ActiveNav: navGroups, Error: "A group with this name already exists."})
 			return
 		}

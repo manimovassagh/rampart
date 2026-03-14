@@ -9,8 +9,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 // CreateUser inserts a new user and returns the populated User struct.
@@ -45,6 +47,10 @@ func (db *DB) CreateUser(ctx context.Context, user *model.User) (*model.User, er
 		&created.UpdatedAt,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return nil, fmt.Errorf("inserting user: %w", store.ErrDuplicateKey)
+		}
 		return nil, fmt.Errorf("inserting user: %w", err)
 	}
 

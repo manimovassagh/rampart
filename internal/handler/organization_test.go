@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/model"
+	storeErrors "github.com/manimovassagh/rampart/internal/store"
 )
 
 type mockOrgStore struct {
@@ -196,7 +196,7 @@ func TestOrgCreateMissingFields(t *testing.T) {
 }
 
 func TestOrgCreateDuplicateSlug(t *testing.T) {
-	store := &mockOrgStore{createErr: fmt.Errorf("duplicate key value violates unique constraint")}
+	store := &mockOrgStore{createErr: storeErrors.ErrDuplicateKey}
 	settings := &mockOrgSettingsStore{}
 	h := newTestOrgHandler(store, settings)
 
@@ -291,7 +291,7 @@ func TestOrgDeleteSuccess(t *testing.T) {
 }
 
 func TestOrgDeleteDefaultProtected(t *testing.T) {
-	store := &mockOrgStore{deleteErr: fmt.Errorf("cannot delete the default organization")}
+	store := &mockOrgStore{deleteErr: storeErrors.ErrDefaultOrg}
 	settings := &mockOrgSettingsStore{}
 	h := newTestOrgHandler(store, settings)
 

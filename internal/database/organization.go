@@ -8,8 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 const defaultOrgSlug = "default"
@@ -126,6 +128,10 @@ func (db *DB) CreateOrganization(ctx context.Context, req *model.CreateOrgReques
 		&o.ID, &o.Name, &o.Slug, &o.DisplayName, &o.Enabled, &o.CreatedAt, &o.UpdatedAt,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return nil, fmt.Errorf("inserting organization: %w", store.ErrDuplicateKey)
+		}
 		return nil, fmt.Errorf("inserting organization: %w", err)
 	}
 
@@ -172,12 +178,12 @@ func (db *DB) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
 	err := db.Pool.QueryRow(ctx, "SELECT slug FROM organizations WHERE id = $1", id).Scan(&slug)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("organization not found")
+			return store.ErrNotFound
 		}
 		return fmt.Errorf("querying organization slug: %w", err)
 	}
 	if slug == defaultOrgSlug {
-		return fmt.Errorf("cannot delete the default organization")
+		return store.ErrDefaultOrg
 	}
 
 	tag, err := db.Pool.Exec(ctx, "DELETE FROM organizations WHERE id = $1", id)
@@ -185,7 +191,7 @@ func (db *DB) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("deleting organization: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("organization not found")
+		return store.ErrNotFound
 	}
 	return nil
 }

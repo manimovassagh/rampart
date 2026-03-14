@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -107,7 +108,7 @@ func (h *OrgHandler) CreateOrg(w http.ResponseWriter, r *http.Request) {
 
 	org, err := h.store.CreateOrganization(ctx, &req)
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique") {
+		if errors.Is(err, store.ErrDuplicateKey) {
 			apierror.Conflict(w, "An organization with this slug already exists.")
 			return
 		}
@@ -194,11 +195,11 @@ func (h *OrgHandler) DeleteOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.DeleteOrganization(r.Context(), orgID); err != nil {
-		if strings.Contains(err.Error(), "default") {
+		if errors.Is(err, store.ErrDefaultOrg) {
 			apierror.BadRequest(w, "Cannot delete the default organization.")
 			return
 		}
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, store.ErrNotFound) {
 			apierror.NotFound(w)
 			return
 		}
