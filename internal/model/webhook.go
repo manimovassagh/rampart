@@ -11,7 +11,7 @@ type Webhook struct {
 	ID          uuid.UUID
 	OrgID       uuid.UUID
 	URL         string
-	Secret      string
+	Secret      string `json:"-"`
 	Description string
 	EventTypes  []string
 	Enabled     bool

@@ -12,7 +12,7 @@ type MFADevice struct {
 	UserID     uuid.UUID
 	DeviceType string
 	Name       string
-	Secret     string
+	Secret     string `json:"-"`
 	Verified   bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
