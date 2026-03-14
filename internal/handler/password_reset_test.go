@@ -101,7 +101,7 @@ func (m *mockResetSessionStore) DeleteByUserID(_ context.Context, _ uuid.UUID) e
 func TestForgotPasswordAlwaysReturns200(t *testing.T) {
 	store := &mockResetStore{user: nil} // no user found
 	sender := &mockEmailSender{enabled: false}
-	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), "http://localhost:8080")
+	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), nil, "http://localhost:8080")
 
 	body := `{"email":"nonexistent@test.com"}`
 	req := httptest.NewRequest(http.MethodPost, "/forgot-password", strings.NewReader(body))
@@ -117,7 +117,7 @@ func TestForgotPasswordAlwaysReturns200(t *testing.T) {
 func TestForgotPasswordEmptyEmail(t *testing.T) {
 	store := &mockResetStore{}
 	sender := &mockEmailSender{}
-	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), "http://localhost:8080")
+	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), nil, "http://localhost:8080")
 
 	body := `{"email":""}`
 	req := httptest.NewRequest(http.MethodPost, "/forgot-password", strings.NewReader(body))
@@ -134,7 +134,7 @@ func TestResetPasswordSuccess(t *testing.T) {
 	uid := uuid.New()
 	store := &mockResetStore{userID: uid}
 	sender := &mockEmailSender{}
-	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), "http://localhost:8080")
+	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), nil, "http://localhost:8080")
 
 	body := `{"token":"abc123","new_password":"NewSecure1234!"}`
 	req := httptest.NewRequest(http.MethodPost, "/reset-password", strings.NewReader(body))
@@ -158,7 +158,7 @@ func TestResetPasswordSuccess(t *testing.T) {
 func TestResetPasswordShortPassword(t *testing.T) {
 	store := &mockResetStore{userID: uuid.New()}
 	sender := &mockEmailSender{}
-	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), "http://localhost:8080")
+	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), nil, "http://localhost:8080")
 
 	body := `{"token":"abc123","new_password":"short"}`
 	req := httptest.NewRequest(http.MethodPost, "/reset-password", strings.NewReader(body))
@@ -174,7 +174,7 @@ func TestResetPasswordShortPassword(t *testing.T) {
 func TestResetPasswordInvalidToken(t *testing.T) {
 	store := &mockResetStore{tokenErr: errInvalidToken}
 	sender := &mockEmailSender{}
-	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), "http://localhost:8080")
+	h := NewPasswordResetHandler(store, &mockResetSessionStore{}, sender, slog.Default(), nil, "http://localhost:8080")
 
 	body := `{"token":"badtoken","new_password":"ValidPass123!"}`
 	req := httptest.NewRequest(http.MethodPost, "/reset-password", strings.NewReader(body))
@@ -207,7 +207,7 @@ func TestResetPasswordRejectsWeakPasswordPerOrgPolicy(t *testing.T) {
 	ms.user = &model.User{ID: uid, OrgID: orgID, Enabled: true}
 
 	sender := &mockEmailSender{}
-	h := NewPasswordResetHandler(ms, &mockResetSessionStore{}, sender, slog.Default(), "http://localhost:8080")
+	h := NewPasswordResetHandler(ms, &mockResetSessionStore{}, sender, slog.Default(), nil, "http://localhost:8080")
 
 	tests := []struct {
 		name     string

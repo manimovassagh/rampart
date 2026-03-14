@@ -203,6 +203,20 @@ func (h *AdminConsoleHandler) UpdateOrgSettingsAction(w http.ResponseWriter, r *
 		mfa = mfaOff
 	}
 
+	primaryColor := strings.TrimSpace(r.FormValue("primary_color"))
+	backgroundColor := strings.TrimSpace(r.FormValue("background_color"))
+
+	if err := model.ValidateCSSColor(primaryColor); err != nil {
+		middleware.SetFlash(w, "Invalid primary color: must be a valid CSS color (e.g. #FF5500, rgb(255,0,0), or a named color).")
+		http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
+		return
+	}
+	if err := model.ValidateCSSColor(backgroundColor); err != nil {
+		middleware.SetFlash(w, "Invalid background color: must be a valid CSS color (e.g. #FF5500, rgb(255,0,0), or a named color).")
+		http.Redirect(w, r, fmt.Sprintf(pathAdminOrgFmt, orgID), http.StatusFound)
+		return
+	}
+
 	req := &model.UpdateOrgSettingsRequest{
 		PasswordMinLength:         minLen,
 		PasswordRequireUppercase:  r.FormValue("password_require_uppercase") == formValueTrue,
@@ -212,6 +226,8 @@ func (h *AdminConsoleHandler) UpdateOrgSettingsAction(w http.ResponseWriter, r *
 		MFAEnforcement:            mfa,
 		AccessTokenTTLSeconds:     accessTTL,
 		RefreshTokenTTLSeconds:    refreshTTL,
+		PrimaryColor:              primaryColor,
+		BackgroundColor:           backgroundColor,
 		SelfRegistrationEnabled:   r.FormValue("self_registration_enabled") == formValueTrue,
 		EmailVerificationRequired: r.FormValue("email_verification_required") == formValueTrue,
 		ForgotPasswordEnabled:     r.FormValue("forgot_password_enabled") == formValueTrue,

@@ -131,6 +131,7 @@ func newTestOAuthClient(orgID uuid.UUID) *model.OAuthClient {
 		Name:         "Test Client",
 		ClientType:   "public",
 		RedirectURIs: []string{"http://localhost:3002/callback"},
+		Enabled:      true,
 	}
 }
 
@@ -165,6 +166,28 @@ func TestAuthorizeGetUnknownClient(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "Unknown client_id") {
 		t.Error("expected unknown client error")
+	}
+}
+
+func TestAuthorizeGetDisabledClient(t *testing.T) {
+	orgID := uuid.New()
+	disabledClient := newTestOAuthClient(orgID)
+	disabledClient.Enabled = false
+	store := &mockAuthorizeStore{
+		oauthClient: disabledClient,
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h.Authorize(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
+	}
+	if !strings.Contains(w.Body.String(), "disabled") {
+		t.Error("expected error mentioning disabled client")
 	}
 }
 

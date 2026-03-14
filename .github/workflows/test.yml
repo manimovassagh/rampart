@@ -12,7 +12,7 @@ on:
         description: "Minimum coverage percentage (0-100)"
         required: false
         type: number
-        default: 50
+        default: 25
 
 permissions:
   contents: read

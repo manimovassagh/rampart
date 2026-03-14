@@ -78,6 +78,11 @@ func Forbidden(w http.ResponseWriter, description string) {
 	Write(w, http.StatusForbidden, "forbidden", description)
 }
 
+// TooManyRequests writes a 429 error response.
+func TooManyRequests(w http.ResponseWriter, description string) {
+	Write(w, http.StatusTooManyRequests, "too_many_requests", description)
+}
+
 // ValidationError is a 400 response with per-field errors.
 type ValidationError struct {
 	Code        string       `json:"error"`

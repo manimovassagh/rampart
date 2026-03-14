@@ -62,7 +62,8 @@ type TokenResponse struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
-// Token handles POST /oauth/token (authorization code exchange).
+// Token handles POST /oauth/token.
+// Supports grant_type=authorization_code and grant_type=refresh_token.
 // Expects application/x-www-form-urlencoded per RFC 6749.
 func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -75,12 +76,18 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grantType := r.FormValue("grant_type")
-	if grantType != "authorization_code" {
-		h.writeOAuthError(w, http.StatusBadRequest, "unsupported_grant_type", "Only authorization_code grant type is supported on this endpoint.")
-		return
+	switch r.FormValue("grant_type") {
+	case "authorization_code":
+		h.handleAuthorizationCode(w, r)
+	case "refresh_token":
+		h.handleRefreshToken(w, r)
+	default:
+		h.writeOAuthError(w, http.StatusBadRequest, "unsupported_grant_type", "Supported grant types: authorization_code, refresh_token.")
 	}
+}
 
+// handleAuthorizationCode exchanges an authorization code for tokens.
+func (h *TokenHandler) handleAuthorizationCode(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
 	clientID := r.FormValue("client_id")
 	redirectURI := r.FormValue("redirect_uri")
@@ -102,6 +109,10 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	}
 	if client == nil {
 		h.writeOAuthError(w, http.StatusBadRequest, "invalid_client", "Unknown client_id.")
+		return
+	}
+	if !client.Enabled {
+		h.writeOAuthError(w, http.StatusForbidden, "invalid_client", "This OAuth client is disabled.")
 		return
 	}
 
@@ -170,7 +181,7 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 
 	// Generate access token
 	accessToken, err := token.GenerateAccessToken(
-		h.privateKey, h.kid, h.issuer, accessTTL,
+		h.privateKey, h.kid, h.issuer, authCode.ClientID, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,
@@ -219,6 +230,95 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 	metrics.TokensIssued.WithLabelValues("refresh").Inc()
 	metrics.ActiveSessions.Inc()
 
+	h.writeTokenResponse(w, accessToken, refreshToken, idToken, accessTTL)
+}
+
+// handleRefreshToken exchanges a refresh token for a new token pair.
+func (h *TokenHandler) handleRefreshToken(w http.ResponseWriter, r *http.Request) {
+	refreshTokenValue := r.FormValue("refresh_token")
+	if refreshTokenValue == "" {
+		h.writeOAuthError(w, http.StatusBadRequest, "invalid_request", "Missing required parameter: refresh_token.")
+		return
+	}
+
+	ctx := r.Context()
+
+	// Look up session by refresh token
+	sess, err := h.sessions.FindByRefreshToken(ctx, refreshTokenValue)
+	if err != nil {
+		h.logger.Error("failed to find session for refresh", "error", err)
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
+		return
+	}
+	if sess == nil {
+		h.writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "Invalid or expired refresh token.")
+		return
+	}
+
+	// Fetch user
+	user, err := h.store.GetUserByID(ctx, sess.UserID)
+	if err != nil {
+		h.logger.Error("failed to get user for refresh", "error", err)
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
+		return
+	}
+	if user == nil || !user.Enabled {
+		h.writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "User account is disabled or not found.")
+		return
+	}
+
+	// Resolve per-org TTLs
+	accessTTL := h.accessTTL
+	if settings, sErr := h.store.GetOrgSettings(ctx, user.OrgID); sErr != nil {
+		h.logger.Warn("failed to fetch org settings, using defaults", "error", sErr)
+	} else if settings != nil {
+		if settings.AccessTokenTTL > 0 {
+			accessTTL = settings.AccessTokenTTL
+		}
+	}
+
+	// Fetch user roles
+	roles, rErr := h.store.GetEffectiveUserRoles(ctx, user.ID)
+	if rErr != nil {
+		h.logger.Warn("failed to fetch user roles for refresh", "error", rErr)
+		roles = nil
+	}
+
+	// Generate new access token
+	accessToken, err := token.GenerateAccessToken(
+		h.privateKey, h.kid, h.issuer, h.issuer, accessTTL,
+		user.ID, user.OrgID,
+		user.Username, user.Email, user.EmailVerified,
+		user.GivenName, user.FamilyName,
+		roles...,
+	)
+	if err != nil {
+		h.logger.Error("failed to generate access token", "error", err)
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
+		return
+	}
+
+	// Rotate refresh token: generate a new one and invalidate the old
+	newRefreshToken, err := token.GenerateRefreshToken()
+	if err != nil {
+		h.logger.Error("failed to generate new refresh token", "error", err)
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
+		return
+	}
+	if err := h.sessions.RotateRefreshToken(ctx, sess.ID, newRefreshToken); err != nil {
+		h.logger.Error("failed to rotate refresh token", "error", err)
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
+		return
+	}
+
+	metrics.TokensIssued.WithLabelValues("access").Inc()
+	metrics.TokensIssued.WithLabelValues("refresh").Inc()
+
+	h.writeTokenResponse(w, accessToken, newRefreshToken, "", accessTTL)
+}
+
+// writeTokenResponse writes a successful OAuth 2.0 token response.
+func (h *TokenHandler) writeTokenResponse(w http.ResponseWriter, accessToken, refreshToken, idToken string, accessTTL time.Duration) {
 	resp := TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,

@@ -314,7 +314,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accessToken, err := token.GenerateAccessToken(
-		h.privateKey, h.kid, h.issuer, accessTTL,
+		h.privateKey, h.kid, h.issuer, h.issuer, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,
@@ -412,7 +412,7 @@ func (h *LoginHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accessToken, err := token.GenerateAccessToken(
-		h.privateKey, h.kid, h.issuer, h.accessTTL,
+		h.privateKey, h.kid, h.issuer, h.issuer, h.accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,

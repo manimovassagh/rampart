@@ -97,6 +97,9 @@ func (db *DB) ListSocialProviderConfigs(ctx context.Context, orgID uuid.UUID) ([
 		}
 		configs = append(configs, &cfg)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating social provider configs: %w", err)
+	}
 	return configs, nil
 }
 

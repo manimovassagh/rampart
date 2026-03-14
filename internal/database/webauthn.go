@@ -47,6 +47,9 @@ func (db *DB) GetWebAuthnCredentialsByUserID(ctx context.Context, userID uuid.UU
 		}
 		creds = append(creds, &c)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating webauthn credentials: %w", err)
+	}
 	return creds, nil
 }
 

@@ -21,6 +21,15 @@ const (
 	EventSocialLogin         = "social_login"
 	EventSocialLoginFailed   = "social_login_failed"
 	EventSocialAccountLinked = "social_account_linked"
+
+	EventMFAEnrolled            = "mfa.enrolled"
+	EventMFADisabled            = "mfa.disabled"
+	EventMFAVerified            = "mfa.verified"
+	EventMFAFailed              = "mfa.failed"
+	EventPasswordResetRequested = "password.reset_requested"
+	EventPasswordResetCompleted = "password.reset_completed"
+	EventRoleAssigned           = "role.assigned"
+	EventRoleUnassigned         = "role.unassigned"
 )
 
 // AuditEvent represents a row in the audit_events table.

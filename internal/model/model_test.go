@@ -214,6 +214,68 @@ func TestOrgSettingsToResponse(t *testing.T) {
 	}
 }
 
+func TestValidateCSSColor(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		// Valid: empty (no color set)
+		{"empty string", "", false},
+
+		// Valid: hex colors
+		{"hex 3-digit", "#fff", false},
+		{"hex 3-digit uppercase", "#FFF", false},
+		{"hex 4-digit with alpha", "#ff0a", false},
+		{"hex 6-digit", "#ff5500", false},
+		{"hex 6-digit uppercase", "#FF5500", false},
+		{"hex 8-digit with alpha", "#ff550080", false},
+
+		// Valid: rgb/rgba
+		{"rgb", "rgb(255,0,0)", false},
+		{"rgb with spaces", "rgb( 255 , 0 , 0 )", false},
+		{"rgba", "rgba(255,0,0,0.5)", false},
+		{"rgb percentages", "rgb(100%,0%,50%)", false},
+
+		// Valid: hsl/hsla
+		{"hsl", "hsl(120,50%,50%)", false},
+		{"hsla", "hsla(120,50%,50%,0.5)", false},
+
+		// Valid: named colors
+		{"named red", "red", false},
+		{"named blue", "blue", false},
+		{"named transparent", "transparent", false},
+		{"named rebeccapurple", "rebeccapurple", false},
+		{"named mixed case", "DarkBlue", false},
+
+		// Invalid: CSS injection vectors
+		{"semicolon injection", "#fff; background: url(evil)", true},
+		{"closing brace", "#fff} body{background:red", true},
+		{"opening brace", "red{color:white", true},
+		{"url() injection", "url(javascript:alert(1))", true},
+		{"expression() injection", "expression(alert(1))", true},
+		{"@import injection", "@import url(evil.css)", true},
+		{"javascript: protocol", "javascript:alert(1)", true},
+		{"backslash escape", `\000075rl(evil)`, true},
+
+		// Invalid: not a color
+		{"random string", "notacolor", true},
+		{"number only", "12345", true},
+		{"hex without hash", "ff5500", true},
+		{"invalid hex length", "#ff55", false}, // 4-digit hex is valid (with alpha)
+		{"hex too long", "#ff5500ff00", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateCSSColor(tt.value)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateCSSColor(%q) error = %v, wantErr %v", tt.value, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestRoleToRoleResponse(t *testing.T) {
 	now := time.Now()
 	roleID := uuid.New()

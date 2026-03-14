@@ -119,7 +119,7 @@ func TestAdminSessionInvalidSignature(t *testing.T) {
 
 func TestAdminSessionExpiredToken(t *testing.T) {
 	tok, err := token.GenerateAccessToken(
-		testPrivKey, testKID, testIssuer, -1*time.Hour,
+		testPrivKey, testKID, testIssuer, testIssuer, -1*time.Hour,
 		uuid.New(), uuid.New(),
 		"admin", "admin@test.com", false, "", "",
 	)
@@ -356,7 +356,7 @@ func TestGenerateHMACKey(t *testing.T) {
 func generateTestTokenWithRolesAdmin(t *testing.T, roles ...string) string {
 	t.Helper()
 	tok, err := token.GenerateAccessToken(
-		testPrivKey, testKID, testIssuer, 15*time.Minute,
+		testPrivKey, testKID, testIssuer, testIssuer, 15*time.Minute,
 		uuid.New(), uuid.New(),
 		"testuser", "test@test.com", true, "Test", "User",
 		roles...,

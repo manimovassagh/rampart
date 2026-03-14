@@ -29,12 +29,15 @@ type Claims struct {
 }
 
 // GenerateAccessToken creates a signed RS256 JWT with user claims.
-func GenerateAccessToken(key *rsa.PrivateKey, kid, issuer string, ttl time.Duration, userID, orgID uuid.UUID, username, email string, emailVerified bool, givenName, familyName string, roles ...string) (string, error) {
+// The audience parameter identifies the intended recipient of the token (typically
+// the client_id for OAuth flows, or the issuer URL for direct login flows).
+func GenerateAccessToken(key *rsa.PrivateKey, kid, issuer, audience string, ttl time.Duration, userID, orgID uuid.UUID, username, email string, emailVerified bool, givenName, familyName string, roles ...string) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    issuer,
 			Subject:   userID.String(),
+			Audience:  jwt.ClaimStrings{audience},
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},
@@ -59,12 +62,13 @@ func GenerateAccessToken(key *rsa.PrivateKey, kid, issuer string, ttl time.Durat
 
 // GenerateAccessTokenWithCustomClaims is like GenerateAccessToken but includes
 // plugin-provided custom claims in the token.
-func GenerateAccessTokenWithCustomClaims(key *rsa.PrivateKey, kid, issuer string, ttl time.Duration, userID, orgID uuid.UUID, username, email string, emailVerified bool, givenName, familyName string, customClaims map[string]any, roles ...string) (string, error) {
+func GenerateAccessTokenWithCustomClaims(key *rsa.PrivateKey, kid, issuer, audience string, ttl time.Duration, userID, orgID uuid.UUID, username, email string, emailVerified bool, givenName, familyName string, customClaims map[string]any, roles ...string) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    issuer,
 			Subject:   userID.String(),
+			Audience:  jwt.ClaimStrings{audience},
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},

@@ -25,17 +25,26 @@ type PasswordResetToken struct {
 func (db *DB) CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, tokenPlaintext string, expiresAt time.Time) error {
 	hash := sha256.Sum256([]byte(tokenPlaintext))
 
-	// Invalidate any existing unused tokens for this user
-	_, _ = db.Pool.Exec(ctx, `UPDATE password_reset_tokens SET used = true WHERE user_id = $1 AND used = false`, userID)
+	tx, err := db.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback best-effort on deferred cleanup
 
-	_, err := db.Pool.Exec(ctx,
+	// Invalidate any existing unused tokens for this user
+	_, err = tx.Exec(ctx, `UPDATE password_reset_tokens SET used = true WHERE user_id = $1 AND used = false`, userID)
+	if err != nil {
+		return fmt.Errorf("invalidating old reset tokens: %w", err)
+	}
+
+	_, err = tx.Exec(ctx,
 		`INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
 		userID, hash[:], expiresAt,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting password reset token: %w", err)
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // ConsumePasswordResetToken validates and consumes a password reset token.

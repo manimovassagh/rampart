@@ -2,20 +2,30 @@ package social
 
 import (
 	"context"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
 	appleAuthURL  = "https://appleid.apple.com/auth/authorize"
 	appleTokenURL = "https://appleid.apple.com/auth/token"
+	appleJWKSURL  = "https://appleid.apple.com/auth/keys"
+	appleIssuer   = "https://appleid.apple.com"
 	appleScopes   = "name email"
+
+	// jwksCacheTTL controls how long Apple's JWKS is cached before re-fetching.
+	jwksCacheTTL = 1 * time.Hour
 )
 
 // AppleProvider implements the Provider interface for Apple Sign In.
@@ -30,6 +40,13 @@ type AppleProvider struct {
 	// If nil, the PrivateKey, TeamID, and KeyID fields are required but
 	// the actual JWT generation must be provided by the caller.
 	ClientSecretFunc func() (string, error)
+
+	// JWKSURL overrides the Apple JWKS endpoint (for testing).
+	// If empty, the default appleJWKSURL is used.
+	JWKSURL string
+
+	jwksCache   *appleJWKS
+	jwksCacheMu sync.RWMutex
 }
 
 // compile-time check that AppleProvider implements Provider.
@@ -67,9 +84,9 @@ func (a *AppleProvider) Exchange(ctx context.Context, code, redirectURL string) 
 		return nil, fmt.Errorf("apple token exchange: %w", err)
 	}
 
-	claims, err := decodeIDToken(tokenResp.IDToken)
+	claims, err := a.verifyIDToken(ctx, client, tokenResp.IDToken)
 	if err != nil {
-		return nil, fmt.Errorf("apple decode id token: %w", err)
+		return nil, fmt.Errorf("apple verify id token: %w", err)
 	}
 
 	info := &UserInfo{
@@ -128,6 +145,27 @@ func (c *appleIDTokenClaims) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// appleJWKS represents a cached set of Apple's JSON Web Keys.
+type appleJWKS struct {
+	Keys      []appleJWK
+	FetchedAt time.Time
+}
+
+// appleJWK represents a single JSON Web Key from Apple's JWKS endpoint.
+type appleJWK struct {
+	KTY string `json:"kty"`
+	KID string `json:"kid"`
+	Use string `json:"use"`
+	Alg string `json:"alg"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+
+// appleJWKSResponse is the response from Apple's /auth/keys endpoint.
+type appleJWKSResponse struct {
+	Keys []appleJWK `json:"keys"`
+}
+
 func (a *AppleProvider) httpClient() *http.Client {
 	if a.HTTPClient != nil {
 		return a.HTTPClient
@@ -179,25 +217,157 @@ func (a *AppleProvider) exchangeToken(ctx context.Context, client *http.Client, 
 	return &tokenResp, nil
 }
 
-// decodeIDToken decodes an Apple ID token JWT without verifying the signature.
-// It extracts the payload (second segment) and unmarshals the claims.
-// Note: In production, the signature should be verified against Apple's public keys.
-func decodeIDToken(idToken string) (*appleIDTokenClaims, error) {
-	parts := strings.Split(idToken, ".")
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid JWT: expected 3 parts, got %d", len(parts))
+// jwksEndpoint returns the JWKS URL, using the override if set (for testing).
+func (a *AppleProvider) jwksEndpoint() string {
+	if a.JWKSURL != "" {
+		return a.JWKSURL
+	}
+	return appleJWKSURL
+}
+
+// verifyIDToken verifies the Apple ID token JWT signature against Apple's
+// public keys (JWKS) and validates the standard claims (iss, aud, exp).
+func (a *AppleProvider) verifyIDToken(ctx context.Context, client *http.Client, idToken string) (*appleIDTokenClaims, error) {
+	keys, err := a.fetchJWKS(ctx, client)
+	if err != nil {
+		return nil, fmt.Errorf("fetching Apple JWKS: %w", err)
 	}
 
-	payload, err := base64URLDecode(parts[1])
+	// Parse and verify the JWT using the JWKS key function.
+	token, err := jwt.Parse(idToken, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the signing method is RS256.
+		if token.Method.Alg() != "RS256" {
+			return nil, fmt.Errorf("unexpected signing method: %s", token.Method.Alg())
+		}
+
+		kid, ok := token.Header["kid"].(string)
+		if !ok || kid == "" {
+			return nil, fmt.Errorf("missing kid in token header")
+		}
+
+		// Find the matching key.
+		for i := range keys {
+			if keys[i].KID == kid {
+				pubKey, keyErr := jwkToRSAPublicKey(&keys[i])
+				if keyErr != nil {
+					return nil, fmt.Errorf("converting JWK to RSA public key: %w", keyErr)
+				}
+				return pubKey, nil
+			}
+		}
+		return nil, fmt.Errorf("no matching key found for kid %q", kid)
+	},
+		jwt.WithValidMethods([]string{"RS256"}),
+		jwt.WithIssuer(appleIssuer),
+		jwt.WithAudience(a.ClientID),
+		jwt.WithExpirationRequired(),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("decoding JWT payload: %w", err)
+		return nil, fmt.Errorf("verifying JWT: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid JWT token")
+	}
+
+	// Extract claims from the verified token.
+	mapClaims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("unexpected claims type")
+	}
+
+	claimsJSON, err := json.Marshal(mapClaims)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling claims: %w", err)
 	}
 
 	var claims appleIDTokenClaims
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return nil, fmt.Errorf("parsing JWT claims: %w", err)
+	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
+		return nil, fmt.Errorf("parsing claims: %w", err)
 	}
+
 	return &claims, nil
+}
+
+// fetchJWKS fetches Apple's JWKS (JSON Web Key Set) with caching.
+func (a *AppleProvider) fetchJWKS(ctx context.Context, client *http.Client) ([]appleJWK, error) {
+	// Check cache first (read lock).
+	a.jwksCacheMu.RLock()
+	if a.jwksCache != nil && time.Since(a.jwksCache.FetchedAt) < jwksCacheTTL {
+		keys := a.jwksCache.Keys
+		a.jwksCacheMu.RUnlock()
+		return keys, nil
+	}
+	a.jwksCacheMu.RUnlock()
+
+	// Cache miss or expired — fetch fresh keys (write lock).
+	a.jwksCacheMu.Lock()
+	defer a.jwksCacheMu.Unlock()
+
+	// Double-check after acquiring write lock (another goroutine may have refreshed).
+	if a.jwksCache != nil && time.Since(a.jwksCache.FetchedAt) < jwksCacheTTL {
+		return a.jwksCache.Keys, nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.jwksEndpoint(), http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("creating JWKS request: %w", err)
+	}
+
+	resp, err := client.Do(req) //nolint:bodyclose,gosec // closed on next line; URL is from config
+	if err != nil {
+		return nil, fmt.Errorf("executing JWKS request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading JWKS response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("JWKS endpoint returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var jwksResp appleJWKSResponse
+	if err := json.Unmarshal(body, &jwksResp); err != nil {
+		return nil, fmt.Errorf("parsing JWKS response: %w", err)
+	}
+
+	if len(jwksResp.Keys) == 0 {
+		return nil, fmt.Errorf("JWKS response contains no keys")
+	}
+
+	a.jwksCache = &appleJWKS{
+		Keys:      jwksResp.Keys,
+		FetchedAt: time.Now(),
+	}
+	return jwksResp.Keys, nil
+}
+
+// jwkToRSAPublicKey converts an Apple JWK to an *rsa.PublicKey.
+func jwkToRSAPublicKey(key *appleJWK) (*rsa.PublicKey, error) {
+	if key.KTY != "RSA" {
+		return nil, fmt.Errorf("unsupported key type: %s", key.KTY)
+	}
+
+	nBytes, err := base64URLDecode(key.N)
+	if err != nil {
+		return nil, fmt.Errorf("decoding modulus: %w", err)
+	}
+
+	eBytes, err := base64URLDecode(key.E)
+	if err != nil {
+		return nil, fmt.Errorf("decoding exponent: %w", err)
+	}
+
+	n := new(big.Int).SetBytes(nBytes)
+	e := new(big.Int).SetBytes(eBytes)
+
+	return &rsa.PublicKey{
+		N: n,
+		E: int(e.Int64()),
+	}, nil
 }
 
 // base64URLDecode decodes a base64url-encoded string with optional padding.

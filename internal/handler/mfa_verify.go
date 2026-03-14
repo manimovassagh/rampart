@@ -104,6 +104,15 @@ func (h *MFAVerifyHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check account lockout (shared with login flow)
+	if user.IsLocked() {
+		h.audit.Log(ctx, r, user.OrgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_locked_mfa"})
+		metrics.AuthTotal.WithLabelValues("failure").Inc()
+		w.Header().Set("Retry-After", "900")
+		apierror.TooManyRequests(w, "Account is temporarily locked due to too many failed MFA attempts. Please try again later.")
+		return
+	}
+
 	// Get verified MFA device
 	device, err := h.store.GetVerifiedMFADevice(ctx, userID)
 	if err != nil {
@@ -134,8 +143,24 @@ func (h *MFAVerifyHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !valid {
+		h.audit.Log(ctx, r, user.OrgID, model.EventMFAFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_mfa_code"})
 		h.audit.Log(ctx, r, user.OrgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "invalid_mfa_code"})
 		metrics.AuthTotal.WithLabelValues("failure").Inc()
+
+		// Increment failed login counter with lockout policy (same as login flow)
+		var settings *model.OrgSettings
+		if s, sErr := h.store.GetOrgSettings(ctx, user.OrgID); sErr != nil {
+			h.logger.Warn("failed to fetch org settings for MFA lockout, using defaults", "error", sErr)
+		} else {
+			settings = s
+		}
+		maxAttempts, lockoutDur := defaultLockoutPolicy(settings)
+		if maxAttempts > 0 {
+			if lErr := h.store.IncrementFailedLogins(ctx, user.ID, maxAttempts, lockoutDur); lErr != nil {
+				h.logger.Warn("failed to increment failed logins after MFA failure", "error", lErr)
+			}
+		}
+
 		apierror.Unauthorized(w, "Invalid MFA code.")
 		return
 	}
@@ -166,7 +191,7 @@ func (h *MFAVerifyHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accessToken, err := token.GenerateAccessToken(
-		h.privateKey, h.kid, h.issuer, accessTTL,
+		h.privateKey, h.kid, h.issuer, h.issuer, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,
@@ -196,6 +221,7 @@ func (h *MFAVerifyHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 		h.logger.Warn("failed to update last_login_at", "error", err, "user_id", user.ID)
 	}
 
+	h.audit.LogSimple(ctx, r, user.OrgID, model.EventMFAVerified, &user.ID, user.Username, "user", user.ID.String(), user.Username)
 	h.audit.LogSimple(ctx, r, user.OrgID, model.EventUserLogin, &user.ID, user.Username, "user", user.ID.String(), user.Username)
 	metrics.AuthTotal.WithLabelValues("success").Inc()
 	metrics.TokensIssued.WithLabelValues("access").Inc()

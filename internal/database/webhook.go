@@ -71,6 +71,9 @@ func (db *DB) ListWebhooks(ctx context.Context, orgID uuid.UUID, limit, offset i
 		}
 		webhooks = append(webhooks, &wh)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating webhooks: %w", err)
+	}
 	return webhooks, total, nil
 }
 
@@ -116,6 +119,9 @@ func (db *DB) GetEnabledWebhooksForEvent(ctx context.Context, orgID uuid.UUID, e
 			return nil, fmt.Errorf("scanning webhook: %w", err)
 		}
 		webhooks = append(webhooks, &wh)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating webhooks for event: %w", err)
 	}
 	return webhooks, nil
 }
@@ -167,6 +173,9 @@ func (db *DB) GetPendingDeliveries(ctx context.Context, limit int) ([]*model.Web
 		}
 		deliveries = append(deliveries, &d)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating pending deliveries: %w", err)
+	}
 	return deliveries, nil
 }
 
@@ -209,6 +218,9 @@ func (db *DB) ListWebhookDeliveries(ctx context.Context, webhookID uuid.UUID, li
 			return nil, 0, fmt.Errorf("scanning delivery: %w", err)
 		}
 		deliveries = append(deliveries, &d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating webhook deliveries: %w", err)
 	}
 	return deliveries, total, nil
 }

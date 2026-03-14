@@ -1,10 +1,99 @@
 package model
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// cssColorHexPattern matches 3, 4, 6, or 8-digit hex colors like #fff, #FFFFFF, #ff000080.
+var cssColorHexPattern = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
+
+// cssColorRGBPattern matches rgb(r,g,b) and rgba(r,g,b,a) with integers/percentages.
+var cssColorRGBPattern = regexp.MustCompile(`^rgba?\(\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*(,\s*(0|1|0?\.\d+)\s*)?\)$`)
+
+// cssColorHSLPattern matches hsl(h,s%,l%) and hsla(h,s%,l%,a).
+var cssColorHSLPattern = regexp.MustCompile(`^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(,\s*(0|1|0?\.\d+)\s*)?\)$`)
+
+// cssNamedColors is the set of standard CSS named colors.
+var cssNamedColors = map[string]bool{
+	"aliceblue": true, "antiquewhite": true, "aqua": true, "aquamarine": true,
+	"azure": true, "beige": true, "bisque": true, "black": true,
+	"blanchedalmond": true, "blue": true, "blueviolet": true, "brown": true,
+	"burlywood": true, "cadetblue": true, "chartreuse": true, "chocolate": true,
+	"coral": true, "cornflowerblue": true, "cornsilk": true, "crimson": true,
+	"cyan": true, "darkblue": true, "darkcyan": true, "darkgoldenrod": true,
+	"darkgray": true, "darkgreen": true, "darkgrey": true, "darkkhaki": true,
+	"darkmagenta": true, "darkolivegreen": true, "darkorange": true, "darkorchid": true,
+	"darkred": true, "darksalmon": true, "darkseagreen": true, "darkslateblue": true,
+	"darkslategray": true, "darkslategrey": true, "darkturquoise": true, "darkviolet": true,
+	"deeppink": true, "deepskyblue": true, "dimgray": true, "dimgrey": true,
+	"dodgerblue": true, "firebrick": true, "floralwhite": true, "forestgreen": true,
+	"fuchsia": true, "gainsboro": true, "ghostwhite": true, "gold": true,
+	"goldenrod": true, "gray": true, "green": true, "greenyellow": true,
+	"grey": true, "honeydew": true, "hotpink": true, "indianred": true,
+	"indigo": true, "ivory": true, "khaki": true, "lavender": true,
+	"lavenderblush": true, "lawngreen": true, "lemonchiffon": true, "lightblue": true,
+	"lightcoral": true, "lightcyan": true, "lightgoldenrodyellow": true, "lightgray": true,
+	"lightgreen": true, "lightgrey": true, "lightpink": true, "lightsalmon": true,
+	"lightseagreen": true, "lightskyblue": true, "lightslategray": true, "lightslategrey": true,
+	"lightsteelblue": true, "lightyellow": true, "lime": true, "limegreen": true,
+	"linen": true, "magenta": true, "maroon": true, "mediumaquamarine": true,
+	"mediumblue": true, "mediumorchid": true, "mediumpurple": true, "mediumseagreen": true,
+	"mediumslateblue": true, "mediumspringgreen": true, "mediumturquoise": true, "mediumvioletred": true,
+	"midnightblue": true, "mintcream": true, "mistyrose": true, "moccasin": true,
+	"navajowhite": true, "navy": true, "oldlace": true, "olive": true,
+	"olivedrab": true, "orange": true, "orangered": true, "orchid": true,
+	"palegoldenrod": true, "palegreen": true, "paleturquoise": true, "palevioletred": true,
+	"papayawhip": true, "peachpuff": true, "peru": true, "pink": true,
+	"plum": true, "powderblue": true, "purple": true, "rebeccapurple": true,
+	"red": true, "rosybrown": true, "royalblue": true, "saddlebrown": true,
+	"salmon": true, "sandybrown": true, "seagreen": true, "seashell": true,
+	"sienna": true, "silver": true, "skyblue": true, "slateblue": true,
+	"slategray": true, "slategrey": true, "snow": true, "springgreen": true,
+	"steelblue": true, "tan": true, "teal": true, "thistle": true,
+	"tomato": true, "transparent": true, "turquoise": true, "violet": true,
+	"wheat": true, "white": true, "whitesmoke": true, "yellow": true,
+	"yellowgreen": true,
+}
+
+// ValidateCSSColor checks that a string is a safe CSS color value.
+// It accepts empty strings (no color set), hex colors, rgb/rgba, hsl/hsla,
+// and standard CSS named colors. It rejects anything that could be a CSS
+// injection vector (semicolons, braces, url(), expression(), @import, etc.).
+func ValidateCSSColor(value string) error {
+	if value == "" {
+		return nil
+	}
+
+	// First, reject any dangerous characters/patterns regardless of format.
+	lower := strings.ToLower(value)
+	dangerousPatterns := []string{";", "{", "}", "url(", "expression(", "@import", "javascript:", "\\"}
+	for _, p := range dangerousPatterns {
+		if strings.Contains(lower, p) {
+			return fmt.Errorf("color value contains forbidden pattern %q", p)
+		}
+	}
+
+	// Check against allowed formats.
+	if cssColorHexPattern.MatchString(value) {
+		return nil
+	}
+	if cssColorRGBPattern.MatchString(lower) {
+		return nil
+	}
+	if cssColorHSLPattern.MatchString(lower) {
+		return nil
+	}
+	if cssNamedColors[lower] {
+		return nil
+	}
+
+	return fmt.Errorf("invalid CSS color value: must be a hex color (#RGB, #RRGGBB), rgb(), hsl(), or a named CSS color")
+}
 
 // Organization represents a row in the organizations table.
 type Organization struct {
