@@ -1,4 +1,6 @@
-# Account API
+# Account API *(Planned)*
+
+> **Note:** The Account API is not yet implemented. The endpoints below are planned for a future release. Currently, use `GET /me` to retrieve user profile information.
 
 Self-service API for authenticated end users to manage their own account. All endpoints require a valid user bearer token.
 

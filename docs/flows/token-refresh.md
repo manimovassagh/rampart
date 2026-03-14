@@ -87,8 +87,8 @@ If attacker uses RT_A again:
 
 | Token | Default Lifetime | Configurable |
 |-------|-----------------|--------------|
-| Access token | 1 hour | Yes, per client |
-| Refresh token | 30 days | Yes, per client |
+| Access token | 15 minutes (900s) | Yes, via `RAMPART_ACCESS_TOKEN_TTL` |
+| Refresh token | 7 days (604800s) | Yes, via `RAMPART_REFRESH_TOKEN_TTL` |
 | ID token | Same as access token | Yes |
 
 ## Security Considerations

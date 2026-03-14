@@ -9,10 +9,10 @@ Standard protocol endpoints that follow their respective RFCs. These paths are f
 | GET | `/oauth/authorize` | Authorization endpoint | [RFC 6749 §3.1](https://tools.ietf.org/html/rfc6749#section-3.1) |
 | POST | `/oauth/token` | Token endpoint | [RFC 6749 §3.2](https://tools.ietf.org/html/rfc6749#section-3.2) |
 | POST | `/oauth/revoke` | Token revocation | [RFC 7009](https://tools.ietf.org/html/rfc7009) |
-| POST | `/oauth/introspect` | Token introspection | [RFC 7662](https://tools.ietf.org/html/rfc7662) |
-| POST | `/oauth/device` | Device authorization | [RFC 8628](https://tools.ietf.org/html/rfc8628) |
-| GET/POST | `/oidc/userinfo` | UserInfo endpoint | [OIDC Core §5.3](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo) |
-| GET | `/oidc/logout` | End session | [OIDC RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html) |
+| POST | `/oauth/introspect` | Token introspection *(planned)* | [RFC 7662](https://tools.ietf.org/html/rfc7662) |
+| POST | `/oauth/device` | Device authorization *(planned)* | [RFC 8628](https://tools.ietf.org/html/rfc8628) |
+| GET | `/me` | Current user profile | Proprietary |
+| GET | `/oidc/logout` | End session *(planned)* | [OIDC RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html) |
 | GET | `/.well-known/openid-configuration` | Discovery document | [OIDC Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html) |
 | GET | `/.well-known/jwks.json` | JSON Web Key Set | [RFC 7517](https://tools.ietf.org/html/rfc7517) |
 
@@ -80,7 +80,7 @@ POST /oauth/token
 Content-Type: application/x-www-form-urlencoded
 ```
 
-Exchanges an authorization code, refresh token, or client credentials for tokens.
+Exchanges an authorization code or refresh token for tokens.
 
 ### Authorization Code Exchange
 
@@ -95,17 +95,6 @@ grant_type=authorization_code
 &code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
 ```
 
-### Client Credentials
-
-```http
-POST /oauth/token
-Content-Type: application/x-www-form-urlencoded
-Authorization: Basic base64(client_id:client_secret)
-
-grant_type=client_credentials
-&scope=api:read api:write
-```
-
 ### Refresh Token
 
 ```http
@@ -115,17 +104,6 @@ Content-Type: application/x-www-form-urlencoded
 grant_type=refresh_token
 &refresh_token=tGzv3JOkF0XG5Qx2TlKWIA
 &client_id=my-spa
-```
-
-### Device Code (RFC 8628)
-
-```http
-POST /oauth/token
-Content-Type: application/x-www-form-urlencoded
-
-grant_type=urn:ietf:params:oauth:grant-type:device_code
-&device_code=GmRhmhcxhwAzkoEqiMEg_DnyEysNkuNhszIySk9eS
-&client_id=my-cli
 ```
 
 ### Success Response
@@ -185,7 +163,9 @@ HTTP/1.1 200 OK
 
 ---
 
-## Token Introspection
+## Token Introspection *(Planned)*
+
+> **Note:** This endpoint is not yet implemented. It is planned for a future release.
 
 ```
 POST /oauth/introspect
@@ -231,7 +211,9 @@ token=eyJhbGciOiJSUzI1NiIs...
 
 ---
 
-## Device Authorization
+## Device Authorization *(Planned)*
+
+> **Note:** This endpoint is not yet implemented. It is planned for a future release.
 
 ```
 POST /oauth/device
@@ -267,14 +249,14 @@ The device polls `POST /oauth/token` with `grant_type=urn:ietf:params:oauth:gran
 
 ---
 
-## UserInfo Endpoint
+## User Profile Endpoint
 
 ```
-GET /oidc/userinfo
+GET /me
 Authorization: Bearer <access_token>
 ```
 
-Returns claims about the authenticated user. The scopes in the access token determine which claims are returned.
+Returns information about the authenticated user.
 
 ### Response
 
@@ -302,7 +284,9 @@ Returns claims about the authenticated user. The scopes in the access token dete
 
 ---
 
-## End Session (Logout)
+## End Session (Logout) *(Planned)*
+
+> **Note:** OIDC RP-Initiated Logout is not yet implemented. Use `POST /logout` with a refresh token to revoke sessions.
 
 ```
 GET /oidc/logout
@@ -343,17 +327,13 @@ Returns the OIDC Discovery metadata. All clients should use this to discover end
   "token_endpoint": "https://auth.example.com/oauth/token",
   "userinfo_endpoint": "https://auth.example.com/oidc/userinfo",
   "revocation_endpoint": "https://auth.example.com/oauth/revoke",
-  "introspection_endpoint": "https://auth.example.com/oauth/introspect",
-  "device_authorization_endpoint": "https://auth.example.com/oauth/device",
-  "end_session_endpoint": "https://auth.example.com/oidc/logout",
+  "end_session_endpoint": "https://auth.example.com/logout",
   "jwks_uri": "https://auth.example.com/.well-known/jwks.json",
   "scopes_supported": ["openid", "profile", "email", "phone", "offline_access"],
   "response_types_supported": ["code"],
   "grant_types_supported": [
     "authorization_code",
-    "refresh_token",
-    "client_credentials",
-    "urn:ietf:params:oauth:grant-type:device_code"
+    "refresh_token"
   ],
   "subject_types_supported": ["public"],
   "id_token_signing_alg_values_supported": ["RS256", "ES256"],
