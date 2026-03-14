@@ -10,7 +10,7 @@ sequenceDiagram
     participant App as Client Application
     participant Rampart as Rampart Server
     participant DB as PostgreSQL
-    participant Cache as Redis
+    participant Cache as PostgreSQL Cache
 
     Note over App: Step 1 — Generate PKCE challenge
     App->>App: Generate code_verifier (random 43-128 chars)

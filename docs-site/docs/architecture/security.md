@@ -83,7 +83,7 @@ Refresh token rotation mitigates the impact of token theft. When a refresh token
 | Property | Value |
 |----------|-------|
 | Session ID | Cryptographically random, 256-bit |
-| Storage | Redis (fast lookup) + PostgreSQL (audit record) |
+| Storage | PostgreSQL |
 | Transport | HTTP-only, Secure, SameSite=Lax cookie |
 | Default TTL | 24 hours (configurable) |
 | Idle timeout | 30 minutes of inactivity (configurable) |
@@ -121,7 +121,7 @@ Rate limiting protects against brute-force attacks and abuse:
 | Admin API (all) | 100 per minute | Authenticated user |
 | All other endpoints | 60 per minute | IP |
 
-Rate limit state is stored in Redis using sliding window counters. Limits are configurable per endpoint and can be overridden per organization.
+Rate limits are configurable per endpoint and can be overridden per organization.
 
 When rate limited, the server responds with:
 - HTTP `429 Too Many Requests`
@@ -185,7 +185,7 @@ All responses include the following security headers:
 | Threat | Mitigation |
 |--------|-----------|
 | Token theft | Short access token lifetime (15 min), refresh token rotation |
-| Token replay | `jti` claim for unique token IDs, token blacklist in Redis |
+| Token replay | `jti` claim for unique token IDs, token blacklist |
 | Token forgery | RSA signature verification, JWKS-published public keys |
 | Refresh token theft | Rotation with family revocation on reuse detection |
 

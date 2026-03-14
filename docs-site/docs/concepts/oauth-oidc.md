@@ -463,7 +463,7 @@ token_type_hint=refresh_token&
 client_id=my-app
 ```
 
-Rampart accepts revocation requests for both access tokens and refresh tokens. Revocation of an access token adds it to a Redis-backed deny list for the remaining validity period. Revocation of a refresh token invalidates the entire token family.
+Rampart accepts revocation requests for both access tokens and refresh tokens. Revocation of an access token adds it to a deny list for the remaining validity period. Revocation of a refresh token invalidates the entire token family.
 
 ### Introspection
 

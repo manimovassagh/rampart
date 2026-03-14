@@ -6,7 +6,7 @@ description: High-level architecture of the Rampart IAM server, including compon
 
 # Architecture Overview
 
-Rampart is a single-binary identity and access management (IAM) server built in Go. It bundles a PostgreSQL-backed data layer, Redis-based session/cache layer, and embedded admin and login UIs into one deployable artifact.
+Rampart is a single-binary identity and access management (IAM) server built in Go. It bundles a PostgreSQL-backed data layer and embedded admin and login UIs into one deployable artifact. No Redis or external cache is required.
 
 ## High-Level Architecture
 
@@ -40,19 +40,19 @@ Rampart is a single-binary identity and access management (IAM) server built in 
                           |  +-------------------+ |
                           +-----------+-----------+
                                       |
-                         +------------+------------+
-                         |                         |
-                         v                         v
-                  +-------------+          +-------------+
-                  | PostgreSQL  |          |    Redis     |
-                  |             |          |   (Valkey)   |
-                  | - Users     |          |              |
-                  | - Orgs      |          | - Sessions   |
-                  | - Roles     |          | - Token      |
-                  | - Clients   |          |   blacklist  |
-                  | - Audit log |          | - Rate limit |
-                  +-------------+          |   counters   |
-                                           +-------------+
+                                      |
+                                      v
+                          +-----------------------+
+                          |      PostgreSQL       |
+                          |                       |
+                          |  - Users              |
+                          |  - Organizations      |
+                          |  - Roles              |
+                          |  - OAuth Clients      |
+                          |  - Sessions           |
+                          |  - Audit Events       |
+                          |  - Tokens             |
+                          +-----------------------+
 ```
 
 ## Core Components
@@ -63,7 +63,7 @@ Rampart is a single-binary identity and access management (IAM) server built in 
 | **OAuth 2.0 / OIDC Engine** | Authorization code + PKCE, client credentials, token refresh, device flow, JWKS |
 | **Admin API** | CRUD for users, organizations, roles, clients; RBAC-protected |
 | **Account API** | Self-service profile, password change, MFA enrollment |
-| **Session Manager** | Redis-backed session creation, validation, revocation |
+| **Session Manager** | PostgreSQL-backed session creation, validation, revocation |
 | **Audit Logger** | Append-only event log for security-relevant actions |
 | **Embedded Admin UI** | htmx + Go templates + Tailwind served from `/admin` |
 | **Embedded Login UI** | Go templates + Tailwind served from `/login`, themeable per-tenant |
@@ -73,7 +73,7 @@ Rampart is a single-binary identity and access management (IAM) server built in 
 A typical OAuth 2.0 authorization code flow through Rampart:
 
 ```
-Client App                Rampart Server              PostgreSQL         Redis
+Client App                Rampart Server              PostgreSQL
     |                           |                          |                |
     |-- GET /oauth/authorize ->|                          |                |
     |                           |-- validate client ------>|                |
@@ -116,7 +116,7 @@ rampart/
 │   │   ├── roles.go
 │   │   └── clients.go
 │   ├── account/                 # Self-service account API
-│   ├── session/                 # Session management (Redis-backed)
+│   ├── session/                 # Session management (PostgreSQL-backed)
 │   ├── audit/                   # Audit event logging
 │   ├── middleware/              # Auth, CORS, rate limit, security headers
 │   ├── model/                   # Domain types (User, Org, Role, etc.)
@@ -155,7 +155,6 @@ Every dependency is a supply chain risk, especially for an IAM product. Rampart 
 
 - **chi** — HTTP router (lightweight, stdlib-compatible)
 - **pgx** — PostgreSQL driver (pure Go, high performance)
-- **go-redis** — Redis client
 - **golang-jwt** — JWT signing and verification
 
 ### API-First

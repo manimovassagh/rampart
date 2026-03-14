@@ -20,7 +20,6 @@ Be respectful, constructive, and professional. We are building security infrastr
 |------|---------|---------|
 | Go | 1.22+ | Backend development |
 | PostgreSQL | 15+ | Primary data store |
-| Redis | 7+ (or Valkey) | Sessions and caching |
 | Node.js | 20+ | Admin UI and login UI development |
 | pnpm | 9+ | Frontend package manager |
 | Git | 2.40+ | Version control |
@@ -88,7 +87,7 @@ For local development, copy the example configuration:
 cp configs/dev.yaml.example configs/dev.yaml
 ```
 
-Edit `configs/dev.yaml` with your local PostgreSQL and Redis connection details.
+Edit `configs/dev.yaml` with your local PostgreSQL connection details.
 
 ## Code Style
 

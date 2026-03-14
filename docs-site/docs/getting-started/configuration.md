@@ -21,18 +21,13 @@ RAMPART_CONFIG=/etc/rampart/config.yaml ./rampart
 ```yaml
 server:
   port: 8080
-  issuer_url: https://auth.example.com
+  issuer: https://auth.example.com
 
 database:
   url: postgres://rampart:secret@localhost:5432/rampart?sslmode=require
   max_open_conns: 25
   max_idle_conns: 5
   conn_max_lifetime: 5m
-
-redis:
-  url: redis://localhost:6379/0
-  max_retries: 3
-  pool_size: 10
 
 signing:
   key_path: /data/keys/signing.pem
@@ -75,7 +70,7 @@ All environment variables are prefixed with `RAMPART_`.
 | Variable | YAML Path | Description | Default |
 |----------|-----------|-------------|---------|
 | `RAMPART_PORT` | `server.port` | HTTP listen port | `8080` |
-| `RAMPART_ISSUER_URL` | `server.issuer_url` | Public base URL for OIDC Discovery and JWT `iss` | `http://localhost:8080` |
+| `RAMPART_ISSUER` | `server.issuer` | Public base URL for OIDC Discovery and JWT `iss` | `http://localhost:8080` |
 | `RAMPART_CONFIG` | — | Path to YAML configuration file | `./rampart.yaml` |
 
 ### Database
@@ -94,26 +89,6 @@ postgres://user:password@host:port/database?sslmode=require
 ```
 
 Supported `sslmode` values: `disable`, `require`, `verify-ca`, `verify-full`. Use `verify-full` in production.
-
-### Redis
-
-| Variable | YAML Path | Description | Default |
-|----------|-----------|-------------|---------|
-| `RAMPART_REDIS_URL` | `redis.url` | Redis connection string | (required) |
-| `RAMPART_REDIS_MAX_RETRIES` | `redis.max_retries` | Maximum retry attempts | `3` |
-| `RAMPART_REDIS_POOL_SIZE` | `redis.pool_size` | Connection pool size | `10` |
-
-The Redis connection string follows the standard format:
-
-```
-redis://[:password@]host:port/db
-```
-
-For Redis with TLS:
-
-```
-rediss://[:password@]host:port/db
-```
 
 ### Signing Keys
 
@@ -147,7 +122,7 @@ openssl rsa -in signing.pem -pubout -out signing-pub.pem
 
 | Variable | YAML Path | Description | Default |
 |----------|-----------|-------------|---------|
-| `RAMPART_CORS_ORIGINS` | `cors.allowed_origins` | Comma-separated allowed origins | `*` |
+| `RAMPART_ALLOWED_ORIGINS` | `cors.allowed_origins` | Comma-separated allowed origins | `*` |
 | `RAMPART_CORS_METHODS` | `cors.allowed_methods` | Comma-separated allowed HTTP methods | `GET,POST,PUT,DELETE,OPTIONS` |
 | `RAMPART_CORS_HEADERS` | `cors.allowed_headers` | Comma-separated allowed headers | `Authorization,Content-Type` |
 | `RAMPART_CORS_MAX_AGE` | `cors.max_age` | Preflight cache duration in seconds | `3600` |
@@ -175,4 +150,4 @@ Start Rampart with the `--validate` flag to check your configuration without sta
 ./rampart --validate
 ```
 
-This verifies database connectivity, Redis connectivity, signing key validity, and configuration syntax.
+This verifies database connectivity, signing key validity, and configuration syntax.

@@ -37,6 +37,14 @@ func NewComplianceHandler(s ComplianceStore, logger *slog.Logger) *ComplianceHan
 	return &ComplianceHandler{store: s, logger: logger}
 }
 
+// complianceReport is the JSON response for a compliance framework report.
+type complianceReport struct {
+	Framework string            `json:"framework"`
+	Generated string            `json:"generated"`
+	Checks    []complianceCheck `json:"checks"`
+	Summary   map[string]int    `json:"summary"`
+}
+
 // complianceCheck represents one compliance control status.
 type complianceCheck struct {
 	ID          string `json:"id"`
@@ -62,11 +70,11 @@ func (h *ComplianceHandler) SOC2Report(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"framework": "SOC2",
-		"generated": time.Now().Format(time.RFC3339),
-		"checks":    checks,
-		"summary":   summarizeChecks(checks),
+	_ = json.NewEncoder(w).Encode(complianceReport{
+		Framework: "SOC2",
+		Generated: time.Now().Format(time.RFC3339),
+		Checks:    checks,
+		Summary:   summarizeChecks(checks),
 	})
 }
 
@@ -85,11 +93,11 @@ func (h *ComplianceHandler) GDPRReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"framework": "GDPR",
-		"generated": time.Now().Format(time.RFC3339),
-		"checks":    checks,
-		"summary":   summarizeChecks(checks),
+	_ = json.NewEncoder(w).Encode(complianceReport{
+		Framework: "GDPR",
+		Generated: time.Now().Format(time.RFC3339),
+		Checks:    checks,
+		Summary:   summarizeChecks(checks),
 	})
 }
 
@@ -110,11 +118,11 @@ func (h *ComplianceHandler) HIPAAReport(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"framework": "HIPAA",
-		"generated": time.Now().Format(time.RFC3339),
-		"checks":    checks,
-		"summary":   summarizeChecks(checks),
+	_ = json.NewEncoder(w).Encode(complianceReport{
+		Framework: "HIPAA",
+		Generated: time.Now().Format(time.RFC3339),
+		Checks:    checks,
+		Summary:   summarizeChecks(checks),
 	})
 }
 

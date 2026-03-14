@@ -12,6 +12,11 @@ import (
 const statusAlive = "alive"
 const statusReady = "ready"
 
+// healthResponse is the JSON response for health check endpoints.
+type healthResponse struct {
+	Status string `json:"status"`
+}
+
 // Pinger checks database connectivity.
 type Pinger interface {
 	Ping(ctx context.Context) error
@@ -31,7 +36,7 @@ func NewHealthHandler(db Pinger) *HealthHandler {
 // GET /healthz
 func (h *HealthHandler) Liveness(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
-	if err := json.NewEncoder(w).Encode(map[string]string{"status": statusAlive}); err != nil {
+	if err := json.NewEncoder(w).Encode(healthResponse{Status: statusAlive}); err != nil {
 		slog.Error("failed to encode liveness response", "error", err)
 	}
 }
@@ -46,7 +51,7 @@ func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
-	if err := json.NewEncoder(w).Encode(map[string]string{"status": statusReady}); err != nil {
+	if err := json.NewEncoder(w).Encode(healthResponse{Status: statusReady}); err != nil {
 		slog.Error("failed to encode readiness response", "error", err)
 	}
 }

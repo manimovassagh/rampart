@@ -6,7 +6,6 @@ Thanks for your interest in contributing to Rampart. This document covers everyt
 
 - **Go 1.26+**
 - **PostgreSQL 16+**
-- **Redis 7+** (optional, for session storage)
 - **Docker & Docker Compose** (for running the full stack locally)
 - **golangci-lint** (installed via `make dev-setup`)
 
@@ -24,14 +23,14 @@ make dev-setup
 cp .env.example .env
 # Edit .env with your local database credentials
 
-# Start dependencies (Postgres + Redis)
-docker compose -f docker-compose.dev.yml up -d
+# Start dependencies (Postgres)
+docker compose up -d postgres
 
 # Run the server
 go run ./cmd/rampart
 ```
 
-Alternatively, run the full stack (server + database + Redis) with Docker Compose:
+Alternatively, run the full stack (server + database) with Docker Compose:
 
 ```bash
 docker compose up -d --build

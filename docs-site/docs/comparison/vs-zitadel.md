@@ -14,11 +14,11 @@ Zitadel is a Go-based identity management platform that provides OAuth 2.0/OIDC,
 |--------|---------|---------|
 | **Language** | Go | Go |
 | **Database** | PostgreSQL | CockroachDB (primary) or PostgreSQL (added later) |
-| **Cache/Sessions** | Redis | In-process (event-sourced projections) |
+| **Cache/Sessions** | PostgreSQL | In-process (event-sourced projections) |
 | **Architecture** | Traditional CRUD + event audit log | Full event sourcing (CQRS) |
 | **Admin UI** | React + Vite + Tailwind | Angular (custom framework) |
 | **Login UI** | React SPA, CSS variable themes | Server-rendered Go templates |
-| **Deployment** | Single binary + PostgreSQL + Redis | Single binary + CockroachDB (or PostgreSQL) |
+| **Deployment** | Single binary + PostgreSQL | Single binary + CockroachDB (or PostgreSQL) |
 | **Extensibility** | Plugin system (planned), webhooks | Actions (JavaScript/TypeScript runtime) |
 | **Multi-tenancy** | Organizations | Organizations + instances |
 | **Resource usage** | ~30 MB idle | ~100–200 MB idle |

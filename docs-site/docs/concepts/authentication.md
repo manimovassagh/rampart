@@ -34,7 +34,7 @@ The primary authentication flow uses email and password credentials.
 3. The submitted password is verified against the stored hash
 4. If MFA is enabled for the user, a challenge is issued (see [Multi-Factor Authentication](#multi-factor-authentication))
 5. On success, Rampart generates an access token, refresh token, and (if requested) an ID token
-6. A session is created in Redis with metadata (IP, user agent, geo, timestamp)
+6. A session is created in PostgreSQL with metadata (IP, user agent, geo, timestamp)
 7. A `user.login` audit event is logged
 
 **Security:** Failed login attempts never reveal whether an email exists. The error response is identical for "unknown email" and "wrong password" — this prevents user enumeration attacks. Failed attempts are rate-limited per IP and per account.
@@ -326,12 +326,12 @@ Logout --> All tokens revoked, session destroyed
 3. The client uses the access token in `Authorization: Bearer <token>` headers
 4. When the access token expires, the client exchanges the refresh token for a new token pair
 5. The old refresh token is invalidated; replay attempts revoke the entire chain
-6. On logout, all tokens are revoked and the Redis session is destroyed
+6. On logout, all tokens are revoked and the session is destroyed
 7. If the refresh token expires without being used, the user must re-authenticate
 
 ## Session Creation
 
-Every successful authentication creates a server-side session in Redis. The session stores:
+Every successful authentication creates a server-side session in PostgreSQL. The session stores:
 
 | Field | Description |
 |-------|-------------|

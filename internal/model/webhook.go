@@ -28,7 +28,7 @@ type WebhookDelivery struct {
 	Attempts         int
 	NextRetryAt      *time.Time
 	LastResponseCode *int
-	LastError        string
+	LastError        *string
 	CreatedAt        time.Time
 	CompletedAt      *time.Time
 }

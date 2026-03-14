@@ -19,7 +19,6 @@ graph TB
 
         subgraph "Data Layer"
             PG[(PostgreSQL)]
-            RD[(Redis / Valkey)]
         end
 
         subgraph "External Services"
@@ -37,10 +36,6 @@ graph TB
     R2 --> PG
     R3 --> PG
 
-    R1 --> RD
-    R2 --> RD
-    R3 --> RD
-
     R1 --> SMTP
     R1 --> SMS
 ```
@@ -54,8 +49,7 @@ A single Rampart binary on a VM. Suitable for small teams, dev/staging environme
 ```
 EC2 / Azure VM / GCE instance
 ├── rampart binary (port 8080)
-├── PostgreSQL (same host or managed)
-└── Redis (same host or managed)
+└── PostgreSQL (same host or managed)
 ```
 
 **When to use**: < 1000 users, single region, simplicity is priority.
@@ -73,7 +67,6 @@ services:
       - "8080:8080"
     environment:
       RAMPART_DB_URL: postgres://user:pass@db:5432/rampart?sslmode=require
-      RAMPART_REDIS_URL: redis://cache:6379
       RAMPART_ISSUER: https://auth.example.com
       RAMPART_LOG_LEVEL: info
     deploy:
@@ -88,8 +81,6 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
-  cache:
-    image: redis:7-alpine
 ```
 
 ### Option 3: Kubernetes
@@ -108,9 +99,6 @@ resources:
     cpu: "500m"
 
 postgresql:
-  enabled: true  # or use external
-
-redis:
   enabled: true  # or use external
 
 ingress:
@@ -139,7 +127,6 @@ Rampart works with any AWS compute option:
 **Recommended infrastructure:**
 - **Compute**: ECS Fargate or EC2
 - **Database**: Amazon RDS for PostgreSQL
-- **Cache**: Amazon ElastiCache for Redis
 - **Load Balancer**: Application Load Balancer (ALB)
 - **DNS**: Route 53
 - **TLS**: AWS Certificate Manager
@@ -157,7 +144,6 @@ Rampart works with any AWS compute option:
 **Recommended infrastructure:**
 - **Compute**: Azure Container Apps or VM
 - **Database**: Azure Database for PostgreSQL
-- **Cache**: Azure Cache for Redis
 - **Load Balancer**: Azure Application Gateway
 - **DNS**: Azure DNS
 - **TLS**: Azure Key Vault
@@ -174,7 +160,6 @@ Rampart works with any AWS compute option:
 **Recommended infrastructure:**
 - **Compute**: Cloud Run or Compute Engine
 - **Database**: Cloud SQL for PostgreSQL
-- **Cache**: Memorystore for Redis
 - **Load Balancer**: Cloud Load Balancing
 - **DNS**: Cloud DNS
 - **TLS**: Google-managed certificates
@@ -206,9 +191,6 @@ module "rampart" {
   db_instance_class = "db.t4g.medium"
   db_name           = "rampart"
 
-  # Cache
-  redis_node_type = "cache.t4g.micro"
-
   # DNS
   domain_name = "auth.example.com"
   zone_id     = data.aws_route53_zone.main.zone_id
@@ -238,7 +220,7 @@ module "rampart_ec2" {
   domain_name = "auth.example.com"
 
   # Rampart will be installed via user_data script
-  # with PostgreSQL and Redis on the same instance
+  # with PostgreSQL on the same instance
 }
 ```
 
@@ -262,10 +244,6 @@ module "rampart" {
   # Database
   postgresql_sku = "B_Standard_B1ms"
 
-  # Cache
-  redis_sku = "Basic"
-  redis_capacity = 0
-
   # DNS
   custom_domain = "auth.example.com"
 }
@@ -280,7 +258,6 @@ Rampart is configured via environment variables or a YAML config file. Environme
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `RAMPART_DB_URL` | PostgreSQL connection string | `postgres://user:pass@host:5432/rampart?sslmode=require` |
-| `RAMPART_REDIS_URL` | Redis connection string | `redis://:pass@host:6379` |
 | `RAMPART_ISSUER` | The issuer URL (your public domain) | `https://auth.example.com` |
 
 ### Optional Configuration
@@ -309,10 +286,6 @@ database:
   max_open_conns: 25
   max_idle_conns: 5
 
-redis:
-  url: redis://:pass@host:6379
-  max_retries: 3
-
 logging:
   level: info
   format: json
@@ -332,7 +305,7 @@ All deployment platforms should use these endpoints for health monitoring:
 | Endpoint | Purpose | Use |
 |----------|---------|-----|
 | `GET /healthz` | Process is alive | Liveness probe |
-| `GET /readyz` | DB and cache connected | Readiness probe |
+| `GET /readyz` | DB connected, ready for traffic | Readiness probe |
 
 ## Resource Requirements
 
@@ -343,4 +316,4 @@ All deployment platforms should use these endpoints for health monitoring:
 | Production (< 100k users) | 1 vCPU | 256 MB | 50 GB |
 | Enterprise (100k+ users) | 2+ vCPU (scaled horizontally) | 512 MB per instance | 100+ GB |
 
-Rampart is stateless (all state in PostgreSQL + Redis), so horizontal scaling is straightforward — add more instances behind the load balancer.
+Rampart is stateless (all state in PostgreSQL), so horizontal scaling is straightforward — add more instances behind the load balancer.

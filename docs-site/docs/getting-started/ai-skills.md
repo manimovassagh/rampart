@@ -36,7 +36,7 @@ Each skill creates production-ready code — not scaffolding. You get proper err
 
 | Command | What It Does |
 |---------|-------------|
-| `/rampart-docker-quickstart` | Creates a `docker-compose.yml` with Rampart, PostgreSQL, and Redis. Configures health checks, creates an admin user, and registers an OAuth client. |
+| `/rampart-docker-quickstart` | Creates a `docker-compose.yml` with Rampart and PostgreSQL. Configures health checks, creates an admin user, and registers an OAuth client. |
 | `/rampart-fullstack-secure` | The all-in-one skill. Auto-detects your entire stack (frontend + backend), spins up Rampart if needed, and wires up authentication end-to-end across all layers. |
 | `/rampart-ci-check` | Runs the full CI pipeline locally before pushing. Executes lint, test, vet, security scan, and cross-compile checks — exactly as GitHub Actions would. |
 

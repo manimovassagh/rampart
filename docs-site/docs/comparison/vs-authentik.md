@@ -17,7 +17,7 @@ Authentik is an open-source identity provider built in Python (Django) with a fo
 | **Memory usage** | ~30 MB idle | 500 MB – 1 GB+ |
 | **Request throughput** | High (compiled, goroutines) | Lower (interpreted, GIL constraints) |
 | **Deployment** | Single binary, Docker optional | Docker required (multiple containers) |
-| **Required services** | PostgreSQL, Redis | PostgreSQL, Redis, worker process, server process |
+| **Required services** | PostgreSQL | PostgreSQL, Redis, worker process, server process |
 | **Admin UI** | React + Vite + Tailwind | lit-element web components |
 | **Login UI** | React SPA, CSS variable themes | Flow-based, customizable |
 | **Configuration** | YAML + REST API | Admin UI + REST API, YAML (limited) |
@@ -81,7 +81,7 @@ Rampart runs as a single process. Background tasks run as goroutines within the 
 
 | Deployment aspect | Rampart | Authentik |
 |-------------------|---------|-----------|
-| Minimum containers | 1 (+ PostgreSQL, Redis) | 4 (server, worker, PostgreSQL, Redis) |
+| Minimum containers | 1 (+ PostgreSQL) | 4 (server, worker, PostgreSQL, Redis) |
 | Background processing | In-process goroutines | Separate Celery worker (required) |
 | Without Docker | Yes (native binary) | Not officially supported |
 | Systemd service | Single unit file | Multiple unit files or Docker dependency |

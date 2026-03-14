@@ -311,7 +311,7 @@ func TestLoginSuccess(t *testing.T) {
 	if resp.RefreshToken == "" {
 		t.Error("expected non-empty refresh token")
 	}
-	if resp.TokenType != "Bearer" {
+	if resp.TokenType != tokenTypeBearer {
 		t.Errorf("token_type = %q, want Bearer", resp.TokenType)
 	}
 	if resp.ExpiresIn != 900 {
@@ -637,7 +637,7 @@ func TestLogoutDeleteSessionError(t *testing.T) {
 
 func TestLogoutFindSessionError(t *testing.T) {
 	store := &mockLoginStore{}
-	sessions := &mockSessionStore{findErr: fmt.Errorf("redis connection failed")}
+	sessions := &mockSessionStore{findErr: fmt.Errorf("session store unavailable")}
 	h := newTestLoginHandler(store, sessions)
 
 	body := []byte(`{"refresh_token": "some-token"}`)
@@ -668,7 +668,7 @@ func TestRefreshInvalidJSON(t *testing.T) {
 
 func TestRefreshFindSessionError(t *testing.T) {
 	store := &mockLoginStore{}
-	sessions := &mockSessionStore{findErr: fmt.Errorf("redis down")}
+	sessions := &mockSessionStore{findErr: fmt.Errorf("session store error")}
 	h := newTestLoginHandler(store, sessions)
 
 	body := []byte(`{"refresh_token": "some-token"}`)
@@ -847,7 +847,7 @@ func TestLoginSessionCreateError(t *testing.T) {
 		defaultOrgID: user.OrgID,
 		emailUser:    user,
 	}
-	sessions := &mockSessionStore{createErr: fmt.Errorf("redis down")}
+	sessions := &mockSessionStore{createErr: fmt.Errorf("session store error")}
 	h := newTestLoginHandler(store, sessions)
 
 	body := []byte(`{"identifier": "admin@rampart.local", "password": "Str0ng!Pass"}`)

@@ -453,7 +453,7 @@ Content-Length: 0
 **Revocation behavior:**
 
 - When a **refresh token** is revoked, all access tokens issued from that refresh token are also invalidated.
-- When an **access token** is revoked, it is added to a Redis-backed deny list. The deny list entry expires when the token would have naturally expired.
+- When an **access token** is revoked, it is added to a deny list. The deny list entry expires when the token would have naturally expired.
 - Revocation is logged as a `token.revoked` audit event.
 
 ---

@@ -25,8 +25,7 @@ C4Context
     System_Ext(smtp, "Email Service", "SendGrid, SES, SMTP — verification, password reset")
     System_Ext(sms, "SMS Service", "Twilio, SNS — MFA codes")
 
-    System_Ext(postgres, "PostgreSQL", "Primary data store")
-    System_Ext(redis, "Redis / Valkey", "Sessions, token blacklist, rate limiting")
+    System_Ext(postgres, "PostgreSQL", "Primary data store — users, sessions, tokens, events")
 
     Rel(endUser, rampart, "Authenticates, manages account")
     Rel(admin, rampart, "Manages resources via Admin API / UI")
@@ -45,8 +44,7 @@ C4Context
     Rel(rampart, smtp, "Sends verification & reset emails")
     Rel(rampart, sms, "Sends MFA codes")
 
-    Rel(rampart, postgres, "Reads/writes users, clients, tokens, events")
-    Rel(rampart, redis, "Sessions, blacklist, rate limits")
+    Rel(rampart, postgres, "Reads/writes users, clients, tokens, sessions, events")
 ```
 
 ## Actors
@@ -75,5 +73,4 @@ Rampart supports any application that speaks OAuth 2.0 / OIDC:
 | **External IdPs** | Social login (Google, GitHub, Apple) and enterprise SSO (SAML, OIDC) |
 | **Email service** | Email verification, password reset, MFA codes |
 | **SMS service** | MFA OTP delivery |
-| **PostgreSQL** | Primary persistent storage for all domain data |
-| **Redis / Valkey** | Session storage, token blacklisting, rate limit counters |
+| **PostgreSQL** | Primary persistent storage for all domain data — users, sessions, tokens, audit events |

@@ -8,16 +8,16 @@ description: Rampart is a lightweight, modern identity and access management ser
 
 Rampart is a lightweight, production-grade identity and access management (IAM) server. It provides OAuth 2.0 and OpenID Connect out of the box, with an admin console, CLI tool, and SDK adapters for every major stack — all shipped as a single binary.
 
-Built in Go with PostgreSQL and Redis, Rampart starts in under 1 second and runs at approximately 30 MB of memory. No Java runtime, no WAR files, no complex dependency chains. Just download, configure, and run.
+Built in Go with PostgreSQL, Rampart starts in under 1 second and runs at approximately 30 MB of memory. No Java runtime, no WAR files, no complex dependency chains. Just download, configure, and run.
 
 ## Key Features
 
 - **OAuth 2.0 and OpenID Connect** — Authorization Code with PKCE, Client Credentials, Refresh Tokens, OIDC Discovery, JWKS
-- **Single Binary Deployment** — One binary, no runtime dependencies beyond PostgreSQL and Redis
+- **Single Binary Deployment** — One binary, no runtime dependencies beyond PostgreSQL
 - **Admin Console** — Full-featured web UI for managing users, organizations, roles, sessions, and audit events
 - **Multi-Tenancy** — Built-in organization support with user isolation and per-org configuration
 - **RBAC** — Role-based access control with built-in and custom roles
-- **Session Management** — Redis-backed sessions with listing, single and bulk revocation
+- **Session Management** — PostgreSQL-backed sessions with listing, single and bulk revocation
 - **Audit Logging** — Every security-relevant event tracked with IP addresses, timestamps, and actor information
 - **CLI Tool** — Manage users, inspect tokens, and authenticate via the command line
 - **SDK Adapters** — Official integrations for Node.js, React, Next.js, Go, Python, and Spring Boot

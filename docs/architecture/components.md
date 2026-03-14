@@ -25,8 +25,7 @@ C4Container
         Component(pluginSystem, "Plugin System", "Go", "Extension points for custom auth, claims, events (future)")
     }
 
-    ContainerDb(postgres, "PostgreSQL", "Primary Store", "Users, clients, roles, tokens, events, organizations")
-    ContainerDb(redis, "Redis / Valkey", "Cache", "Sessions, token blacklist, rate limit counters, PKCE challenges")
+    ContainerDb(postgres, "PostgreSQL", "Primary Store", "Users, clients, roles, tokens, sessions, events, organizations")
 
     System_Ext(externalIdP, "External IdP", "Google, GitHub, SAML providers")
     System_Ext(emailSvc, "Email Service", "Verification, password reset")
@@ -58,8 +57,8 @@ C4Container
 
     Rel(rbacEngine, postgres, "Role queries")
     Rel(userStore, postgres, "User data")
-    Rel(sessionMgr, redis, "Session data")
-    Rel(oauthEngine, redis, "PKCE challenges, auth codes")
+    Rel(sessionMgr, postgres, "Session data")
+    Rel(oauthEngine, postgres, "PKCE challenges, auth codes")
 
     Rel(eventBus, postgres, "Persists audit events")
     Rel(authN, emailSvc, "Sends verification emails")
