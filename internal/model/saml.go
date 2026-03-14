@@ -13,10 +13,10 @@ type SAMLProvider struct {
 	Name             string
 	EntityID         string
 	MetadataURL      string
-	MetadataXML      string
+	MetadataXML      string `json:"-"`
 	SSOURL           string
 	SLOURL           string
-	Certificate      string
+	Certificate      string `json:"-"`
 	NameIDFormat     string
 	AttributeMapping map[string]string // maps SAML attributes to Rampart fields (email, given_name, family_name, username)
 	Enabled          bool
