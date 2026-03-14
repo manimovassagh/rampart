@@ -8,7 +8,7 @@ Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>com.rampart</groupId>
+    <groupId>io.github.manimovassagh</groupId>
     <artifactId>rampart-spring-boot-starter</artifactId>
     <version>0.1.0</version>
 </dependency>

@@ -1,22 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Maven Central Publishing Instructions
-  ======================================
-  1. Configure GPG signing and Sonatype OSSRH credentials in ~/.m2/settings.xml:
-       <servers>
-         <server>
-           <id>ossrh</id>
-           <username>${env.OSSRH_USERNAME}</username>
-           <password>${env.OSSRH_PASSWORD}</password>
-         </server>
-       </servers>
-  2. Add the maven-gpg-plugin and nexus-staging-maven-plugin to the build/plugins
-     section (or use a release profile).
-  3. Ensure the groupId (com.rampart) is registered in Sonatype JIRA.
-  4. Deploy a snapshot:  mvn clean deploy -P release
-  5. Release to Central:  mvn nexus-staging:release -P release
-  See https://central.sonatype.org/publish/publish-guide/ for full details.
--->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -29,13 +11,34 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.rampart</groupId>
+    <groupId>io.github.manimovassagh</groupId>
     <artifactId>rampart-spring-boot-starter</artifactId>
     <version>0.1.0</version>
     <packaging>jar</packaging>
 
     <name>Rampart Spring Boot Starter</name>
     <description>Spring Boot starter for integrating with Rampart IAM server</description>
+    <url>https://github.com/manimovassagh/rampart</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Mani Movassagh</name>
+            <url>https://github.com/manimovassagh</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/manimovassagh/rampart.git</connection>
+        <developerConnection>scm:git:ssh://github.com:manimovassagh/rampart.git</developerConnection>
+        <url>https://github.com/manimovassagh/rampart/tree/main/adapters/backend/spring</url>
+    </scm>
 
     <properties>
         <java.version>17</java.version>
@@ -84,6 +87,58 @@
                     <target>${java.version}</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals><goal>sign</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.7.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
