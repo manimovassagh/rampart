@@ -70,6 +70,14 @@ type RefreshResponse struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
+// mfaChallengeResponse is returned when MFA verification is required during login.
+type mfaChallengeResponse struct {
+	MFARequired bool     `json:"mfa_required"`
+	MFAToken    string   `json:"mfa_token"`
+	MFAMethods  []string `json:"mfa_methods"`
+	Message     string   `json:"message"`
+}
+
 // LogoutRequest is the expected JSON body for POST /logout.
 type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
@@ -266,11 +274,11 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 			w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 			w.WriteHeader(http.StatusOK)
-			if err := json.NewEncoder(w).Encode(map[string]any{
-				"mfa_required": true,
-				"mfa_token":    mfaToken,
-				"mfa_methods":  mfaMethods,
-				"message":      "MFA verification required.",
+			if err := json.NewEncoder(w).Encode(mfaChallengeResponse{
+				MFARequired: true,
+				MFAToken:    mfaToken,
+				MFAMethods:  mfaMethods,
+				Message:     "MFA verification required.",
 			}); err != nil {
 				h.logger.Error("failed to encode MFA challenge response", "error", err)
 			}

@@ -16,7 +16,7 @@ Ory provides a suite of open-source identity and access management services: Hyd
 | **Language** | Go | Go |
 | **Admin UI** | Included (React SPA) | Not included (build your own or use Ory Cloud) |
 | **Login UI** | Included (React SPA, themeable) | Not included (you must build it) |
-| **Deployment** | 1 binary + PostgreSQL + Redis | 3–4 binaries + PostgreSQL + migrations per service |
+| **Deployment** | 1 binary + PostgreSQL | 3–4 binaries + PostgreSQL + migrations per service |
 | **Configuration** | Single YAML file | Separate config per service |
 | **User management** | Built-in admin API + UI | Kratos handles identity, no admin UI |
 | **OAuth 2.0 / OIDC** | Built-in | Hydra (separate service) |
@@ -68,12 +68,12 @@ Rampart production deployment:
   │  (single binary, all-in-one)│
   └──────────────┬──────────────┘
                  │
-       ┌─────────┴─────────┐
-       │                   │
-  ┌────┴─────┐      ┌─────┴────┐
-  │PostgreSQL│      │  Redis   │
-  └──────────┘      └──────────┘
+                 │
+           ┌─────┴─────┐
+           │PostgreSQL  │
+           └───────────┘
   Login UI and admin UI included.
+  No Redis or external cache required.
 ```
 
 ## Developer Experience

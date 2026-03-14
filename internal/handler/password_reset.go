@@ -63,6 +63,11 @@ type ResetPasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
+// messageResponse is a simple JSON response containing a message.
+type messageResponse struct {
+	Message string `json:"message"`
+}
+
 // ForgotPassword handles POST /forgot-password.
 // Always returns 200 to prevent email enumeration.
 func (h *PasswordResetHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
@@ -81,8 +86,8 @@ func (h *PasswordResetHandler) ForgotPassword(w http.ResponseWriter, r *http.Req
 	// Always return success to prevent email enumeration
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]string{
-		"message": "If an account with that email exists, a password reset link has been sent.",
+	if err := json.NewEncoder(w).Encode(messageResponse{
+		Message: "If an account with that email exists, a password reset link has been sent.",
 	}); err != nil {
 		h.logger.Error("failed to encode forgot-password response", "error", err)
 	}
@@ -203,8 +208,8 @@ func (h *PasswordResetHandler) ResetPassword(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]string{
-		"message": "Password has been reset successfully. You can now log in with your new password.",
+	if err := json.NewEncoder(w).Encode(messageResponse{
+		Message: "Password has been reset successfully. You can now log in with your new password.",
 	}); err != nil {
 		h.logger.Error("failed to encode reset-password response", "error", err)
 	}

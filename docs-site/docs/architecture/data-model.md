@@ -215,7 +215,7 @@ Registered OAuth 2.0 / OIDC clients (relying parties). Each client belongs to an
 
 ### sessions
 
-Active user sessions. Session tokens are stored as hashes. The actual session data (user context, CSRF tokens) lives in Redis for fast access; this table provides a persistent record for audit and management.
+Active user sessions. Session tokens are stored as hashes. Session data is stored in PostgreSQL for persistence and auditability.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -323,7 +323,7 @@ Key indexes beyond primary keys:
 | Data Type | Retention | Cleanup |
 |-----------|-----------|---------|
 | Auth codes | 10 minutes | Background job purges expired codes |
-| Sessions | Configurable (default 24h) | Expired sessions cleaned by background job + Redis TTL |
+| Sessions | Configurable (default 24h) | Expired sessions cleaned by background job |
 | Refresh tokens | Configurable (default 30 days) | Revoked and expired tokens purged periodically |
 | Audit events | Configurable (default 90 days) | Archival or deletion based on retention policy |
 | User data | Until deletion | Soft-delete with configurable hard-delete grace period |

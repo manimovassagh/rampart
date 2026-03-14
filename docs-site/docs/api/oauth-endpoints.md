@@ -227,7 +227,7 @@ Content-Length: 0
 
 **Revocation cascade:**
 - Revoking a **refresh token** also invalidates all access tokens issued from it.
-- Revoking an **access token** adds it to a deny list in Redis (expires when the token would have).
+- Revoking an **access token** adds it to a deny list (expires when the token would have).
 
 ---
 

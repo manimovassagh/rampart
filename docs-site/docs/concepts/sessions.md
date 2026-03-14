@@ -1,28 +1,28 @@
 ---
 sidebar_position: 5
 title: Sessions
-description: Redis-backed session management in Rampart — session lifecycle, listing, revocation, security protections, and session policies.
+description: PostgreSQL-backed session management in Rampart — session lifecycle, listing, revocation, security protections, and session policies.
 ---
 
 # Sessions
 
-Rampart uses Redis-backed server-side sessions to track authenticated users across requests. Sessions provide visibility into active logins, enable instant revocation, and support security policies like concurrent session limits and idle timeouts.
+Rampart uses PostgreSQL-backed server-side sessions to track authenticated users across requests. Sessions provide visibility into active logins, enable instant revocation, and support security policies like concurrent session limits and idle timeouts.
 
-## Redis-Backed Sessions
+## PostgreSQL-Backed Sessions
 
-Every successful authentication creates a session in Redis. Sessions are the server-side record of an authenticated user's login — they are separate from (but linked to) OAuth tokens.
+Every successful authentication creates a session in PostgreSQL. Sessions are the server-side record of an authenticated user's login — they are separate from (but linked to) OAuth tokens.
 
-**Why Redis:**
+**Why PostgreSQL (no Redis):**
 
-- Sub-millisecond read/write latency for session lookups
-- Built-in TTL for automatic session expiration
-- Atomic operations for concurrent session management
-- Pub/sub for real-time session event propagation across instances
-- Persistence options (RDB/AOF) for durability across restarts
+- Single infrastructure dependency — no additional services to operate
+- ACID-compliant session operations with full durability
+- Consistent read-after-write guarantees
+- Efficient indexing for session lookups and listing
+- Simplified deployment and operational model
 
 ### Session Data Structure
 
-Each session is stored as a Redis hash with the following fields:
+Each session is stored with the following fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -40,19 +40,6 @@ Each session is stored as a Redis hash with the following fields:
 | `mfa_verified` | boolean | Whether MFA was completed for this session |
 | `refresh_token_id` | string | ID of the current refresh token linked to this session |
 
-**Redis key format:**
-
-```
-rampart:session:{org_id}:{session_id}
-```
-
-**Secondary indexes** (Redis sorted sets) enable efficient lookups:
-
-```
-rampart:user_sessions:{org_id}:{user_id}   -> sorted set of session_ids by created_at
-rampart:org_sessions:{org_id}               -> sorted set of session_ids by created_at
-```
-
 ## Session Lifecycle
 
 ### Creation
@@ -67,10 +54,9 @@ A session is created when:
 
 1. Rampart generates a UUID for the session
 2. Client metadata is extracted (IP, user agent, geo lookup)
-3. The session hash is written to Redis with the configured TTL
-4. The session ID is added to the user's session set and the org's session set
-5. The session is linked to the issued refresh token
-6. A `session.created` audit event is emitted
+3. The session record is written to PostgreSQL
+4. The session is linked to the issued refresh token
+5. A `session.created` audit event is emitted
 
 ### Activity Tracking
 
@@ -89,14 +75,14 @@ Sessions expire through three mechanisms:
 |-----------|---------|-------------|
 | **Absolute timeout** | `expires_at` reached | The session ends regardless of activity (default: 30 days) |
 | **Idle timeout** | No activity for the configured duration | The session ends if `last_active` is older than the idle threshold (default: 7 days) |
-| **Redis TTL** | Redis evicts the key | Set to the absolute timeout; acts as a safety net |
+| **Background cleanup** | Periodic background job | Expired sessions are purged from PostgreSQL |
 
 When a session expires:
 
 1. The associated refresh token becomes invalid
 2. Token refresh attempts return an error
 3. The user must re-authenticate
-4. Redis automatically cleans up the session key via TTL
+4. A background job periodically cleans up expired session records
 
 ### Destruction
 
@@ -189,9 +175,8 @@ curl -X DELETE https://auth.example.com/api/admin/sessions/{session_id} \
 
 **What happens when a session is revoked:**
 
-1. The session hash is deleted from Redis
-2. The session ID is removed from the user's session set and the org's session set
-3. The linked refresh token is invalidated
+1. The session record is deleted from PostgreSQL
+2. The linked refresh token is invalidated
 4. Any subsequent token refresh attempt using that refresh token returns `invalid_grant`
 5. A `session.revoked` audit event is emitted with the actor (user or admin)
 6. The access token remains valid until it expires (short-lived by design)
@@ -326,33 +311,10 @@ curl -X PUT https://auth.example.com/api/admin/organizations/acme-corp \
 
 ## High Availability
 
-In production deployments with multiple Rampart instances, all instances share the same Redis cluster. This ensures:
+In production deployments with multiple Rampart instances, all instances share the same PostgreSQL database. This ensures:
 
 - Sessions created on one instance are immediately visible to all others
 - Session revocation takes effect across all instances instantly
 - No sticky sessions or session affinity is required at the load balancer level
 
-For Redis high availability, Rampart supports:
-
-- **Redis Sentinel** — automatic failover with read replicas
-- **Redis Cluster** — horizontal scaling with hash-slot-based sharding
-- **Valkey** — drop-in Redis replacement (fully compatible)
-
-Configure the Redis connection in the Rampart configuration:
-
-```yaml
-redis:
-  address: "redis-sentinel:26379"
-  sentinel:
-    master: "rampart-master"
-    addresses:
-      - "sentinel-1:26379"
-      - "sentinel-2:26379"
-      - "sentinel-3:26379"
-  password: "${REDIS_PASSWORD}"
-  db: 0
-  tls:
-    enabled: true
-    cert_file: "/etc/rampart/redis-client.crt"
-    key_file: "/etc/rampart/redis-client.key"
-```
+Rampart uses PostgreSQL-based leader election with graceful shutdown for clustering. No Redis or external cache is required.

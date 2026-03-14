@@ -249,7 +249,7 @@ erDiagram
 - Partitioned by month for large installations.
 
 ### Session & Token Storage
-- Active sessions live in Redis for fast lookup, with PostgreSQL as durable backing store.
+- Sessions are stored in PostgreSQL.
 - Authorization codes are short-lived (10 minutes) and single-use.
 - Refresh tokens support rotation — issuing a new token invalidates the previous one.
 

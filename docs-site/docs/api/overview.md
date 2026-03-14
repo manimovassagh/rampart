@@ -383,39 +383,19 @@ Admin API endpoints do not support CORS by default -- they are intended for serv
 
 ## Health Check
 
-Rampart exposes a health endpoint for load balancers and monitoring:
+Rampart exposes health endpoints for load balancers and monitoring:
 
 ```bash
-curl -X GET https://your-rampart-instance/health
+curl -X GET https://your-rampart-instance/healthz
 ```
 
 ```json
 {
-  "status": "healthy",
-  "version": "1.0.0",
-  "uptime_seconds": 86412,
-  "checks": {
-    "database": "ok",
-    "redis": "ok"
-  }
+  "status": "ok"
 }
 ```
 
-The health endpoint returns HTTP 200 when all dependencies are healthy and HTTP 503 when any dependency is unhealthy:
-
-```json
-{
-  "status": "unhealthy",
-  "version": "1.0.0",
-  "uptime_seconds": 86412,
-  "checks": {
-    "database": "ok",
-    "redis": "error: connection refused"
-  }
-}
-```
-
-A lightweight liveness probe is available at `/health/live` (always returns 200 if the process is running), and a readiness probe at `/health/ready` (returns 200 only when the server is ready to accept traffic).
+The health endpoint (`/healthz`) returns HTTP 200 when the server is running. A readiness probe is available at `/readyz` — it returns HTTP 200 only when the server is ready to accept traffic (database connectivity verified), and HTTP 503 when the database is unhealthy.
 
 ## Idempotency
 

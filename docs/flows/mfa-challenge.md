@@ -9,7 +9,7 @@ sequenceDiagram
     participant User as End User (Browser)
     participant Rampart as Rampart Server
     participant DB as PostgreSQL
-    participant Cache as Redis
+    participant Cache as PostgreSQL Cache
 
     Note over User,Rampart: User has already entered correct password
 

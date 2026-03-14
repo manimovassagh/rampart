@@ -28,11 +28,10 @@ cd rampart
 docker compose up -d
 ```
 
-This starts three containers:
+This starts two containers:
 
 - **rampart** — the IAM server on port `8080`
 - **postgres** — PostgreSQL database on port `5432`
-- **redis** — Redis session store on port `6379`
 
 Wait a few seconds for all services to be healthy:
 
@@ -40,12 +39,12 @@ Wait a few seconds for all services to be healthy:
 docker compose ps
 ```
 
-You should see all three services in a `running` (healthy) state.
+You should see both services in a `running` (healthy) state.
 
 ## Step 3: Verify Rampart Is Running
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:8080/healthz
 ```
 
 Expected response:

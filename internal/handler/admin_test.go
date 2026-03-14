@@ -567,7 +567,7 @@ func TestAdminStatsCountUsersError(t *testing.T) {
 func TestAdminStatsCountActiveSessionsError(t *testing.T) {
 	orgID := uuid.New()
 	store := &mockAdminUserStore{countUsers: 10}
-	sessions := &mockAdminSessionStore{countActiveErr: fmt.Errorf("redis down")}
+	sessions := &mockAdminSessionStore{countActiveErr: fmt.Errorf("session store error")}
 	h := newTestAdminHandler(store, sessions)
 
 	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}

@@ -52,7 +52,6 @@ const (
 	scimSPCURN    = "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"
 	scimRTURN     = "urn:ietf:params:scim:schemas:core:2.0:ResourceType"
 	scimSchemaURN = "urn:ietf:params:scim:schemas:core:2.0:Schema"
-	scimPatchURN  = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
 )
 
 // --- Discovery Endpoints ---

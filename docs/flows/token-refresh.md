@@ -9,7 +9,7 @@ sequenceDiagram
     participant App as Client Application
     participant Rampart as Rampart Server
     participant DB as PostgreSQL
-    participant Cache as Redis
+    participant Cache as PostgreSQL Cache
 
     Note over App: Access token expired or about to expire
 
