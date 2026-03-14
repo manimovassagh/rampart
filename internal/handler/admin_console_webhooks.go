@@ -15,6 +15,7 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/webhook"
 )
 
 // ListWebhooksPage handles GET /admin/webhooks
@@ -74,6 +75,8 @@ func (h *AdminConsoleHandler) CreateWebhookAction(w http.ResponseWriter, r *http
 	formErrors := map[string]string{}
 	if whURL == "" {
 		formErrors["url"] = "URL is required."
+	} else if err := webhook.ValidateWebhookURL(whURL); err != nil {
+		formErrors["url"] = "Invalid webhook URL: " + err.Error()
 	}
 	if eventTypesRaw == "" {
 		formErrors["event_types"] = "At least one event type is required."
@@ -190,6 +193,14 @@ func (h *AdminConsoleHandler) UpdateWebhookAction(w http.ResponseWriter, r *http
 	description := strings.TrimSpace(r.FormValue("description"))
 	eventTypesRaw := strings.TrimSpace(r.FormValue("event_types"))
 	enabled := r.FormValue("enabled") == formValueTrue
+
+	if whURL != "" {
+		if err := webhook.ValidateWebhookURL(whURL); err != nil {
+			middleware.SetFlash(w, "Invalid webhook URL: "+err.Error())
+			http.Redirect(w, r, fmt.Sprintf(pathAdminWebhookFmt, id), http.StatusSeeOther)
+			return
+		}
+	}
 
 	var eventTypes []string
 	for _, et := range strings.Split(eventTypesRaw, ",") {

@@ -82,6 +82,10 @@ type Config struct {
 	SMTPPassword string
 	SMTPFrom     string
 
+	// MetricsToken is a Bearer token required to access the /metrics endpoint.
+	// If empty, the /metrics endpoint is disabled entirely (secure by default).
+	MetricsToken string
+
 	// Social login providers
 	GoogleClientID     string
 	GoogleClientSecret string
@@ -237,6 +241,7 @@ func Load() (*Config, error) {
 	}
 
 	cfg.EncryptionKey = os.Getenv("RAMPART_ENCRYPTION_KEY")
+	cfg.MetricsToken = os.Getenv("RAMPART_METRICS_TOKEN")
 
 	// SMTP
 	cfg.SMTPHost = os.Getenv("RAMPART_SMTP_HOST")

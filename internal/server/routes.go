@@ -52,8 +52,12 @@ func RegisterHealthRoutes(r *chi.Mux, healthHandler, readyHandler http.HandlerFu
 }
 
 // RegisterMetricsRoutes mounts the Prometheus metrics endpoint.
-func RegisterMetricsRoutes(r *chi.Mux) {
-	r.Handle("/metrics", metrics.Handler())
+// If metricsToken is empty, the endpoint is not registered (secure by default).
+func RegisterMetricsRoutes(r *chi.Mux, metricsToken string) {
+	if metricsToken == "" {
+		return
+	}
+	r.With(middleware.MetricsAuth(metricsToken)).Handle("/metrics", metrics.Handler())
 }
 
 // RegisterAuthRoutes mounts authentication-related endpoints.

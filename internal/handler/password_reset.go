@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/store"
@@ -34,21 +35,28 @@ type PasswordResetHandlerStore interface {
 	store.OrgSettingsReadWriter
 }
 
+// PasswordResetSessionStore defines the session operations needed by PasswordResetHandler.
+type PasswordResetSessionStore interface {
+	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
+}
+
 // PasswordResetHandler handles forgot-password and reset-password flows.
 type PasswordResetHandler struct {
-	store  PasswordResetHandlerStore
-	email  EmailSender
-	logger *slog.Logger
-	issuer string // used to build reset URL
+	store    PasswordResetHandlerStore
+	sessions PasswordResetSessionStore
+	email    EmailSender
+	logger   *slog.Logger
+	issuer   string // used to build reset URL
 }
 
 // NewPasswordResetHandler creates a new password reset handler.
-func NewPasswordResetHandler(s PasswordResetHandlerStore, email EmailSender, logger *slog.Logger, issuer string) *PasswordResetHandler {
+func NewPasswordResetHandler(s PasswordResetHandlerStore, sessions PasswordResetSessionStore, email EmailSender, logger *slog.Logger, issuer string) *PasswordResetHandler {
 	return &PasswordResetHandler{
-		store:  s,
-		email:  email,
-		logger: logger,
-		issuer: issuer,
+		store:    s,
+		sessions: sessions,
+		email:    email,
+		logger:   logger,
+		issuer:   issuer,
 	}
 }
 
@@ -202,6 +210,11 @@ func (h *PasswordResetHandler) ResetPassword(w http.ResponseWriter, r *http.Requ
 		h.logger.Error("failed to update password", "error", err)
 		apierror.Write(w, http.StatusInternalServerError, "server_error", "Internal server error.")
 		return
+	}
+
+	// Invalidate all existing sessions so stolen refresh tokens can no longer be used.
+	if err := h.sessions.DeleteByUserID(ctx, userID); err != nil {
+		h.logger.Warn("failed to invalidate sessions on password reset", "user_id", userID, "error", err)
 	}
 
 	h.logger.Info("password reset successful", "user_id", userID)

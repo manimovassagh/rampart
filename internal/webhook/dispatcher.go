@@ -49,6 +49,15 @@ func NewDispatcher(s Store, logger *slog.Logger) *Dispatcher {
 		store: s,
 		client: &http.Client{
 			Timeout: deliveryTimeout,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if err := ValidateWebhookURL(req.URL.String()); err != nil {
+					return fmt.Errorf("redirect blocked: %w", err)
+				}
+				if len(via) >= 10 {
+					return fmt.Errorf("too many redirects")
+				}
+				return nil
+			},
 		},
 		logger: logger,
 	}

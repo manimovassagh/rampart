@@ -201,6 +201,14 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// SAML/SSO-provisioned users have no local password — reject gracefully.
+	if len(user.PasswordHash) == 0 {
+		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "sso_only_account"})
+		metrics.AuthTotal.WithLabelValues("failure").Inc()
+		apierror.Unauthorized(w, "This account uses SSO. Please sign in with your identity provider.")
+		return
+	}
+
 	// Fetch org settings early — needed for lockout policy and TTLs
 	var settings *model.OrgSettings
 	if s, sErr := h.store.GetOrgSettings(ctx, orgID); sErr != nil {
