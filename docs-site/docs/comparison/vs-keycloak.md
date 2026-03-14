@@ -18,10 +18,10 @@ Both are excellent choices depending on your requirements. This page offers a fa
 | **Memory usage** | ~30 MB idle | 512 MB+ idle (JVM heap) |
 | **Startup time** | < 1 second | 10–30 seconds |
 | **Binary size** | ~20 MB single binary | 200+ MB (with dependencies) |
-| **Deployment** | Single binary, Docker, or systemd | Docker, Kubernetes, or application server |
+| **Deployment** | Single binary, Docker, or systemd | Docker, Kubernetes, or bare metal (Quarkus-based since v17) |
 | **Database** | PostgreSQL | PostgreSQL, MySQL, Oracle, MSSQL |
-| **Admin UI** | React + Vite + Tailwind | React (PatternFly, v22+) |
-| **Login UI** | React SPA with CSS variable themes | FreeMarker templates |
+| **Admin UI** | htmx + Go templates + Tailwind | React (PatternFly, v22+) |
+| **Login UI** | htmx + Go templates with CSS variable themes | FreeMarker templates |
 | **Theming** | CSS variables, instant switching | FreeMarker template overrides |
 | **Configuration** | Environment variables + REST API | Admin console, CLI, REST API |
 | **Extension model** | Plugin system (planned) | Java SPIs |
@@ -60,7 +60,7 @@ Single binary with PostgreSQL as the only external dependency.
 
 ### Keycloak
 
-Keycloak requires a Java runtime and a database. Production deployments typically involve JVM tuning, clustering configuration via Infinispan, and a reverse proxy. Kubernetes deployments can use the Keycloak Operator.
+Since version 17, Keycloak runs on Quarkus (replacing the legacy WildFly/application server model). It requires a Java runtime and a database. Production deployments typically involve JVM tuning, clustering configuration via Infinispan, and a reverse proxy. Kubernetes deployments can use the Keycloak Operator.
 
 ## Where Keycloak Excels
 
@@ -78,7 +78,7 @@ Keycloak has significant strengths:
 - **Resource efficiency.** Significantly lower memory and faster startup.
 - **Deployment simplicity.** Single binary, minimal configuration.
 - **Theming.** CSS variable-based themes with instant switching, no server restart needed.
-- **Modern stack.** Go backend, React admin UI, built-in observability with Prometheus metrics.
+- **Modern stack.** Go backend, htmx + Go templates admin UI, built-in observability with Prometheus metrics.
 
 ## Migration Considerations
 

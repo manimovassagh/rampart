@@ -16,6 +16,9 @@ import (
 
 // GetOAuthClient retrieves an OAuth client by its ID.
 func (db *DB) GetOAuthClient(ctx context.Context, clientID string) (*model.OAuthClient, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	row := db.Pool.QueryRow(ctx, `
 		SELECT id, org_id, name, client_type, redirect_uris,
 		       COALESCE(client_secret_hash, ''::bytea), COALESCE(description, ''),

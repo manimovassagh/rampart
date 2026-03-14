@@ -18,7 +18,7 @@ import (
 func generateTestKeys(t *testing.T) (*rsa.PrivateKey, []byte) {
 	t.Helper()
 
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	privKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		t.Fatalf("generate RSA key: %v", err)
 	}

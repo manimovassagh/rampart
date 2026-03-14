@@ -16,8 +16,8 @@ Zitadel is a Go-based identity management platform that provides OAuth 2.0/OIDC,
 | **Database** | PostgreSQL | CockroachDB (primary) or PostgreSQL (added later) |
 | **Cache/Sessions** | PostgreSQL | In-process (event-sourced projections) |
 | **Architecture** | Traditional CRUD + event audit log | Full event sourcing (CQRS) |
-| **Admin UI** | React + Vite + Tailwind | Angular (custom framework) |
-| **Login UI** | React SPA, CSS variable themes | Server-rendered Go templates |
+| **Admin UI** | htmx + Go templates + Tailwind | Angular (custom framework) |
+| **Login UI** | htmx + Go templates, CSS variable themes | Server-rendered Go templates |
 | **Deployment** | Single binary + PostgreSQL | Single binary + CockroachDB (or PostgreSQL) |
 | **Extensibility** | Plugin system (planned), webhooks | Actions (JavaScript/TypeScript runtime) |
 | **Multi-tenancy** | Organizations | Organizations + instances |
@@ -100,7 +100,7 @@ Zitadel's admin console is built with Angular using a custom component framework
 
 ### Rampart
 
-Rampart's admin dashboard and login UI are both React SPAs built with Vite and Tailwind CSS. The login UI supports per-tenant theming via CSS variables with instant preview in the admin dashboard. No server restart is required to change themes.
+Rampart's admin dashboard and login UI are both built with htmx and Go server-side templates, styled with Tailwind CSS. The login UI supports per-tenant theming via CSS variables with instant preview in the admin dashboard. No server restart is required to change themes.
 
 ## Where Zitadel Wins
 
@@ -116,7 +116,7 @@ Rampart's admin dashboard and login UI are both React SPAs built with Vite and T
 - Your infrastructure runs PostgreSQL and you do not want to introduce CockroachDB.
 - You prefer a simpler, CRUD-based architecture that is easy to reason about and debug.
 - Lower resource usage is important (edge deployments, cost-sensitive environments).
-- You want a modern React-based admin UI and login experience with easy theming.
+- You want a modern htmx-based admin UI and login experience with easy theming.
 - Your team has Go expertise and wants to extend the IAM server in Go.
 - Fast startup time matters (CI/CD pipelines, auto-scaling, development).
 
