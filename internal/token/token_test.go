@@ -707,7 +707,7 @@ func TestComputeAtHash_Correctness(t *testing.T) {
 	accessToken := "ya29.test-access-token-12345"
 	h := sha256.Sum256([]byte(accessToken))
 	leftHalf := h[:sha256.Size/2]
-	expected := strings.TrimRight(base64.URLEncoding.EncodeToString(leftHalf), "=")
+	expected := base64.RawURLEncoding.EncodeToString(leftHalf)
 
 	got := computeAtHash(accessToken)
 	if got != expected {
