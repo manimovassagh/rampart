@@ -6,6 +6,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -206,7 +207,7 @@ func (h *SCIMHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Enabled:       req.Active,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate") {
+		if errors.Is(err, store.ErrDuplicateKey) {
 			h.scimError(w, http.StatusConflict, "User already exists.")
 			return
 		}
@@ -389,7 +390,7 @@ func (h *SCIMHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 		Description: req.DisplayName,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate") {
+		if errors.Is(err, store.ErrDuplicateKey) {
 			h.scimError(w, http.StatusConflict, "Group already exists.")
 			return
 		}

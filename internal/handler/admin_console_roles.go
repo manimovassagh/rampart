@@ -4,6 +4,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
+	"github.com/manimovassagh/rampart/internal/store"
 )
 
 // ListRolesPage handles GET /admin/roles
@@ -88,7 +90,7 @@ func (h *AdminConsoleHandler) CreateRoleAction(w http.ResponseWriter, r *http.Re
 	}
 
 	if _, err := h.store.CreateRole(ctx, role); err != nil {
-		if strings.Contains(err.Error(), msgDuplicateKey) || strings.Contains(err.Error(), "unique") {
+		if errors.Is(err, store.ErrDuplicateKey) {
 			h.render(w, r, tmplRoleCreate, &pageData{Title: titleCreateRole, ActiveNav: navRoles, FormErrors: map[string]string{"name": "A role with this name already exists."}, FormValues: formValues})
 			return
 		}
@@ -171,9 +173,12 @@ func (h *AdminConsoleHandler) DeleteRoleAction(w http.ResponseWriter, r *http.Re
 
 	deleteRoleAuthUser := middleware.GetAuthenticatedUser(r.Context())
 	if err := h.store.DeleteRole(r.Context(), roleID, deleteRoleAuthUser.OrgID); err != nil {
-		if strings.Contains(err.Error(), "builtin") {
+		switch {
+		case errors.Is(err, store.ErrBuiltinRole):
 			middleware.SetFlash(w, "Cannot delete built-in roles.")
-		} else {
+		case errors.Is(err, store.ErrNotFound):
+			middleware.SetFlash(w, "Role not found.")
+		default:
 			h.logger.Error("failed to delete role", "error", err)
 			middleware.SetFlash(w, "Failed to delete role.")
 		}

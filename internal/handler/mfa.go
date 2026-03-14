@@ -8,6 +8,7 @@ import (
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/mfa"
 	"github.com/manimovassagh/rampart/internal/middleware"
+	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/store"
 )
 
@@ -83,12 +84,14 @@ func (h *MFAHandler) EnrollTOTP(w http.ResponseWriter, r *http.Request) {
 
 	uri := mfa.ProvisioningURI(secret, user.Email, h.issuer)
 
+	resp := model.TOTPEnrollResponse{
+		Secret:          secret,
+		ProvisioningURI: uri,
+		DeviceID:        device.ID,
+	}
+
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
-	if err := json.NewEncoder(w).Encode(map[string]any{
-		"secret":           secret,
-		"provisioning_uri": uri,
-		"device_id":        device.ID,
-	}); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Error("failed to encode TOTP enroll response", "error", err)
 	}
 }
@@ -156,11 +159,13 @@ func (h *MFAHandler) VerifyTOTPSetup(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("MFA enabled", "user_id", userID)
 
+	resp := model.TOTPVerifySetupResponse{
+		Message:     "MFA has been enabled successfully.",
+		BackupCodes: backupCodes,
+	}
+
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
-	if err := json.NewEncoder(w).Encode(map[string]any{
-		"message":      "MFA has been enabled successfully.",
-		"backup_codes": backupCodes,
-	}); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Error("failed to encode TOTP verify-setup response", "error", err)
 	}
 }
@@ -209,10 +214,12 @@ func (h *MFAHandler) DisableTOTP(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("MFA disabled", "user_id", userID)
 
+	resp := model.TOTPDisableResponse{
+		Message: "MFA has been disabled.",
+	}
+
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
-	if err := json.NewEncoder(w).Encode(map[string]string{
-		"message": "MFA has been disabled.",
-	}); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Error("failed to encode TOTP disable response", "error", err)
 	}
 }

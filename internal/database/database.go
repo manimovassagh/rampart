@@ -14,6 +14,9 @@ const (
 	defaultMaxConns = 25
 	defaultMinConns = 2
 	connectTimeout  = 10 * time.Second
+
+	// pgUniqueViolation is the PostgreSQL error code for unique constraint violations.
+	pgUniqueViolation = "23505"
 )
 
 // DB wraps a pgx connection pool.
