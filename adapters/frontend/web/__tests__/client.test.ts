@@ -1,248 +1,334 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import http from "node:http";
 import { RampartClient } from "../src/client.js";
 
-let server: http.Server;
-let baseUrl: string;
+/** Create a minimal JWT string with the given payload (no real signature). */
+function makeJwt(payload: Record<string, unknown>): string {
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64");
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64");
+  return `${header}.${body}.fake-signature`;
+}
 
-const MOCK_USER = {
-  id: "user-uuid-1",
-  org_id: "org-uuid-1",
-  preferred_username: "jane",
-  email: "jane@example.com",
-  email_verified: true,
-  given_name: "Jane",
-  family_name: "Doe",
-};
-
-let validRefreshToken = "valid-refresh-token";
-
-beforeAll(async () => {
-  server = http.createServer((req, res) => {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      const json = (status: number, data: unknown) => {
-        res.writeHead(status, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(data));
-      };
-
-      if (req.url === "/login" && req.method === "POST") {
-        const parsed = JSON.parse(body);
-        if (parsed.password === "wrong") {
-          return json(401, {
-            error: "unauthorized",
-            error_description: "Invalid credentials.",
-            status: 401,
-          });
-        }
-        return json(200, {
-          access_token: "access-1",
-          refresh_token: validRefreshToken,
-          token_type: "Bearer",
-          expires_in: 900,
-          user: MOCK_USER,
-        });
-      }
-
-      if (req.url === "/register" && req.method === "POST") {
-        return json(201, MOCK_USER);
-      }
-
-      if (req.url === "/token/refresh" && req.method === "POST") {
-        const parsed = JSON.parse(body);
-        if (parsed.refresh_token !== validRefreshToken) {
-          return json(401, {
-            error: "unauthorized",
-            error_description: "Invalid refresh token.",
-            status: 401,
-          });
-        }
-        return json(200, {
-          access_token: "access-refreshed",
-          token_type: "Bearer",
-          expires_in: 900,
-        });
-      }
-
-      if (req.url === "/logout" && req.method === "POST") {
-        res.writeHead(204);
-        res.end();
-        return;
-      }
-
-      if (req.url === "/me" && req.method === "GET") {
-        const auth = req.headers.authorization;
-        if (!auth || !auth.startsWith("Bearer ")) {
-          return json(401, {
-            error: "unauthorized",
-            error_description: "Missing authorization header.",
-            status: 401,
-          });
-        }
-        return json(200, MOCK_USER);
-      }
-
-      res.writeHead(404);
-      res.end();
-    });
+function makeClient(issuer = "http://localhost:8080") {
+  return new RampartClient({
+    issuer,
+    clientId: "test-client",
+    redirectUri: "http://localhost:3000/callback",
   });
-
-  await new Promise<void>((resolve) => {
-    server.listen(0, () => resolve());
-  });
-
-  const addr = server.address();
-  if (typeof addr === "object" && addr) {
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  }
-});
-
-afterAll(() => {
-  server?.close();
-});
+}
 
 describe("RampartClient", () => {
-  it("registers a new user", async () => {
-    const client = new RampartClient({ issuer: baseUrl });
-    const user = await client.register({
-      username: "jane",
-      email: "jane@example.com",
-      password: "SecurePass1!",
+  describe("isAuthenticated", () => {
+    it("returns false when no tokens are set", () => {
+      const client = makeClient();
+      expect(client.isAuthenticated()).toBe(false);
     });
 
-    expect(user.email).toBe("jane@example.com");
-    expect(user.id).toBe("user-uuid-1");
-  });
-
-  it("logs in and stores tokens", async () => {
-    const client = new RampartClient({ issuer: baseUrl });
-    const res = await client.login({
-      identifier: "jane",
-      password: "pass",
+    it("returns true for a valid non-expired token", () => {
+      const client = makeClient();
+      client.setTokens({
+        access_token: makeJwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+        refresh_token: "rt",
+        token_type: "Bearer",
+        expires_in: 3600,
+      });
+      expect(client.isAuthenticated()).toBe(true);
     });
 
-    expect(res.access_token).toBe("access-1");
-    expect(res.user.email).toBe("jane@example.com");
-    expect(client.isAuthenticated()).toBe(true);
-    expect(client.getAccessToken()).toBe("access-1");
-  });
-
-  it("throws on invalid login", async () => {
-    const client = new RampartClient({ issuer: baseUrl });
-
-    await expect(
-      client.login({ identifier: "jane", password: "wrong" })
-    ).rejects.toMatchObject({
-      error: "unauthorized",
-      status: 401,
+    it("returns false for an expired token", () => {
+      const client = makeClient();
+      client.setTokens({
+        access_token: makeJwt({ exp: Math.floor(Date.now() / 1000) - 60 }),
+        refresh_token: "rt",
+        token_type: "Bearer",
+        expires_in: 3600,
+      });
+      expect(client.isAuthenticated()).toBe(false);
     });
 
-    expect(client.isAuthenticated()).toBe(false);
+    it("returns false for a malformed token", () => {
+      const client = makeClient();
+      client.setTokens({
+        access_token: "not-a-jwt",
+        refresh_token: "rt",
+        token_type: "Bearer",
+        expires_in: 3600,
+      });
+      expect(client.isAuthenticated()).toBe(false);
+    });
+
+    it("returns false for a token without exp claim", () => {
+      const client = makeClient();
+      client.setTokens({
+        access_token: makeJwt({ sub: "user-1" }),
+        refresh_token: "rt",
+        token_type: "Bearer",
+        expires_in: 3600,
+      });
+      expect(client.isAuthenticated()).toBe(false);
+    });
   });
 
-  it("refreshes access token", async () => {
-    const client = new RampartClient({ issuer: baseUrl });
-    await client.login({ identifier: "jane", password: "pass" });
+  describe("token management", () => {
+    it("getAccessToken returns null when no tokens set", () => {
+      const client = makeClient();
+      expect(client.getAccessToken()).toBeNull();
+    });
 
-    const tokens = await client.refresh();
-    expect(tokens.access_token).toBe("access-refreshed");
-    expect(client.getAccessToken()).toBe("access-refreshed");
+    it("getAccessToken returns the access token after setTokens", () => {
+      const client = makeClient();
+      const token = makeJwt({ exp: Math.floor(Date.now() / 1000) + 3600 });
+      client.setTokens({
+        access_token: token,
+        refresh_token: "rt",
+        token_type: "Bearer",
+        expires_in: 3600,
+      });
+      expect(client.getAccessToken()).toBe(token);
+    });
+
+    it("getTokens returns a copy of tokens", () => {
+      const client = makeClient();
+      const tokens = {
+        access_token: makeJwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+        refresh_token: "rt",
+        token_type: "Bearer",
+        expires_in: 3600,
+      };
+      client.setTokens(tokens);
+      const got = client.getTokens();
+      expect(got).toEqual(tokens);
+      expect(got).not.toBe(tokens); // should be a copy
+    });
+
+    it("calls onTokenChange when tokens change", () => {
+      const onChange = vi.fn();
+      const client = new RampartClient({
+        issuer: "http://localhost:8080",
+        clientId: "test",
+        redirectUri: "http://localhost:3000/callback",
+        onTokenChange: onChange,
+      });
+
+      const tokens = {
+        access_token: makeJwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+        refresh_token: "rt",
+        token_type: "Bearer",
+        expires_in: 3600,
+      };
+
+      client.setTokens(tokens);
+      expect(onChange).toHaveBeenCalledWith(tokens);
+
+      client.setTokens(null);
+      expect(onChange).toHaveBeenCalledWith(null);
+      expect(onChange).toHaveBeenCalledTimes(2);
+    });
   });
 
-  it("fetches user profile with getUser()", async () => {
-    const client = new RampartClient({ issuer: baseUrl });
-    await client.login({ identifier: "jane", password: "pass" });
-
-    const user = await client.getUser();
-    expect(user.preferred_username).toBe("jane");
-    expect(user.org_id).toBe("org-uuid-1");
+  describe("issuer normalization", () => {
+    it("strips trailing slash from issuer", () => {
+      const client = new RampartClient({
+        issuer: "http://localhost:8080/",
+        clientId: "test",
+        redirectUri: "http://localhost:3000/callback",
+      });
+      expect(client.isAuthenticated()).toBe(false);
+    });
   });
 
-  it("logs out and clears tokens", async () => {
-    const client = new RampartClient({ issuer: baseUrl });
-    await client.login({ identifier: "jane", password: "pass" });
-    expect(client.isAuthenticated()).toBe(true);
+  describe("refresh", () => {
+    it("throws when no refresh token is available", async () => {
+      const client = makeClient();
+      await expect(client.refresh()).rejects.toThrow("No refresh token available.");
+    });
 
-    await client.logout();
-    expect(client.isAuthenticated()).toBe(false);
-    expect(client.getAccessToken()).toBeNull();
-  });
+    it("refreshes tokens via /token/refresh endpoint", async () => {
+      const newAccessToken = makeJwt({ exp: Math.floor(Date.now() / 1000) + 3600 });
 
-  it("calls onTokenChange on login, refresh, and logout", async () => {
-    const onChange = vi.fn();
-    const client = new RampartClient({ issuer: baseUrl, onTokenChange: onChange });
-
-    await client.login({ identifier: "jane", password: "pass" });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ access_token: "access-1" })
-    );
-
-    await client.refresh();
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ access_token: "access-refreshed" })
-    );
-
-    await client.logout();
-    expect(onChange).toHaveBeenCalledWith(null);
-
-    expect(onChange).toHaveBeenCalledTimes(3);
-  });
-
-  it("authFetch retries on 401 after refresh", async () => {
-    // First request to /me returns 401, then after refresh returns 200
-    let callCount = 0;
-    const mockServer = http.createServer((req, res) => {
-      let body = "";
-      req.on("data", (chunk) => (body += chunk));
-      req.on("end", () => {
-        if (req.url === "/token/refresh") {
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({
-              access_token: "fresh-token",
+      const server = http.createServer((req, res) => {
+        let body = "";
+        req.on("data", (chunk) => (body += chunk));
+        req.on("end", () => {
+          if (req.url === "/token/refresh" && req.method === "POST") {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({
+              access_token: newAccessToken,
               token_type: "Bearer",
               expires_in: 900,
-            })
-          );
-          return;
-        }
-
-        callCount++;
-        if (callCount === 1) {
-          res.writeHead(401, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "unauthorized", status: 401 }));
-        } else {
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ data: "secret" }));
-        }
+            }));
+          } else {
+            res.writeHead(404);
+            res.end();
+          }
+        });
       });
+
+      await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+      const addr = server.address();
+      const url = typeof addr === "object" && addr ? `http://127.0.0.1:${addr.port}` : "";
+
+      try {
+        const client = makeClient(url);
+        client.setTokens({
+          access_token: makeJwt({ exp: Math.floor(Date.now() / 1000) + 60 }),
+          refresh_token: "valid-rt",
+          token_type: "Bearer",
+          expires_in: 900,
+        });
+
+        const tokens = await client.refresh();
+        expect(tokens.access_token).toBe(newAccessToken);
+        expect(client.getAccessToken()).toBe(newAccessToken);
+      } finally {
+        server.close();
+      }
     });
-
-    await new Promise<void>((resolve) => mockServer.listen(0, () => resolve()));
-    const addr = mockServer.address();
-    const url = typeof addr === "object" && addr ? `http://127.0.0.1:${addr.port}` : "";
-
-    const client = new RampartClient({ issuer: url });
-    client.setTokens({
-      access_token: "stale",
-      refresh_token: validRefreshToken,
-      token_type: "Bearer",
-      expires_in: 0,
-    });
-
-    const res = await client.authFetch(`${url}/api/data`);
-    expect(res.status).toBe(200);
-
-    const data = await res.json();
-    expect(data).toEqual({ data: "secret" });
-
-    mockServer.close();
   });
 
-  it("strips trailing slash from issuer", () => {
-    const client = new RampartClient({ issuer: "http://localhost:8080/" });
-    // No error thrown — trailing slash is handled
-    expect(client.isAuthenticated()).toBe(false);
+  describe("authFetch", () => {
+    it("retries on 401 after token refresh", async () => {
+      const freshToken = makeJwt({ exp: Math.floor(Date.now() / 1000) + 3600 });
+      let callCount = 0;
+
+      const server = http.createServer((req, res) => {
+        let body = "";
+        req.on("data", (chunk) => (body += chunk));
+        req.on("end", () => {
+          if (req.url === "/token/refresh") {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({
+              access_token: freshToken,
+              token_type: "Bearer",
+              expires_in: 900,
+            }));
+            return;
+          }
+
+          callCount++;
+          if (callCount === 1) {
+            res.writeHead(401, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "unauthorized", status: 401 }));
+          } else {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ data: "secret" }));
+          }
+        });
+      });
+
+      await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+      const addr = server.address();
+      const url = typeof addr === "object" && addr ? `http://127.0.0.1:${addr.port}` : "";
+
+      try {
+        const client = makeClient(url);
+        client.setTokens({
+          access_token: makeJwt({ exp: Math.floor(Date.now() / 1000) + 60 }),
+          refresh_token: "valid-rt",
+          token_type: "Bearer",
+          expires_in: 0,
+        });
+
+        const res = await client.authFetch(`${url}/api/data`);
+        expect(res.status).toBe(200);
+
+        const data = await res.json();
+        expect(data).toEqual({ data: "secret" });
+      } finally {
+        server.close();
+      }
+    });
+  });
+
+  describe("logout", () => {
+    it("clears tokens and calls server", async () => {
+      let logoutCalled = false;
+
+      const server = http.createServer((req, res) => {
+        req.on("data", () => {});
+        req.on("end", () => {
+          if (req.url === "/logout" && req.method === "POST") {
+            logoutCalled = true;
+            res.writeHead(204);
+            res.end();
+          } else {
+            res.writeHead(404);
+            res.end();
+          }
+        });
+      });
+
+      await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+      const addr = server.address();
+      const url = typeof addr === "object" && addr ? `http://127.0.0.1:${addr.port}` : "";
+
+      try {
+        const client = makeClient(url);
+        client.setTokens({
+          access_token: makeJwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+          refresh_token: "rt",
+          token_type: "Bearer",
+          expires_in: 3600,
+        });
+
+        expect(client.isAuthenticated()).toBe(true);
+        await client.logout();
+        expect(client.isAuthenticated()).toBe(false);
+        expect(client.getAccessToken()).toBeNull();
+        expect(logoutCalled).toBe(true);
+      } finally {
+        server.close();
+      }
+    });
+  });
+
+  describe("getUser", () => {
+    it("fetches user profile from /me endpoint", async () => {
+      const mockUser = {
+        id: "user-1",
+        org_id: "org-1",
+        email: "jane@example.com",
+        email_verified: true,
+      };
+
+      const server = http.createServer((req, res) => {
+        req.on("data", () => {});
+        req.on("end", () => {
+          if (req.url === "/me" && req.method === "GET") {
+            const auth = req.headers.authorization;
+            if (!auth?.startsWith("Bearer ")) {
+              res.writeHead(401, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "unauthorized", status: 401 }));
+              return;
+            }
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(mockUser));
+          } else {
+            res.writeHead(404);
+            res.end();
+          }
+        });
+      });
+
+      await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+      const addr = server.address();
+      const url = typeof addr === "object" && addr ? `http://127.0.0.1:${addr.port}` : "";
+
+      try {
+        const client = makeClient(url);
+        client.setTokens({
+          access_token: makeJwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+          refresh_token: "rt",
+          token_type: "Bearer",
+          expires_in: 3600,
+        });
+
+        const user = await client.getUser();
+        expect(user.email).toBe("jane@example.com");
+        expect(user.id).toBe("user-1");
+      } finally {
+        server.close();
+      }
+    });
   });
 });

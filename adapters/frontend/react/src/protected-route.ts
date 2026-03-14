@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, Fragment } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "./use-auth.js";
 
@@ -18,20 +18,20 @@ export function ProtectedRoute({
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return createElement("div", null, loadingFallback);
+    return createElement(Fragment, null, loadingFallback);
   }
 
   if (!user) {
-    return createElement("div", null, fallback);
+    return createElement(Fragment, null, fallback);
   }
 
   if (roles && roles.length > 0) {
     const userRoles = user.roles ?? [];
     const hasRole = roles.some((r) => userRoles.includes(r));
     if (!hasRole) {
-      return createElement("div", null, fallback);
+      return createElement(Fragment, null, fallback);
     }
   }
 
-  return createElement("div", null, children);
+  return createElement(Fragment, null, children);
 }
