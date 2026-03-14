@@ -210,9 +210,18 @@ export class RampartClient {
     return this.tokens ? { ...this.tokens } : null;
   }
 
-  /** Check if the client has tokens (does NOT verify expiry). */
+  /** Check if the client has a non-expired access token. */
   isAuthenticated(): boolean {
-    return this.tokens?.access_token != null;
+    if (!this.tokens?.access_token) return false;
+    try {
+      const parts = this.tokens.access_token.split(".");
+      if (parts.length !== 3) return false;
+      const payload = JSON.parse(atob(parts[1]));
+      if (typeof payload.exp !== "number") return false;
+      return payload.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
   }
 
   /** Restore tokens from external storage (e.g. localStorage). */

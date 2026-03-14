@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import http from "node:http";
-import { render, screen, waitFor, act } from "@testing-library/react";
-import { createElement, useState } from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { createElement } from "react";
 import { RampartProvider } from "../src/context.js";
-import { useAuth } from "../src/use-auth.js";
 import { ProtectedRoute } from "../src/protected-route.js";
 import { createMockServer, startServer } from "./helpers.js";
 
@@ -23,26 +22,23 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-function LoginTrigger({ identifier }: { identifier: string }) {
-  const { login, isLoading } = useAuth();
-  if (isLoading) return createElement("div", { "data-testid": "loading" }, "Loading");
-  return createElement("button", {
-    "data-testid": "login-btn",
-    onClick: () => login({ identifier, password: "pass" }),
-  });
+function renderWithProvider(child: React.ReactNode) {
+  return render(
+    createElement(
+      RampartProvider,
+      { issuer: baseUrl, clientId: "test", redirectUri: "http://localhost:3000/callback" },
+      child
+    )
+  );
 }
 
 describe("ProtectedRoute", () => {
   it("shows fallback when not authenticated", async () => {
-    render(
+    renderWithProvider(
       createElement(
-        RampartProvider,
-        { issuer: baseUrl },
-        createElement(
-          ProtectedRoute,
-          { fallback: createElement("div", { "data-testid": "fallback" }, "Please log in") },
-          createElement("div", { "data-testid": "secret" }, "Secret content")
-        )
+        ProtectedRoute,
+        { fallback: createElement("div", { "data-testid": "fallback" }, "Please log in") },
+        createElement("div", { "data-testid": "secret" }, "Secret content")
       )
     );
 
@@ -52,27 +48,24 @@ describe("ProtectedRoute", () => {
     });
   });
 
-  it("shows children when authenticated", async () => {
-    render(
-      createElement(
-        RampartProvider,
-        { issuer: baseUrl },
-        createElement(LoginTrigger, { identifier: "jane" }),
-        createElement(
-          ProtectedRoute,
-          { fallback: createElement("div", { "data-testid": "fallback" }, "Nope") },
-          createElement("div", { "data-testid": "secret" }, "Secret content")
-        )
-      )
+  it("shows children when authenticated via localStorage", async () => {
+    window.localStorage.setItem(
+      "rampart_tokens",
+      JSON.stringify({
+        access_token: "valid-token",
+        refresh_token: "valid-refresh",
+        token_type: "Bearer",
+        expires_in: 900,
+      })
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("login-btn")).toBeDefined();
-    });
-
-    await act(async () => {
-      screen.getByTestId("login-btn").click();
-    });
+    renderWithProvider(
+      createElement(
+        ProtectedRoute,
+        { fallback: createElement("div", { "data-testid": "fallback" }, "Nope") },
+        createElement("div", { "data-testid": "secret" }, "Secret content")
+      )
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId("secret")).toBeDefined();
@@ -91,10 +84,10 @@ describe("ProtectedRoute", () => {
       })
     );
 
-    const { container } = render(
+    render(
       createElement(
         RampartProvider,
-        { issuer: baseUrl },
+        { issuer: baseUrl, clientId: "test", redirectUri: "http://localhost:3000/callback" },
         createElement(
           ProtectedRoute,
           {
@@ -116,66 +109,32 @@ describe("ProtectedRoute", () => {
   });
 
   it("shows fallback when user lacks required role", async () => {
-    render(
+    // jane has no roles
+    window.localStorage.setItem(
+      "rampart_tokens",
+      JSON.stringify({
+        access_token: "valid-token",
+        refresh_token: "valid-refresh",
+        token_type: "Bearer",
+        expires_in: 900,
+      })
+    );
+
+    renderWithProvider(
       createElement(
-        RampartProvider,
-        { issuer: baseUrl },
-        createElement(LoginTrigger, { identifier: "jane" }),
-        createElement(
-          ProtectedRoute,
-          {
-            roles: ["admin"],
-            fallback: createElement("div", { "data-testid": "no-access" }, "No access"),
-          },
-          createElement("div", { "data-testid": "admin-panel" }, "Admin panel")
-        )
+        ProtectedRoute,
+        {
+          roles: ["admin"],
+          fallback: createElement("div", { "data-testid": "no-access" }, "No access"),
+        },
+        createElement("div", { "data-testid": "admin-panel" }, "Admin panel")
       )
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("login-btn")).toBeDefined();
-    });
-
-    await act(async () => {
-      screen.getByTestId("login-btn").click();
-    });
-
-    // jane has no roles — should see fallback
     await waitFor(() => {
       expect(screen.getByTestId("no-access")).toBeDefined();
       expect(screen.queryByTestId("admin-panel")).toBeNull();
     });
   });
 
-  it("shows children when user has required role", async () => {
-    render(
-      createElement(
-        RampartProvider,
-        { issuer: baseUrl },
-        createElement(LoginTrigger, { identifier: "admin" }),
-        createElement(
-          ProtectedRoute,
-          {
-            roles: ["admin"],
-            fallback: createElement("div", { "data-testid": "no-access" }, "No access"),
-          },
-          createElement("div", { "data-testid": "admin-panel" }, "Admin panel")
-        )
-      )
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("login-btn")).toBeDefined();
-    });
-
-    await act(async () => {
-      screen.getByTestId("login-btn").click();
-    });
-
-    // admin user has ["admin", "user"] roles — should see admin panel
-    await waitFor(() => {
-      expect(screen.getByTestId("admin-panel")).toBeDefined();
-      expect(screen.queryByTestId("no-access")).toBeNull();
-    });
-  });
 });

@@ -34,7 +34,11 @@ function StatusDisplay() {
 describe("RampartProvider", () => {
   it("shows loading then resolves to unauthenticated", async () => {
     render(
-      createElement(RampartProvider, { issuer: baseUrl }, createElement(StatusDisplay))
+      createElement(
+        RampartProvider,
+        { issuer: baseUrl, clientId: "test", redirectUri: "http://localhost:3000/callback" },
+        createElement(StatusDisplay)
+      )
     );
 
     await waitFor(() => {
@@ -54,7 +58,11 @@ describe("RampartProvider", () => {
     );
 
     render(
-      createElement(RampartProvider, { issuer: baseUrl }, createElement(StatusDisplay))
+      createElement(
+        RampartProvider,
+        { issuer: baseUrl, clientId: "test", redirectUri: "http://localhost:3000/callback" },
+        createElement(StatusDisplay)
+      )
     );
 
     await waitFor(() => {
@@ -66,7 +74,11 @@ describe("RampartProvider", () => {
     window.localStorage.setItem("rampart_tokens", "invalid-json{{{");
 
     render(
-      createElement(RampartProvider, { issuer: baseUrl }, createElement(StatusDisplay))
+      createElement(
+        RampartProvider,
+        { issuer: baseUrl, clientId: "test", redirectUri: "http://localhost:3000/callback" },
+        createElement(StatusDisplay)
+      )
     );
 
     await waitFor(() => {
@@ -88,7 +100,7 @@ describe("RampartProvider", () => {
     render(
       createElement(
         RampartProvider,
-        { issuer: baseUrl, persist: false },
+        { issuer: baseUrl, clientId: "test", redirectUri: "http://localhost:3000/callback", persist: false },
         createElement(StatusDisplay)
       )
     );
