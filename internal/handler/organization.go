@@ -263,6 +263,14 @@ func (h *OrgHandler) UpdateOrgSettings(w http.ResponseWriter, r *http.Request) {
 		apierror.BadRequest(w, "Refresh token TTL must be at least 60 seconds.")
 		return
 	}
+	if err := model.ValidateCSSColor(req.PrimaryColor); err != nil {
+		apierror.BadRequest(w, "Invalid primary color: "+err.Error())
+		return
+	}
+	if err := model.ValidateCSSColor(req.BackgroundColor); err != nil {
+		apierror.BadRequest(w, "Invalid background color: "+err.Error())
+		return
+	}
 
 	settings, err := h.settings.UpdateOrgSettings(r.Context(), orgID, &req)
 	if err != nil {

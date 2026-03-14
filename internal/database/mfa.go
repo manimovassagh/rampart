@@ -121,12 +121,22 @@ func (db *DB) DisableMFA(ctx context.Context, userID uuid.UUID) error {
 }
 
 // StoreBackupCodes stores hashed backup codes for a user.
+// The delete + insert is wrapped in a transaction so codes are never partially replaced.
 func (db *DB) StoreBackupCodes(ctx context.Context, userID uuid.UUID, codeHashes [][]byte) error {
+	tx, err := db.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback best-effort on deferred cleanup
+
 	// Delete existing codes first
-	_, _ = db.Pool.Exec(ctx, `DELETE FROM mfa_backup_codes WHERE user_id = $1`, userID)
+	_, err = tx.Exec(ctx, `DELETE FROM mfa_backup_codes WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("deleting old backup codes: %w", err)
+	}
 
 	for _, hash := range codeHashes {
-		_, err := db.Pool.Exec(ctx,
+		_, err := tx.Exec(ctx,
 			`INSERT INTO mfa_backup_codes (user_id, code_hash) VALUES ($1, $2)`,
 			userID, hash,
 		)
@@ -134,7 +144,7 @@ func (db *DB) StoreBackupCodes(ctx context.Context, userID uuid.UUID, codeHashes
 			return fmt.Errorf("inserting backup code: %w", err)
 		}
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // ConsumeBackupCode marks a backup code as used if the hash matches.

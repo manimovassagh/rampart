@@ -157,6 +157,9 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// SameSite=None is required because Apple Sign In uses response_mode=form_post,
+	// which sends a cross-site POST back to our callback. SameSite=Lax would block
+	// the cookie on cross-site POST requests. Secure=true is mandatory with SameSite=None.
 	http.SetCookie(w, &http.Cookie{
 		Name:     socialCookieName,
 		Value:    cookieValue,
@@ -164,7 +167,7 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   socialCookieMaxAge,
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	})
 
 	// Build the callback URL for the social provider
@@ -174,7 +177,9 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
-// Callback handles GET /oauth/social/{provider}/callback — exchanges the code and completes the flow.
+// Callback handles GET or POST /oauth/social/{provider}/callback — exchanges the code and completes the flow.
+// Apple Sign In uses response_mode=form_post and sends code/state as POST form data,
+// while other providers use GET query parameters.
 func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	providerName := chi.URLParam(r, "provider")
 	provider, ok := h.registry.Get(providerName)
@@ -183,9 +188,17 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query()
-	code := q.Get("code")
-	returnedState := q.Get("state")
+	// Read code and state from either query params (GET) or form body (POST).
+	var code, returnedState string
+	if r.Method == http.MethodPost {
+		// Apple uses form_post: code and state arrive in the POST body.
+		code = r.FormValue("code")
+		returnedState = r.FormValue("state")
+	} else {
+		q := r.URL.Query()
+		code = q.Get("code")
+		returnedState = q.Get("state")
+	}
 
 	if code == "" || returnedState == "" {
 		http.Error(w, "Missing code or state parameter.", http.StatusBadRequest)

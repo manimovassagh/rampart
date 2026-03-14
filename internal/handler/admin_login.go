@@ -234,7 +234,7 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 	// Generate access token
 	accessToken, err := token.GenerateAccessToken(
-		h.privateKey, h.kid, h.issuer, accessTTL,
+		h.privateKey, h.kid, h.issuer, h.issuer, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,

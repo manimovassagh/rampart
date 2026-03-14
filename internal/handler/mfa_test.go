@@ -112,7 +112,7 @@ func newAuthenticatedRequest(target string, body []byte, userID, orgID uuid.UUID
 }
 
 func newTestMFAHandler(s *mockMFAStore) *MFAHandler {
-	return NewMFAHandler(s, noopLogger(), testIssuer)
+	return NewMFAHandler(s, noopLogger(), nil, testIssuer)
 }
 
 // ── EnrollTOTP tests ─────────────────────────────────────────────────────

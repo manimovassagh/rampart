@@ -407,6 +407,44 @@ func TestTokenConsumeCodeError(t *testing.T) {
 	}
 }
 
+func TestTokenDisabledClientRejected(t *testing.T) {
+	orgID := uuid.New()
+	verifier := testVerifier
+
+	disabledClient := &model.OAuthClient{
+		ID:           "test-client",
+		OrgID:        orgID,
+		Name:         "Test Client",
+		ClientType:   "public",
+		RedirectURIs: []string{"http://localhost:3002/callback"},
+		Enabled:      false,
+	}
+
+	store := &mockTokenStore{
+		oauthClient: disabledClient,
+	}
+	h := NewTokenHandler(store, &mockSessionStore{}, noopLogger(), testPrivKey, testKID, testIssuer, 15*time.Minute, 7*24*time.Hour)
+
+	body := "grant_type=authorization_code&code=validcode&client_id=test-client&redirect_uri=http://localhost:3002/callback&code_verifier=" + verifier
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.Token(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp["error"] != "invalid_client" {
+		t.Errorf("error = %q, want invalid_client", resp["error"])
+	}
+}
+
 func TestTokenUserDisabledAfterCodeExchange(t *testing.T) {
 	orgID := uuid.New()
 	userID := uuid.New()
@@ -636,6 +674,7 @@ func TestTokenWithAdminClientIncludesAdminRole(t *testing.T) {
 			Name:         "Rampart Admin",
 			ClientType:   "public",
 			RedirectURIs: []string{"http://localhost:3002/callback"},
+			Enabled:      true,
 		},
 		authCode: &model.AuthorizationCode{
 			ID:            uuid.New(),

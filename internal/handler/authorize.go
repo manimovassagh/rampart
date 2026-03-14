@@ -148,6 +148,10 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		h.renderError(w, http.StatusBadRequest, "Unknown client_id.")
 		return
 	}
+	if !client.Enabled {
+		h.renderError(w, http.StatusForbidden, "This OAuth client is disabled.")
+		return
+	}
 
 	if !database.ValidateRedirectURI(client, redirectURI) {
 		h.renderError(w, http.StatusBadRequest, "Invalid redirect_uri.")
@@ -244,6 +248,10 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 	if client == nil {
 		h.renderError(w, http.StatusBadRequest, "Unknown client_id.")
+		return
+	}
+	if !client.Enabled {
+		h.renderError(w, http.StatusForbidden, "This OAuth client is disabled.")
 		return
 	}
 
@@ -546,6 +554,10 @@ func (h *AuthorizeHandler) Consent(w http.ResponseWriter, r *http.Request) {
 	client, err := h.store.GetOAuthClient(ctx, clientID)
 	if err != nil || client == nil {
 		h.renderError(w, http.StatusBadRequest, "Unknown client.")
+		return
+	}
+	if !client.Enabled {
+		h.renderError(w, http.StatusForbidden, "This OAuth client is disabled.")
 		return
 	}
 	if !database.ValidateRedirectURI(client, redirectURI) {

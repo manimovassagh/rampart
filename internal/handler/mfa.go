@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
+	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/mfa"
 	"github.com/manimovassagh/rampart/internal/middleware"
 	"github.com/manimovassagh/rampart/internal/model"
@@ -22,12 +23,13 @@ type MFAHandlerStore interface {
 type MFAHandler struct {
 	store  MFAHandlerStore
 	logger *slog.Logger
+	audit  *audit.Logger
 	issuer string
 }
 
 // NewMFAHandler creates a new MFA handler.
-func NewMFAHandler(s MFAHandlerStore, logger *slog.Logger, issuer string) *MFAHandler {
-	return &MFAHandler{store: s, logger: logger, issuer: issuer}
+func NewMFAHandler(s MFAHandlerStore, logger *slog.Logger, auditLogger *audit.Logger, issuer string) *MFAHandler {
+	return &MFAHandler{store: s, logger: logger, audit: auditLogger, issuer: issuer}
 }
 
 // EnrollTOTP handles POST /mfa/totp/enroll.
@@ -83,6 +85,8 @@ func (h *MFAHandler) EnrollTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uri := mfa.ProvisioningURI(secret, user.Email, h.issuer)
+
+	h.audit.LogSimple(ctx, r, user.OrgID, model.EventMFAEnrolled, &user.ID, user.Email, "user", user.ID.String(), user.Email)
 
 	resp := model.TOTPEnrollResponse{
 		Secret:          secret,
@@ -159,6 +163,12 @@ func (h *MFAHandler) VerifyTOTPSetup(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("MFA enabled", "user_id", userID)
 
+	// Fetch user to get org ID for audit logging
+	verifyUser, _ := h.store.GetUserByID(ctx, userID)
+	if verifyUser != nil {
+		h.audit.LogSimple(ctx, r, verifyUser.OrgID, model.EventMFAVerified, &userID, verifyUser.Email, "user", userID.String(), verifyUser.Email)
+	}
+
 	resp := model.TOTPVerifySetupResponse{
 		Message:     "MFA has been enabled successfully.",
 		BackupCodes: backupCodes,
@@ -213,6 +223,12 @@ func (h *MFAHandler) DisableTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.logger.Info("MFA disabled", "user_id", userID)
+
+	// Fetch user to get org ID for audit logging
+	disableUser, _ := h.store.GetUserByID(ctx, userID)
+	if disableUser != nil {
+		h.audit.LogSimple(ctx, r, disableUser.OrgID, model.EventMFADisabled, &userID, disableUser.Email, "user", userID.String(), disableUser.Email)
+	}
 
 	resp := model.TOTPDisableResponse{
 		Message: "MFA has been disabled.",

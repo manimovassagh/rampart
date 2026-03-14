@@ -218,6 +218,9 @@ func (h *AdminConsoleHandler) AssignRoleAction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	authUser := middleware.GetAuthenticatedUser(r.Context())
+	h.auditLog(r, authUser.OrgID, model.EventRoleAssigned, "user", userID.String(), roleID.String())
+
 	middleware.SetFlash(w, "Role assigned.")
 	http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 }
@@ -243,6 +246,9 @@ func (h *AdminConsoleHandler) UnassignRoleAction(w http.ResponseWriter, r *http.
 		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
+
+	unassignAuthUser := middleware.GetAuthenticatedUser(r.Context())
+	h.auditLog(r, unassignAuthUser.OrgID, model.EventRoleUnassigned, "user", userID.String(), roleID.String())
 
 	middleware.SetFlash(w, "Role removed.")
 	http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)

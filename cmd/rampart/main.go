@@ -148,7 +148,7 @@ func run(_ *slog.Logger) error {
 		emailSender = &email.NoOpSender{}
 		logger.Warn("SMTP not configured — password reset tokens will be logged instead of emailed")
 	}
-	resetHandler := handler.NewPasswordResetHandler(db, sessionStore, emailSender, logger, cfg.Issuer)
+	resetHandler := handler.NewPasswordResetHandler(db, sessionStore, emailSender, logger, auditLogger, cfg.Issuer)
 	server.RegisterPasswordResetRoutes(router, resetHandler.ForgotPassword, resetHandler.ResetPassword, loginRL)
 
 	// Email verification
@@ -157,7 +157,7 @@ func run(_ *slog.Logger) error {
 	server.RegisterEmailVerificationRoutes(router, emailVerifyHandler.SendVerification, emailVerifyHandler.VerifyEmail, loginRL)
 
 	// MFA endpoints (enrollment + login verification)
-	mfaHandler := handler.NewMFAHandler(db, logger, cfg.Issuer)
+	mfaHandler := handler.NewMFAHandler(db, logger, auditLogger, cfg.Issuer)
 	mfaVerifyHandler := handler.NewMFAVerifyHandler(db, sessionStore, logger, auditLogger, kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
 	// WebAuthn/Passkey configuration — derive RPID and origins from issuer URL

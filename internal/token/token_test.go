@@ -66,7 +66,7 @@ func TestGenerateAndVerifyAccessToken(t *testing.T) {
 	orgID := uuid.New()
 	ttl := 15 * time.Minute
 
-	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, ttl, userID, orgID, "admin", "admin@test.com", true, "Admin", "User")
+	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, testIssuer, ttl, userID, orgID, "admin", "admin@test.com", true, "Admin", "User")
 	if err != nil {
 		t.Fatalf("GenerateAccessToken error: %v", err)
 	}
@@ -84,6 +84,10 @@ func TestGenerateAndVerifyAccessToken(t *testing.T) {
 	}
 	if claims.Issuer != testIssuer {
 		t.Errorf("iss = %q, want %q", claims.Issuer, testIssuer)
+	}
+	aud, _ := claims.GetAudience()
+	if len(aud) != 1 || aud[0] != testIssuer {
+		t.Errorf("aud = %v, want [%s]", aud, testIssuer)
 	}
 	if claims.OrgID != orgID {
 		t.Errorf("org_id = %v, want %v", claims.OrgID, orgID)
@@ -106,7 +110,7 @@ func TestGenerateAndVerifyAccessToken(t *testing.T) {
 }
 
 func TestGenerateAccessTokenIncludesKIDHeader(t *testing.T) {
-	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, 15*time.Minute, uuid.New(), uuid.New(), "admin", "admin@test.com", false, "", "")
+	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, testIssuer, 15*time.Minute, uuid.New(), uuid.New(), "admin", "admin@test.com", false, "", "")
 	if err != nil {
 		t.Fatalf("GenerateAccessToken error: %v", err)
 	}
@@ -130,7 +134,7 @@ func TestGenerateAccessTokenIncludesKIDHeader(t *testing.T) {
 }
 
 func TestVerifyAccessTokenWrongKey(t *testing.T) {
-	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, 15*time.Minute, uuid.New(), uuid.New(), "admin", "admin@test.com", false, "", "")
+	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, testIssuer, 15*time.Minute, uuid.New(), uuid.New(), "admin", "admin@test.com", false, "", "")
 	if err != nil {
 		t.Fatalf("GenerateAccessToken error: %v", err)
 	}
@@ -396,7 +400,7 @@ func TestVerifyMFAToken_RejectsAccessTokenAsMFA(t *testing.T) {
 	orgID := uuid.New()
 
 	// Generate a regular access token and try to use it as an MFA token
-	accessToken, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, 15*time.Minute, userID, orgID, "testuser", "test@example.com", true, "Test", "User", "user")
+	accessToken, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, testIssuer, 15*time.Minute, userID, orgID, "testuser", "test@example.com", true, "Test", "User", "user")
 	if err != nil {
 		t.Fatalf("GenerateAccessToken: %v", err)
 	}

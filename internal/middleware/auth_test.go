@@ -70,7 +70,7 @@ const (
 func generateTestToken(t *testing.T) string {
 	t.Helper()
 	tok, err := token.GenerateAccessToken(
-		testPrivKey, testKID, testIssuer, 15*time.Minute,
+		testPrivKey, testKID, testIssuer, testIssuer, 15*time.Minute,
 		uuid.New(), uuid.New(),
 		"admin", "admin@test.com", true, "Admin", "User",
 	)
@@ -157,7 +157,7 @@ func TestAuthMiddlewareInvalidToken(t *testing.T) {
 
 func TestAuthMiddlewareExpiredToken(t *testing.T) {
 	tok, err := token.GenerateAccessToken(
-		testPrivKey, testKID, testIssuer, -1*time.Hour,
+		testPrivKey, testKID, testIssuer, testIssuer, -1*time.Hour,
 		uuid.New(), uuid.New(),
 		"admin", "admin@test.com", false, "", "",
 	)
@@ -315,7 +315,7 @@ func TestHasRoleEmptyRoles(t *testing.T) {
 func generateTestTokenWithRoles(t *testing.T, roles ...string) string {
 	t.Helper()
 	tok, err := token.GenerateAccessToken(
-		testPrivKey, testKID, testIssuer, 15*time.Minute,
+		testPrivKey, testKID, testIssuer, testIssuer, 15*time.Minute,
 		uuid.New(), uuid.New(),
 		"testuser", "test@test.com", true, "Test", "User",
 		roles...,

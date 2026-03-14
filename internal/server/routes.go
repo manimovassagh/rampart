@@ -255,9 +255,12 @@ func RegisterOAuthRoutes(r *chi.Mux, authorize, consent, token, revoke http.Hand
 }
 
 // RegisterSocialRoutes mounts social login initiation and callback endpoints.
+// The callback is registered for both GET and POST because Apple Sign In uses
+// response_mode=form_post, which delivers code and state via a POST request.
 func RegisterSocialRoutes(r *chi.Mux, initiate, callback http.HandlerFunc) {
 	r.Get("/oauth/social/{provider}", initiate)
 	r.Get("/oauth/social/{provider}/callback", callback)
+	r.Post("/oauth/social/{provider}/callback", callback)
 }
 
 // SAMLEndpoints groups the handler methods for SAML SP endpoints.

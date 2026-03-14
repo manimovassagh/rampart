@@ -77,6 +77,9 @@ func (db *DB) ListSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*model.
 		_ = json.Unmarshal(attrBytes, &p.AttributeMapping)
 		providers = append(providers, &p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating SAML providers: %w", err)
+	}
 	return providers, nil
 }
 
@@ -102,6 +105,9 @@ func (db *DB) GetEnabledSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*
 		}
 		_ = json.Unmarshal(attrBytes, &p.AttributeMapping)
 		providers = append(providers, &p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating enabled SAML providers: %w", err)
 	}
 	return providers, nil
 }

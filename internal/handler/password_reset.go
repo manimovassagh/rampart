@@ -12,7 +12,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/manimovassagh/rampart/internal/apierror"
+	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
+	"github.com/manimovassagh/rampart/internal/model"
 	"github.com/manimovassagh/rampart/internal/store"
 )
 
@@ -46,16 +48,18 @@ type PasswordResetHandler struct {
 	sessions PasswordResetSessionStore
 	email    EmailSender
 	logger   *slog.Logger
+	audit    *audit.Logger
 	issuer   string // used to build reset URL
 }
 
 // NewPasswordResetHandler creates a new password reset handler.
-func NewPasswordResetHandler(s PasswordResetHandlerStore, sessions PasswordResetSessionStore, email EmailSender, logger *slog.Logger, issuer string) *PasswordResetHandler {
+func NewPasswordResetHandler(s PasswordResetHandlerStore, sessions PasswordResetSessionStore, email EmailSender, logger *slog.Logger, auditLogger *audit.Logger, issuer string) *PasswordResetHandler {
 	return &PasswordResetHandler{
 		store:    s,
 		sessions: sessions,
 		email:    email,
 		logger:   logger,
+		audit:    auditLogger,
 		issuer:   issuer,
 	}
 }
@@ -131,6 +135,8 @@ func (h *PasswordResetHandler) processResetRequest(email string) {
 		h.logger.Error("failed to store password reset token", "error", err)
 		return
 	}
+
+	h.audit.LogSimple(ctx, nil, user.OrgID, model.EventPasswordResetRequested, &user.ID, user.Email, "user", user.ID.String(), user.Email)
 
 	// Send email
 	if !h.email.Enabled() {
@@ -218,6 +224,7 @@ func (h *PasswordResetHandler) ResetPassword(w http.ResponseWriter, r *http.Requ
 	}
 
 	h.logger.Info("password reset successful", "user_id", userID)
+	h.audit.LogSimple(ctx, r, user.OrgID, model.EventPasswordResetCompleted, &user.ID, user.Email, "user", user.ID.String(), user.Email)
 
 	w.Header().Set("Content-Type", apierror.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)

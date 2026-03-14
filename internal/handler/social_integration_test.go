@@ -110,8 +110,8 @@ func TestSocialInitiateRedirectsToProviderWithCorrectParams(t *testing.T) {
 	if !socialCookie.Secure {
 		t.Error("cookie must be Secure")
 	}
-	if socialCookie.SameSite != http.SameSiteLaxMode {
-		t.Errorf("cookie SameSite = %d, want Lax (%d)", socialCookie.SameSite, http.SameSiteLaxMode)
+	if socialCookie.SameSite != http.SameSiteNoneMode {
+		t.Errorf("cookie SameSite = %d, want None (%d)", socialCookie.SameSite, http.SameSiteNoneMode)
 	}
 	if socialCookie.Path != socialCookiePath {
 		t.Errorf("cookie Path = %q, want %q", socialCookie.Path, socialCookiePath)
