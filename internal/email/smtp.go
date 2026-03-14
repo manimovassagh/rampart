@@ -2,7 +2,9 @@
 package email
 
 import (
+	"errors"
 	"fmt"
+	"net/mail"
 	"net/smtp"
 	"strings"
 )
@@ -26,8 +28,26 @@ func NewSender(cfg Config) *Sender {
 	return &Sender{cfg: cfg}
 }
 
+// validateEmailParams checks for header injection and validates the email address format.
+func validateEmailParams(to, subject string) error {
+	if strings.ContainsAny(to, "\r\n") {
+		return errors.New("email: recipient address contains newline characters")
+	}
+	if strings.ContainsAny(subject, "\r\n") {
+		return errors.New("email: subject contains newline characters")
+	}
+	if _, err := mail.ParseAddress(to); err != nil {
+		return fmt.Errorf("email: invalid recipient address: %w", err)
+	}
+	return nil
+}
+
 // Send sends a plain-text email.
 func (s *Sender) Send(to, subject, body string) error {
+	if err := validateEmailParams(to, subject); err != nil {
+		return err
+	}
+
 	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
 
 	msg := strings.Join([]string{

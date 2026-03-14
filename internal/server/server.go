@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	readTimeout     = 10 * time.Second
-	writeTimeout    = 30 * time.Second
-	idleTimeout     = 60 * time.Second
-	shutdownTimeout = 10 * time.Second
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 10 * time.Second
+	writeTimeout      = 30 * time.Second
+	idleTimeout       = 60 * time.Second
+	shutdownTimeout   = 10 * time.Second
 )
 
 // Server wraps the HTTP server with graceful shutdown.
@@ -28,11 +29,12 @@ type Server struct {
 func New(addr string, router *chi.Mux, logger *slog.Logger) *Server {
 	return &Server{
 		httpServer: &http.Server{
-			Addr:         addr,
-			Handler:      router,
-			ReadTimeout:  readTimeout,
-			WriteTimeout: writeTimeout,
-			IdleTimeout:  idleTimeout,
+			Addr:              addr,
+			Handler:           router,
+			ReadHeaderTimeout: readHeaderTimeout,
+			ReadTimeout:       readTimeout,
+			WriteTimeout:      writeTimeout,
+			IdleTimeout:       idleTimeout,
 		},
 		logger: logger,
 	}

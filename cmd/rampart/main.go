@@ -90,6 +90,8 @@ func run(_ *slog.Logger) error {
 		}
 		db.Encryptor = enc
 		logger.Info("encryption at rest enabled for social tokens and secrets")
+	} else {
+		logger.Warn("ENCRYPTION AT REST IS DISABLED — sensitive data will be stored in plaintext. Set RAMPART_ENCRYPTION_KEY for production use.")
 	}
 
 	if err := database.RunMigrations(cfg.DatabaseURL, "migrations", logger); err != nil {
@@ -99,7 +101,7 @@ func run(_ *slog.Logger) error {
 	router := server.NewRouter(logger, cfg.AllowedOrigins, cfg.HSTSEnabled)
 	healthHandler := handler.NewHealthHandler(db)
 	server.RegisterHealthRoutes(router, healthHandler.Liveness, healthHandler.Readiness)
-	server.RegisterMetricsRoutes(router)
+	server.RegisterMetricsRoutes(router, cfg.MetricsToken)
 
 	// Rate limiters for auth endpoints
 	loginRL := middleware.NewRateLimiter(cfg.RateLimit.LoginPerMinute, time.Minute)
@@ -146,7 +148,7 @@ func run(_ *slog.Logger) error {
 		emailSender = &email.NoOpSender{}
 		logger.Warn("SMTP not configured — password reset tokens will be logged instead of emailed")
 	}
-	resetHandler := handler.NewPasswordResetHandler(db, emailSender, logger, cfg.Issuer)
+	resetHandler := handler.NewPasswordResetHandler(db, sessionStore, emailSender, logger, cfg.Issuer)
 	server.RegisterPasswordResetRoutes(router, resetHandler.ForgotPassword, resetHandler.ResetPassword, loginRL)
 
 	// Email verification

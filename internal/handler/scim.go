@@ -44,6 +44,9 @@ func NewSCIMHandler(s SCIMStore, logger *slog.Logger) *SCIMHandler {
 }
 
 const (
+	// scimMaxBodySize is the maximum allowed request body size for SCIM endpoints (1 MB).
+	scimMaxBodySize = 1 << 20
+
 	scimMediaType = "application/scim+json"
 	scimUserURN   = "urn:ietf:params:scim:schemas:core:2.0:User"
 	scimGroupURN  = "urn:ietf:params:scim:schemas:core:2.0:Group"
@@ -182,6 +185,7 @@ func (h *SCIMHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 // CreateUser handles POST /scim/v2/Users.
 func (h *SCIMHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, scimMaxBodySize)
 	ctx := r.Context()
 	orgID := scimOrgID(r)
 
@@ -220,6 +224,7 @@ func (h *SCIMHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 // UpdateUser handles PUT /scim/v2/Users/{id}.
 func (h *SCIMHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, scimMaxBodySize)
 	ctx := r.Context()
 	orgID := scimOrgID(r)
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -257,6 +262,7 @@ func (h *SCIMHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 // PatchUser handles PATCH /scim/v2/Users/{id}.
 func (h *SCIMHandler) PatchUser(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, scimMaxBodySize)
 	ctx := r.Context()
 	patchOrgID := scimOrgID(r)
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -374,6 +380,7 @@ func (h *SCIMHandler) GetGroup(w http.ResponseWriter, r *http.Request) {
 
 // CreateGroup handles POST /scim/v2/Groups.
 func (h *SCIMHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, scimMaxBodySize)
 	ctx := r.Context()
 	orgID := scimOrgID(r)
 
@@ -413,6 +420,7 @@ func (h *SCIMHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 
 // UpdateGroup handles PUT /scim/v2/Groups/{id}.
 func (h *SCIMHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, scimMaxBodySize)
 	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -442,6 +450,7 @@ func (h *SCIMHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 
 // PatchGroup handles PATCH /scim/v2/Groups/{id}.
 func (h *SCIMHandler) PatchGroup(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, scimMaxBodySize)
 	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {

@@ -16,7 +16,6 @@ jobs:
   govulncheck:
     name: govulncheck
     runs-on: ubuntu-latest
-    continue-on-error: true # stdlib vulns may fail; report but don't block
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -46,10 +45,7 @@ jobs:
             # Show output in logs but suppress noisy annotations
             echo "$output"
             cat >> "$GITHUB_STEP_SUMMARY" << SUMEOF
-          ### govulncheck: ${vuln_count} stdlib vulnerabilities (non-blocking)
-
-          These are in Go's standard library and will be resolved by upgrading Go.
-          See [tracking issue](https://github.com/manimovassagh/rampart/issues/119).
+          ### govulncheck: ${vuln_count} vulnerabilities found
 
           <details>
           <summary>Details</summary>
@@ -59,6 +55,7 @@ jobs:
           \`\`\`
           </details>
           SUMEOF
+            exit $exit_code
           fi
 
   gosec:
