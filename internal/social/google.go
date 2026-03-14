@@ -101,7 +101,7 @@ func (g *GoogleProvider) httpClient() *http.Client {
 	if g.HTTPClient != nil {
 		return g.HTTPClient
 	}
-	return http.DefaultClient
+	return defaultHTTPClient
 }
 
 func (g *GoogleProvider) exchangeToken(ctx context.Context, client *http.Client, code, redirectURL string) (*googleTokenResponse, error) {

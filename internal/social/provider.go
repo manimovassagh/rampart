@@ -2,8 +2,16 @@ package social
 
 import (
 	"context"
+	"net/http"
 	"time"
 )
+
+// defaultHTTPClient is a shared HTTP client with a 10-second timeout,
+// used by social providers when no custom HTTPClient is provided.
+// This prevents hanging indefinitely on slow upstream servers.
+var defaultHTTPClient = &http.Client{
+	Timeout: 10 * time.Second,
+}
 
 // UserInfo represents the normalized user info returned by any social provider.
 type UserInfo struct {

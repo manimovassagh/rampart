@@ -1876,8 +1876,12 @@ func TestGitHubExchangeNoEmails(t *testing.T) {
 
 func TestAppleHTTPClient(t *testing.T) {
 	provider := &AppleProvider{}
-	if provider.httpClient() != http.DefaultClient {
-		t.Error("expected default client when HTTPClient is nil")
+	client := provider.httpClient()
+	if client == nil || client == http.DefaultClient {
+		t.Error("expected non-nil default client with timeout when HTTPClient is nil")
+	}
+	if client.Timeout == 0 {
+		t.Error("expected default client to have a timeout")
 	}
 
 	custom := &http.Client{Timeout: 5 * time.Second}
@@ -1889,8 +1893,12 @@ func TestAppleHTTPClient(t *testing.T) {
 
 func TestGoogleHTTPClient(t *testing.T) {
 	provider := &GoogleProvider{}
-	if provider.httpClient() != http.DefaultClient {
-		t.Error("expected default client when HTTPClient is nil")
+	client := provider.httpClient()
+	if client == nil || client == http.DefaultClient {
+		t.Error("expected non-nil default client with timeout when HTTPClient is nil")
+	}
+	if client.Timeout == 0 {
+		t.Error("expected default client to have a timeout")
 	}
 
 	custom := &http.Client{Timeout: 5 * time.Second}
@@ -1902,8 +1910,12 @@ func TestGoogleHTTPClient(t *testing.T) {
 
 func TestGitHubHTTPClient(t *testing.T) {
 	provider := &GitHubProvider{}
-	if provider.httpClient() != http.DefaultClient {
-		t.Error("expected default client when HTTPClient is nil")
+	client := provider.httpClient()
+	if client == nil || client == http.DefaultClient {
+		t.Error("expected non-nil default client with timeout when HTTPClient is nil")
+	}
+	if client.Timeout == 0 {
+		t.Error("expected default client to have a timeout")
 	}
 
 	custom := &http.Client{Timeout: 5 * time.Second}
