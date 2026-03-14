@@ -33,7 +33,7 @@ export async function validateToken(
  * Usage in App Router:
  * ```ts
  * import { cookies } from "next/headers";
- * import { getServerAuth } from "@rampart/nextjs/server";
+ * import { getServerAuth } from "@rampart-auth/nextjs/server";
  *
  * export default async function Page() {
  *   const auth = await getServerAuth(await cookies(), "https://auth.example.com");

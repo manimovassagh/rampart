@@ -1,5 +1,5 @@
 import { useCallback, useContext } from "react";
-import type { RampartUser } from "@rampart/web";
+import type { RampartUser } from "@rampart-auth/web";
 import { RampartContext } from "./context.js";
 
 export interface UseAuthReturn {

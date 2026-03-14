@@ -1,11 +1,11 @@
-# @rampart/node
+# @rampart-auth/node
 
 Express middleware for verifying [Rampart](https://github.com/manimovassagh/rampart) JWTs. Handles JWKS fetching, RS256 verification, and claim extraction with zero configuration beyond the issuer URL.
 
 ## Install
 
 ```bash
-npm install @rampart/node jose
+npm install @rampart-auth/node jose
 ```
 
 `express` (>=4) is a peer dependency.
@@ -14,7 +14,7 @@ npm install @rampart/node jose
 
 ```typescript
 import express from "express";
-import { rampartAuth } from "@rampart/node";
+import { rampartAuth } from "@rampart-auth/node";
 
 const app = express();
 

@@ -5,5 +5,5 @@ export default defineConfig({
   format: ["esm", "cjs"],
   dts: true,
   clean: true,
-  external: ["react", "react-dom", "@rampart/web"],
+  external: ["react", "react-dom", "@rampart-auth/web"],
 });

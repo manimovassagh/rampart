@@ -1,17 +1,17 @@
-# @rampart/web
+# @rampart-auth/web
 
 Browser authentication SDK for [Rampart](https://github.com/manimovassagh/rampart). Implements the OAuth 2.0 Authorization Code flow with PKCE using the Web Crypto API — no backend proxy required.
 
 ## Install
 
 ```bash
-npm install @rampart/web
+npm install @rampart-auth/web
 ```
 
 ## Quick Start
 
 ```typescript
-import { RampartClient } from "@rampart/web";
+import { RampartClient } from "@rampart-auth/web";
 
 const client = new RampartClient({
   issuer: "http://localhost:8080",

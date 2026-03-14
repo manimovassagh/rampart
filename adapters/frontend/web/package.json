@@ -1,5 +1,5 @@
 {
-  "name": "@rampart/web",
+  "name": "@rampart-auth/web",
   "version": "0.1.0",
   "description": "Rampart authentication client for browsers and frontend apps",
   "type": "module",

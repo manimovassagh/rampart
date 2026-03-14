@@ -7,11 +7,11 @@ export type { UseAuthReturn } from "./use-auth.js";
 export { ProtectedRoute } from "./protected-route.js";
 export type { ProtectedRouteProps } from "./protected-route.js";
 
-// Re-export @rampart/web types so consumers only need @rampart/react
-export { RampartClient } from "@rampart/web";
+// Re-export @rampart-auth/web types so consumers only need @rampart-auth/react
+export { RampartClient } from "@rampart-auth/web";
 export type {
   RampartClientConfig,
   RampartTokens,
   RampartUser,
   RampartError,
-} from "@rampart/web";
+} from "@rampart-auth/web";
