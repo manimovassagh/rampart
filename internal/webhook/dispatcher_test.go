@@ -62,6 +62,14 @@ func (m *mockStore) GetAuditEventByID(_ context.Context, id uuid.UUID) (*model.A
 	return nil, nil
 }
 
+// newTestDispatcher creates a dispatcher with the default transport (no SSRF
+// validation) so tests can use httptest.NewServer on localhost.
+func newTestDispatcher(s *mockStore) *Dispatcher {
+	d := NewDispatcher(s, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	d.client.Transport = http.DefaultTransport
+	return d
+}
+
 func TestDispatch_EnqueuesDeliveries(t *testing.T) {
 	orgID := uuid.New()
 	whID := uuid.New()
@@ -121,7 +129,7 @@ func TestDeliver_SuccessfulDelivery(t *testing.T) {
 		},
 	}
 
-	d := NewDispatcher(store, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	d := newTestDispatcher(store)
 	d.ProcessPending(context.Background())
 
 	if len(store.updates) != 1 {
@@ -154,7 +162,7 @@ func TestDeliver_FailedDelivery_Retries(t *testing.T) {
 		},
 	}
 
-	d := NewDispatcher(store, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	d := newTestDispatcher(store)
 	d.ProcessPending(context.Background())
 
 	if len(store.updates) != 1 {
@@ -188,7 +196,7 @@ func TestDeliver_MaxAttempts_PermanentFailure(t *testing.T) {
 		},
 	}
 
-	d := NewDispatcher(store, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	d := newTestDispatcher(store)
 	d.ProcessPending(context.Background())
 
 	if len(store.updates) != 1 {
@@ -196,6 +204,29 @@ func TestDeliver_MaxAttempts_PermanentFailure(t *testing.T) {
 	}
 	if store.updates[0].Status != "failed" {
 		t.Errorf("expected status 'failed' after max attempts, got %q", store.updates[0].Status)
+	}
+}
+
+func TestSSRFSafeTransport_BlocksLoopback(t *testing.T) {
+	// Verify the SSRF-safe transport blocks connections to loopback addresses.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	client := &http.Client{
+		Timeout:   5 * time.Second,
+		Transport: newSSRFSafeTransport(),
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Do(req)
+	if err == nil {
+		t.Fatal("expected SSRF-safe transport to block loopback connection")
 	}
 }
 
