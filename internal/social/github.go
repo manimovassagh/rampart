@@ -108,7 +108,7 @@ func (g *GitHubProvider) httpClient() *http.Client {
 	if g.HTTPClient != nil {
 		return g.HTTPClient
 	}
-	return http.DefaultClient
+	return defaultHTTPClient
 }
 
 func (g *GitHubProvider) exchangeToken(ctx context.Context, client *http.Client, code, redirectURL string) (*githubTokenResponse, error) {

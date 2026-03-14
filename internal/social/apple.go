@@ -170,7 +170,7 @@ func (a *AppleProvider) httpClient() *http.Client {
 	if a.HTTPClient != nil {
 		return a.HTTPClient
 	}
-	return http.DefaultClient
+	return defaultHTTPClient
 }
 
 func (a *AppleProvider) getClientSecret() (string, error) {
