@@ -6,8 +6,8 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { RampartClient } from "@rampart/web";
-import type { RampartUser, RampartTokens } from "@rampart/web";
+import { RampartClient } from "@rampart-auth/web";
+import type { RampartUser, RampartTokens } from "@rampart-auth/web";
 
 export interface RampartContextValue {
   client: RampartClient;

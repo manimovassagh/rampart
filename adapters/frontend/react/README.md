@@ -1,11 +1,11 @@
-# @rampart/react
+# @rampart-auth/react
 
-React hooks and components for [Rampart](https://github.com/manimovassagh/rampart) authentication. Wraps `@rampart/web` to provide a provider/hook pattern for login, logout, token management, and route protection.
+React hooks and components for [Rampart](https://github.com/manimovassagh/rampart) authentication. Wraps `@rampart-auth/web` to provide a provider/hook pattern for login, logout, token management, and route protection.
 
 ## Install
 
 ```bash
-npm install @rampart/react @rampart/web
+npm install @rampart-auth/react @rampart-auth/web
 ```
 
 `react` (>=18) is a peer dependency.
@@ -13,7 +13,7 @@ npm install @rampart/react @rampart/web
 ## Quick Start
 
 ```tsx
-import { RampartProvider } from "@rampart/react";
+import { RampartProvider } from "@rampart-auth/react";
 import App from "./App";
 
 function Root() {
@@ -30,7 +30,7 @@ function Root() {
 ```
 
 ```tsx
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 
 function Dashboard() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -50,7 +50,7 @@ function Dashboard() {
 
 ```tsx
 import { useEffect } from "react";
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 function LoginPage() {
@@ -141,7 +141,7 @@ Component that conditionally renders children based on authentication and role c
 | `loadingFallback` | `ReactNode?`  | `null`  | Rendered while authentication state is loading              |
 
 ```tsx
-import { ProtectedRoute } from "@rampart/react";
+import { ProtectedRoute } from "@rampart-auth/react";
 
 <ProtectedRoute roles={["admin"]} fallback={<p>Access denied</p>}>
   <AdminPanel />
@@ -150,7 +150,7 @@ import { ProtectedRoute } from "@rampart/react";
 
 ## TypeScript
 
-The package ships with full type definitions. `RampartUser`, `RampartTokens`, and other `@rampart/web` types are re-exported from `@rampart/react` for convenience.
+The package ships with full type definitions. `RampartUser`, `RampartTokens`, and other `@rampart-auth/web` types are re-exported from `@rampart-auth/react` for convenience.
 
 ## License
 

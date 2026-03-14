@@ -3,20 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 import type { RampartClaims } from "./types.js";
 
-// Re-export everything from @rampart/react for convenience
+// Re-export everything from @rampart-auth/react for convenience
 export {
   RampartProvider,
   RampartContext,
   useAuth,
   ProtectedRoute,
-} from "@rampart/react";
+} from "@rampart-auth/react";
 
 export type {
   RampartProviderProps,
   RampartContextValue,
   UseAuthReturn,
   ProtectedRouteProps,
-} from "@rampart/react";
+} from "@rampart-auth/react";
 
 const DEFAULT_SESSION_ENDPOINT = "/api/auth/session";
 
@@ -41,7 +41,7 @@ interface RampartSession {
  * ```ts
  * // app/api/auth/session/route.ts
  * import { cookies } from "next/headers";
- * import { getServerAuth } from "@rampart/nextjs/server";
+ * import { getServerAuth } from "@rampart-auth/nextjs/server";
  *
  * export async function GET() {
  *   const auth = await getServerAuth(await cookies(), process.env.RAMPART_ISSUER!);
