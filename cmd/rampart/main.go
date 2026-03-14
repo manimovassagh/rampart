@@ -339,6 +339,11 @@ func run(_ *slog.Logger) error {
 				} else if n > 0 {
 					logger.Info("cleaned up old webhook deliveries", "count", n)
 				}
+				if n, err := db.DeleteExpiredSAMLRequests(cleanupCtx); err != nil {
+					logger.Warn("failed to clean up expired SAML requests", "error", err)
+				} else if n > 0 {
+					logger.Info("cleaned up expired SAML requests/assertions", "count", n)
+				}
 			}
 		}
 	}()

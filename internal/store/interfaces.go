@@ -291,6 +291,15 @@ type SAMLProviderStore interface {
 	DeleteSAMLProvider(ctx context.Context, id uuid.UUID) error
 }
 
+// SAMLRequestStore tracks SAML AuthnRequest and assertion IDs for replay prevention.
+type SAMLRequestStore interface {
+	StoreSAMLRequest(ctx context.Context, requestID string, providerID uuid.UUID, expiresAt time.Time) error
+	ConsumeSAMLRequest(ctx context.Context, requestID string, providerID uuid.UUID) (bool, error)
+	StoreSAMLAssertionID(ctx context.Context, assertionID string, providerID uuid.UUID, expiresAt time.Time) error
+	IsSAMLAssertionConsumed(ctx context.Context, assertionID string, providerID uuid.UUID) (bool, error)
+	DeleteExpiredSAMLRequests(ctx context.Context) (int64, error)
+}
+
 // ── Export / Import ─────────────────────────────────────────────────────
 
 // ExportImportStore provides organization export/import operations.
