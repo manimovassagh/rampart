@@ -31,7 +31,7 @@ func ValidateWebhookURL(rawURL string) error {
 		return fmt.Errorf("webhook URLs must not target localhost")
 	}
 
-	ips, err := net.LookupHost(host)
+	ips, err := net.LookupHost(host) // #nosec G704 -- intentional DNS lookup for SSRF validation
 	if err != nil {
 		if ip := net.ParseIP(host); ip != nil {
 			if err := checkIP(ip); err != nil {
