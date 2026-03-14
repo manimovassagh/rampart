@@ -3,8 +3,11 @@ package token
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
+	"strings"
 	"testing"
 	"time"
 
@@ -426,5 +429,473 @@ func TestGenerateRefreshToken(t *testing.T) {
 	}
 	if tok1 == tok2 {
 		t.Error("two refresh tokens should not be identical")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Edge-case tests
+// ---------------------------------------------------------------------------
+
+func TestVerifyAccessToken_ExpiredTokenContainsExpiryError(t *testing.T) {
+	now := time.Now()
+	claims := Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    testIssuer,
+			Subject:   uuid.New().String(),
+			Audience:  jwt.ClaimStrings{testIssuer},
+			IssuedAt:  jwt.NewNumericDate(now.Add(-10 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(-5 * time.Minute)),
+		},
+		OrgID:             uuid.New(),
+		PreferredUsername: "user",
+		Email:             "user@test.com",
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = testKID
+	signed, err := tok.SignedString(testPrivKey)
+	if err != nil {
+		t.Fatalf("signing: %v", err)
+	}
+
+	_, err = VerifyAccessToken(testPubKey, signed)
+	if err == nil {
+		t.Fatal("expected error for expired token, got nil")
+	}
+	if !strings.Contains(err.Error(), "expired") {
+		t.Errorf("expected expiry-related error, got: %v", err)
+	}
+}
+
+func TestVerifyAccessToken_WrongAudiencePassesSinceNotEnforced(t *testing.T) {
+	// VerifyAccessToken does not enforce audience — this documents that behavior.
+	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, "aud-A", 15*time.Minute,
+		uuid.New(), uuid.New(), "u", "u@t.com", false, "", "")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	claims, err := VerifyAccessToken(testPubKey, signed)
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	aud, _ := claims.GetAudience()
+	if len(aud) != 1 || aud[0] != "aud-A" {
+		t.Errorf("aud = %v, want [aud-A]", aud)
+	}
+}
+
+func TestVerifyAccessToken_WrongIssuerPassesSinceNotEnforced(t *testing.T) {
+	// VerifyAccessToken does not enforce issuer — this documents that behavior.
+	signed, err := GenerateAccessToken(testPrivKey, testKID, "https://evil.example.com", testIssuer,
+		15*time.Minute, uuid.New(), uuid.New(), "u", "u@t.com", false, "", "")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	claims, err := VerifyAccessToken(testPubKey, signed)
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	if claims.Issuer != "https://evil.example.com" {
+		t.Errorf("issuer = %q, want https://evil.example.com", claims.Issuer)
+	}
+}
+
+func TestVerifyAccessToken_SignedWithDifferentKey(t *testing.T) {
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("keygen: %v", err)
+	}
+
+	signed, err := GenerateAccessToken(otherKey, testKID, testIssuer, testIssuer,
+		15*time.Minute, uuid.New(), uuid.New(), "u", "u@t.com", false, "", "")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	_, err = VerifyAccessToken(testPubKey, signed)
+	if err == nil {
+		t.Fatal("expected error when verifying with different key")
+	}
+}
+
+func TestVerifyAccessToken_MalformedStrings(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+	}{
+		{"empty string", ""},
+		{"single dot", "a.b"},
+		{"three dots no content", "..."},
+		{"random garbage", "not-a-jwt-at-all"},
+		{"valid base64 but bad sig", base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256"}`)) + "." + base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"x"}`)) + ".invalidsig"},
+		{"null bytes", "\x00\x00\x00"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := VerifyAccessToken(testPubKey, tt.token)
+			if err == nil {
+				t.Fatalf("expected error for %q, got nil", tt.name)
+			}
+		})
+	}
+}
+
+func TestVerifyAccessToken_NoExpiry(t *testing.T) {
+	// Token without ExpiresAt — jwt/v5 does not require exp by default.
+	now := time.Now()
+	claims := Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:   testIssuer,
+			Subject:  uuid.New().String(),
+			Audience: jwt.ClaimStrings{testIssuer},
+			IssuedAt: jwt.NewNumericDate(now),
+		},
+		OrgID:             uuid.New(),
+		PreferredUsername: "user",
+		Email:             "user@test.com",
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = testKID
+	signed, err := tok.SignedString(testPrivKey)
+	if err != nil {
+		t.Fatalf("signing: %v", err)
+	}
+
+	result, err := VerifyAccessToken(testPubKey, signed)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.ExpiresAt != nil {
+		t.Errorf("expected nil ExpiresAt, got %v", result.ExpiresAt)
+	}
+}
+
+func TestVerifyMFAToken_ExpiredToken(t *testing.T) {
+	now := time.Now()
+	claims := MFAClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    testIssuer,
+			Subject:   uuid.New().String(),
+			Audience:  jwt.ClaimStrings{MFAAudience},
+			IssuedAt:  jwt.NewNumericDate(now.Add(-10 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(-1 * time.Minute)),
+		},
+		Purpose: "mfa_challenge",
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = testKID
+	signed, err := tok.SignedString(testPrivKey)
+	if err != nil {
+		t.Fatalf("signing: %v", err)
+	}
+
+	_, err = VerifyMFAToken(testPubKey, signed)
+	if err == nil {
+		t.Fatal("expected error for expired MFA token")
+	}
+	if !strings.Contains(err.Error(), "expired") {
+		t.Errorf("expected expiry error, got: %v", err)
+	}
+}
+
+func TestVerifyMFAToken_WrongPurpose(t *testing.T) {
+	now := time.Now()
+	claims := MFAClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    testIssuer,
+			Subject:   uuid.New().String(),
+			Audience:  jwt.ClaimStrings{MFAAudience},
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
+		},
+		Purpose: "password_reset",
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = testKID
+	signed, err := tok.SignedString(testPrivKey)
+	if err != nil {
+		t.Fatalf("signing: %v", err)
+	}
+
+	_, err = VerifyMFAToken(testPubKey, signed)
+	if err == nil {
+		t.Fatal("expected error for wrong purpose MFA token")
+	}
+	if !strings.Contains(err.Error(), "invalid MFA token") {
+		t.Errorf("expected 'invalid MFA token' error, got: %v", err)
+	}
+}
+
+func TestVerifyMFAToken_EmptyPurpose(t *testing.T) {
+	now := time.Now()
+	claims := MFAClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    testIssuer,
+			Subject:   uuid.New().String(),
+			Audience:  jwt.ClaimStrings{MFAAudience},
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
+		},
+		Purpose: "",
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tok.Header["kid"] = testKID
+	signed, err := tok.SignedString(testPrivKey)
+	if err != nil {
+		t.Fatalf("signing: %v", err)
+	}
+
+	_, err = VerifyMFAToken(testPubKey, signed)
+	if err == nil {
+		t.Fatal("expected error for empty purpose MFA token")
+	}
+}
+
+func TestVerifyMFAToken_SignedWithDifferentKey(t *testing.T) {
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("keygen: %v", err)
+	}
+
+	tokenStr, err := GenerateMFAToken(otherKey, testKID, testIssuer, uuid.New())
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	_, err = VerifyMFAToken(testPubKey, tokenStr)
+	if err == nil {
+		t.Fatal("expected error verifying MFA token with wrong key")
+	}
+}
+
+func TestVerifyMFAToken_MalformedStrings(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+	}{
+		{"empty", ""},
+		{"garbage", "xyz123"},
+		{"two dots", "a.b.c"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := VerifyMFAToken(testPubKey, tt.token)
+			if err == nil {
+				t.Fatal("expected error for malformed MFA token")
+			}
+		})
+	}
+}
+
+func TestRefreshTokenUniqueness_1000(t *testing.T) {
+	seen := make(map[string]struct{}, 1000)
+	for i := range 1000 {
+		tok, err := GenerateRefreshToken()
+		if err != nil {
+			t.Fatalf("GenerateRefreshToken #%d: %v", i, err)
+		}
+		if _, dup := seen[tok]; dup {
+			t.Fatalf("duplicate refresh token at iteration %d: %s", i, tok)
+		}
+		seen[tok] = struct{}{}
+	}
+}
+
+func TestComputeAtHash_Correctness(t *testing.T) {
+	// Manually compute expected at_hash per OIDC Core 1.0 section 3.1.3.6:
+	// SHA-256 of access token, take left 128 bits (16 bytes), base64url without padding.
+	accessToken := "ya29.test-access-token-12345"
+	h := sha256.Sum256([]byte(accessToken))
+	leftHalf := h[:sha256.Size/2]
+	expected := strings.TrimRight(base64.URLEncoding.EncodeToString(leftHalf), "=")
+
+	got := computeAtHash(accessToken)
+	if got != expected {
+		t.Errorf("at_hash = %q, want %q", got, expected)
+	}
+
+	// 16 bytes base64url-encoded without padding = 22 characters
+	if len(got) != 22 {
+		t.Errorf("at_hash length = %d, want 22", len(got))
+	}
+}
+
+func TestGenerateIDToken_EmptyNonce(t *testing.T) {
+	signed, err := GenerateIDToken(testPrivKey, testKID, testIssuer, "client-1",
+		15*time.Minute, uuid.New(), uuid.New(), "user", "u@t.com", true, "", "", "", "some-at")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{"RS256"}))
+	tok, err := parser.ParseWithClaims(signed, &IDTokenClaims{}, func(_ *jwt.Token) (any, error) {
+		return testPubKey, nil
+	})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	claims := tok.Claims.(*IDTokenClaims)
+	if claims.Nonce != "" {
+		t.Errorf("nonce should be empty, got %q", claims.Nonce)
+	}
+}
+
+func TestGenerateIDToken_VeryLongNonce(t *testing.T) {
+	longNonce := strings.Repeat("a", 8192)
+	signed, err := GenerateIDToken(testPrivKey, testKID, testIssuer, "client-1",
+		15*time.Minute, uuid.New(), uuid.New(), "user", "u@t.com", true, "", "", longNonce, "some-at")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{"RS256"}))
+	tok, err := parser.ParseWithClaims(signed, &IDTokenClaims{}, func(_ *jwt.Token) (any, error) {
+		return testPubKey, nil
+	})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	claims := tok.Claims.(*IDTokenClaims)
+	if claims.Nonce != longNonce {
+		t.Errorf("nonce length = %d, want %d", len(claims.Nonce), len(longNonce))
+	}
+}
+
+func TestGenerateIDToken_NoAccessToken_NoAtHash(t *testing.T) {
+	signed, err := GenerateIDToken(testPrivKey, testKID, testIssuer, "client-1",
+		15*time.Minute, uuid.New(), uuid.New(), "user", "u@t.com", true, "", "", "nonce", "")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{"RS256"}))
+	tok, err := parser.ParseWithClaims(signed, &IDTokenClaims{}, func(_ *jwt.Token) (any, error) {
+		return testPubKey, nil
+	})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	claims := tok.Claims.(*IDTokenClaims)
+	if claims.AtHash != "" {
+		t.Errorf("at_hash should be empty when no access token provided, got %q", claims.AtHash)
+	}
+}
+
+func TestGenerateAccessToken_AllOptionalFieldsEmpty(t *testing.T) {
+	userID := uuid.New()
+	orgID := uuid.New()
+
+	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, testIssuer,
+		15*time.Minute, userID, orgID, "", "", false, "", "")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	claims, err := VerifyAccessToken(testPubKey, signed)
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+
+	if claims.PreferredUsername != "" {
+		t.Errorf("preferred_username = %q, want empty", claims.PreferredUsername)
+	}
+	if claims.Email != "" {
+		t.Errorf("email = %q, want empty", claims.Email)
+	}
+	if claims.EmailVerified {
+		t.Error("email_verified = true, want false")
+	}
+	if claims.GivenName != "" {
+		t.Errorf("given_name = %q, want empty", claims.GivenName)
+	}
+	if claims.FamilyName != "" {
+		t.Errorf("family_name = %q, want empty", claims.FamilyName)
+	}
+	if len(claims.Roles) != 0 {
+		t.Errorf("roles = %v, want empty", claims.Roles)
+	}
+	if claims.Custom != nil {
+		t.Errorf("custom = %v, want nil", claims.Custom)
+	}
+}
+
+func TestGenerateAccessTokenWithCustomClaims_NestedObjects(t *testing.T) {
+	userID := uuid.New()
+	orgID := uuid.New()
+
+	customClaims := map[string]any{
+		"tenant": map[string]any{
+			"id":   "t-123",
+			"tier": "enterprise",
+			"limits": map[string]any{
+				"api_calls": 10000,
+				"storage":   "100GB",
+			},
+		},
+		"feature_flags": []string{"beta", "dark-mode"},
+		"score":         42.5,
+		"active":        true,
+	}
+
+	signed, err := GenerateAccessTokenWithCustomClaims(testPrivKey, testKID, testIssuer, testIssuer,
+		15*time.Minute, userID, orgID, "user", "u@t.com", true, "U", "T", customClaims, "admin")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	claims, err := VerifyAccessToken(testPubKey, signed)
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+
+	if claims.Custom == nil {
+		t.Fatal("custom claims should not be nil")
+	}
+
+	// Verify nested object survived round-trip
+	tenant, ok := claims.Custom["tenant"].(map[string]any)
+	if !ok {
+		t.Fatalf("tenant is %T, want map[string]any", claims.Custom["tenant"])
+	}
+	if tenant["id"] != "t-123" {
+		t.Errorf("tenant.id = %v, want t-123", tenant["id"])
+	}
+
+	limits, ok := tenant["limits"].(map[string]any)
+	if !ok {
+		t.Fatalf("tenant.limits is %T, want map[string]any", tenant["limits"])
+	}
+	// JSON numbers unmarshal as float64
+	if limits["api_calls"] != float64(10000) {
+		t.Errorf("tenant.limits.api_calls = %v, want 10000", limits["api_calls"])
+	}
+
+	if claims.Custom["active"] != true {
+		t.Errorf("custom.active = %v, want true", claims.Custom["active"])
+	}
+	if claims.Custom["score"] != 42.5 {
+		t.Errorf("custom.score = %v, want 42.5", claims.Custom["score"])
+	}
+}
+
+func TestGenerateAccessToken_WithMultipleRoles(t *testing.T) {
+	roles := []string{"admin", "editor", "viewer"}
+	signed, err := GenerateAccessToken(testPrivKey, testKID, testIssuer, testIssuer,
+		15*time.Minute, uuid.New(), uuid.New(), "user", "u@t.com", true, "", "", roles...)
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	claims, err := VerifyAccessToken(testPubKey, signed)
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	if len(claims.Roles) != 3 {
+		t.Fatalf("roles length = %d, want 3", len(claims.Roles))
+	}
+	for i, r := range roles {
+		if claims.Roles[i] != r {
+			t.Errorf("roles[%d] = %q, want %q", i, claims.Roles[i], r)
+		}
 	}
 }
