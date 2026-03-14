@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
@@ -48,7 +49,8 @@ func NewDispatcher(s Store, logger *slog.Logger) *Dispatcher {
 	return &Dispatcher{
 		store: s,
 		client: &http.Client{
-			Timeout: deliveryTimeout,
+			Timeout:   deliveryTimeout,
+			Transport: newSSRFSafeTransport(),
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				if err := ValidateWebhookURL(req.URL.String()); err != nil {
 					return fmt.Errorf("redirect blocked: %w", err)
@@ -60,6 +62,39 @@ func NewDispatcher(s Store, logger *slog.Logger) *Dispatcher {
 			},
 		},
 		logger: logger,
+	}
+}
+
+// newSSRFSafeTransport returns an http.Transport that validates the resolved
+// IP address at connection time. This prevents DNS rebinding attacks where a
+// hostname resolves to a public IP at validation time but a private IP later.
+func newSSRFSafeTransport() *http.Transport {
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	return &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid address %q: %w", addr, err)
+			}
+
+			ips, err := net.DefaultResolver.LookupHost(ctx, host)
+			if err != nil {
+				return nil, fmt.Errorf("DNS resolution failed for %q: %w", host, err)
+			}
+
+			for _, ipStr := range ips {
+				ip := net.ParseIP(ipStr)
+				if ip == nil {
+					continue
+				}
+				if err := checkIP(ip); err != nil {
+					return nil, fmt.Errorf("SSRF blocked: resolved IP %s for %q: %w", ipStr, host, err)
+				}
+			}
+
+			// Connect to the first resolved IP that passed validation.
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0], port))
+		},
 	}
 }
 
