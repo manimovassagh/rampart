@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -163,7 +162,7 @@ func GenerateIDToken(key *rsa.PrivateKey, kid, issuer, audience string, ttl time
 func computeAtHash(accessToken string) string {
 	h := sha256.Sum256([]byte(accessToken))
 	leftHalf := h[:sha256.Size/2]
-	return strings.TrimRight(base64.URLEncoding.EncodeToString(leftHalf), "=")
+	return base64.RawURLEncoding.EncodeToString(leftHalf)
 }
 
 // MFAAudience is the audience value for MFA challenge tokens.
