@@ -16,6 +16,9 @@ import (
 
 // ListGroups returns a paginated, searchable list of groups for an org.
 func (db *DB) ListGroups(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*model.Group, int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	where := []string{"org_id = $1"}
 	args := []any{orgID}
 	paramIdx := 2
@@ -63,6 +66,9 @@ func (db *DB) ListGroups(ctx context.Context, orgID uuid.UUID, search string, li
 
 // GetGroupByID retrieves a group by its UUID.
 func (db *DB) GetGroupByID(ctx context.Context, id uuid.UUID) (*model.Group, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var g model.Group
 	err := db.Pool.QueryRow(ctx,
 		"SELECT id, org_id, name, description, created_at, updated_at FROM groups WHERE id = $1", id,
@@ -78,6 +84,9 @@ func (db *DB) GetGroupByID(ctx context.Context, id uuid.UUID) (*model.Group, err
 
 // CreateGroup inserts a new group.
 func (db *DB) CreateGroup(ctx context.Context, group *model.Group) (*model.Group, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var g model.Group
 	err := db.Pool.QueryRow(ctx,
 		`INSERT INTO groups (org_id, name, description) VALUES ($1, $2, $3)
@@ -96,6 +105,9 @@ func (db *DB) CreateGroup(ctx context.Context, group *model.Group) (*model.Group
 
 // UpdateGroup updates mutable fields on a group.
 func (db *DB) UpdateGroup(ctx context.Context, id uuid.UUID, req *model.UpdateGroupRequest) (*model.Group, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var g model.Group
 	err := db.Pool.QueryRow(ctx,
 		`UPDATE groups SET name = COALESCE(NULLIF($2, ''), name), description = $3, updated_at = now()
@@ -114,6 +126,9 @@ func (db *DB) UpdateGroup(ctx context.Context, id uuid.UUID, req *model.UpdateGr
 
 // DeleteGroup removes a group by ID.
 func (db *DB) DeleteGroup(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx, "DELETE FROM groups WHERE id = $1", id)
 	if err != nil {
 		return fmt.Errorf("deleting group: %w", err)
@@ -126,6 +141,9 @@ func (db *DB) DeleteGroup(ctx context.Context, id uuid.UUID) error {
 
 // CountGroups returns the total number of groups in an org.
 func (db *DB) CountGroups(ctx context.Context, orgID uuid.UUID) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM groups WHERE org_id = $1", orgID).Scan(&count)
 	if err != nil {
@@ -136,6 +154,9 @@ func (db *DB) CountGroups(ctx context.Context, orgID uuid.UUID) (int, error) {
 
 // CountGroupMembers returns the number of members in a group.
 func (db *DB) CountGroupMembers(ctx context.Context, groupID uuid.UUID) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM user_groups WHERE group_id = $1", groupID).Scan(&count)
 	if err != nil {
@@ -146,6 +167,9 @@ func (db *DB) CountGroupMembers(ctx context.Context, groupID uuid.UUID) (int, er
 
 // CountGroupRoles returns the number of roles assigned to a group.
 func (db *DB) CountGroupRoles(ctx context.Context, groupID uuid.UUID) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM group_roles WHERE group_id = $1", groupID).Scan(&count)
 	if err != nil {
@@ -156,6 +180,9 @@ func (db *DB) CountGroupRoles(ctx context.Context, groupID uuid.UUID) (int, erro
 
 // AddUserToGroup adds a user to a group.
 func (db *DB) AddUserToGroup(ctx context.Context, userID, groupID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		"INSERT INTO user_groups (user_id, group_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
 		userID, groupID)
@@ -167,6 +194,9 @@ func (db *DB) AddUserToGroup(ctx context.Context, userID, groupID uuid.UUID) err
 
 // RemoveUserFromGroup removes a user from a group.
 func (db *DB) RemoveUserFromGroup(ctx context.Context, userID, groupID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, "DELETE FROM user_groups WHERE user_id = $1 AND group_id = $2", userID, groupID)
 	if err != nil {
 		return fmt.Errorf("removing user from group: %w", err)
@@ -176,6 +206,9 @@ func (db *DB) RemoveUserFromGroup(ctx context.Context, userID, groupID uuid.UUID
 
 // GetGroupMembers returns all members of a group.
 func (db *DB) GetGroupMembers(ctx context.Context, groupID uuid.UUID) ([]*model.GroupMember, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT u.id, u.username, u.email, ug.added_at
 		 FROM users u JOIN user_groups ug ON ug.user_id = u.id
@@ -201,6 +234,9 @@ func (db *DB) GetGroupMembers(ctx context.Context, groupID uuid.UUID) ([]*model.
 
 // AssignRoleToGroup assigns a role to a group.
 func (db *DB) AssignRoleToGroup(ctx context.Context, groupID, roleID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		"INSERT INTO group_roles (group_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
 		groupID, roleID)
@@ -212,6 +248,9 @@ func (db *DB) AssignRoleToGroup(ctx context.Context, groupID, roleID uuid.UUID) 
 
 // UnassignRoleFromGroup removes a role from a group.
 func (db *DB) UnassignRoleFromGroup(ctx context.Context, groupID, roleID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, "DELETE FROM group_roles WHERE group_id = $1 AND role_id = $2", groupID, roleID)
 	if err != nil {
 		return fmt.Errorf("unassigning role from group: %w", err)
@@ -221,6 +260,9 @@ func (db *DB) UnassignRoleFromGroup(ctx context.Context, groupID, roleID uuid.UU
 
 // GetGroupRoles returns all roles assigned to a group.
 func (db *DB) GetGroupRoles(ctx context.Context, groupID uuid.UUID) ([]*model.GroupRoleAssignment, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT r.id, r.name, r.description
 		 FROM roles r JOIN group_roles gr ON gr.role_id = r.id
@@ -246,6 +288,9 @@ func (db *DB) GetGroupRoles(ctx context.Context, groupID uuid.UUID) ([]*model.Gr
 
 // GetEffectiveUserRoles returns role names that include both direct and group-inherited roles.
 func (db *DB) GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT DISTINCT r.name FROM roles r
 		JOIN user_roles ur ON ur.role_id = r.id
@@ -279,6 +324,9 @@ func (db *DB) GetEffectiveUserRoles(ctx context.Context, userID uuid.UUID) ([]st
 
 // GetUserGroups returns all groups a user belongs to.
 func (db *DB) GetUserGroups(ctx context.Context, userID uuid.UUID) ([]*model.Group, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT g.id, g.org_id, g.name, g.description, g.created_at, g.updated_at
 		 FROM groups g JOIN user_groups ug ON ug.group_id = g.id

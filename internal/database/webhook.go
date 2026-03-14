@@ -14,6 +14,9 @@ import (
 
 // CreateWebhook inserts a new webhook subscription.
 func (db *DB) CreateWebhook(ctx context.Context, w *model.Webhook) (*model.Webhook, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var wh model.Webhook
 	err := db.Pool.QueryRow(ctx,
 		`INSERT INTO webhooks (org_id, url, secret, description, event_types, enabled)
@@ -29,6 +32,9 @@ func (db *DB) CreateWebhook(ctx context.Context, w *model.Webhook) (*model.Webho
 
 // GetWebhookByID returns a webhook by its ID.
 func (db *DB) GetWebhookByID(ctx context.Context, id uuid.UUID) (*model.Webhook, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var wh model.Webhook
 	err := db.Pool.QueryRow(ctx,
 		`SELECT id, org_id, url, secret, description, event_types, enabled, created_at, updated_at
@@ -46,6 +52,9 @@ func (db *DB) GetWebhookByID(ctx context.Context, id uuid.UUID) (*model.Webhook,
 
 // ListWebhooks returns paginated webhooks for an organization.
 func (db *DB) ListWebhooks(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*model.Webhook, int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var total int
 	err := db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM webhooks WHERE org_id = $1`, orgID).Scan(&total)
 	if err != nil {
@@ -79,6 +88,9 @@ func (db *DB) ListWebhooks(ctx context.Context, orgID uuid.UUID, limit, offset i
 
 // UpdateWebhook updates a webhook's settings.
 func (db *DB) UpdateWebhook(ctx context.Context, id uuid.UUID, req *model.UpdateWebhookRequest) (*model.Webhook, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var wh model.Webhook
 	err := db.Pool.QueryRow(ctx,
 		`UPDATE webhooks SET url = $2, description = $3, event_types = $4, enabled = $5, updated_at = now()
@@ -94,12 +106,18 @@ func (db *DB) UpdateWebhook(ctx context.Context, id uuid.UUID, req *model.Update
 
 // DeleteWebhook deletes a webhook by ID.
 func (db *DB) DeleteWebhook(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, `DELETE FROM webhooks WHERE id = $1`, id)
 	return err
 }
 
 // GetEnabledWebhooksForEvent returns all enabled webhooks for an org that match the given event type.
 func (db *DB) GetEnabledWebhooksForEvent(ctx context.Context, orgID uuid.UUID, eventType string) ([]*model.Webhook, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT id, org_id, url, secret, description, event_types, enabled, created_at, updated_at
 		 FROM webhooks
@@ -128,6 +146,9 @@ func (db *DB) GetEnabledWebhooksForEvent(ctx context.Context, orgID uuid.UUID, e
 
 // CreateWebhookDelivery inserts a new delivery record.
 func (db *DB) CreateWebhookDelivery(ctx context.Context, d *model.WebhookDelivery) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		`INSERT INTO webhook_deliveries (webhook_id, event_id, status, attempts, next_retry_at)
 		 VALUES ($1, $2, $3, $4, $5)`,
@@ -138,6 +159,9 @@ func (db *DB) CreateWebhookDelivery(ctx context.Context, d *model.WebhookDeliver
 
 // UpdateWebhookDelivery updates a delivery record after an attempt.
 func (db *DB) UpdateWebhookDelivery(ctx context.Context, id uuid.UUID, status string, attempts int, responseCode *int, lastError string, nextRetry *time.Time, completedAt *time.Time) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		`UPDATE webhook_deliveries
 		 SET status = $2, attempts = $3, last_response_code = $4, last_error = $5, next_retry_at = $6, completed_at = $7
@@ -150,6 +174,9 @@ func (db *DB) UpdateWebhookDelivery(ctx context.Context, id uuid.UUID, status st
 // GetPendingDeliveries returns deliveries ready for retry.
 // Uses FOR UPDATE SKIP LOCKED to prevent duplicate delivery in multi-instance deployments.
 func (db *DB) GetPendingDeliveries(ctx context.Context, limit int) ([]*model.WebhookDelivery, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT d.id, d.webhook_id, d.event_id, d.status, d.attempts, d.next_retry_at,
 		        d.last_response_code, d.last_error, d.created_at, d.completed_at
@@ -181,6 +208,9 @@ func (db *DB) GetPendingDeliveries(ctx context.Context, limit int) ([]*model.Web
 
 // DeleteOldDeliveries removes completed deliveries older than the given duration.
 func (db *DB) DeleteOldDeliveries(ctx context.Context, olderThan time.Duration) (int64, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx,
 		`DELETE FROM webhook_deliveries WHERE status IN ('success', 'failed') AND completed_at < $1`,
 		time.Now().Add(-olderThan),
@@ -193,6 +223,9 @@ func (db *DB) DeleteOldDeliveries(ctx context.Context, olderThan time.Duration) 
 
 // ListWebhookDeliveries returns recent deliveries for a webhook.
 func (db *DB) ListWebhookDeliveries(ctx context.Context, webhookID uuid.UUID, limit, offset int) ([]*model.WebhookDelivery, int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var total int
 	err := db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM webhook_deliveries WHERE webhook_id = $1`, webhookID).Scan(&total)
 	if err != nil {

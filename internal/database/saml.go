@@ -14,6 +14,9 @@ import (
 
 // CreateSAMLProvider inserts a new SAML provider configuration.
 func (db *DB) CreateSAMLProvider(ctx context.Context, p *model.SAMLProvider) (*model.SAMLProvider, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	attrJSON, _ := json.Marshal(p.AttributeMapping)
 
 	var out model.SAMLProvider
@@ -36,6 +39,9 @@ func (db *DB) CreateSAMLProvider(ctx context.Context, p *model.SAMLProvider) (*m
 
 // GetSAMLProviderByID returns a SAML provider by ID.
 func (db *DB) GetSAMLProviderByID(ctx context.Context, id uuid.UUID) (*model.SAMLProvider, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var p model.SAMLProvider
 	var attrBytes []byte
 	err := db.Pool.QueryRow(ctx,
@@ -56,6 +62,9 @@ func (db *DB) GetSAMLProviderByID(ctx context.Context, id uuid.UUID) (*model.SAM
 
 // ListSAMLProviders returns all SAML providers for an organization.
 func (db *DB) ListSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*model.SAMLProvider, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT id, org_id, name, entity_id, metadata_url, metadata_xml, sso_url, slo_url, certificate, name_id_format, attribute_mapping, enabled, created_at, updated_at
 		 FROM saml_providers WHERE org_id = $1 ORDER BY name ASC`, orgID,
@@ -85,6 +94,9 @@ func (db *DB) ListSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*model.
 
 // GetEnabledSAMLProviders returns enabled SAML providers for an organization.
 func (db *DB) GetEnabledSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*model.SAMLProvider, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT id, org_id, name, entity_id, metadata_url, metadata_xml, sso_url, slo_url, certificate, name_id_format, attribute_mapping, enabled, created_at, updated_at
 		 FROM saml_providers WHERE org_id = $1 AND enabled = true ORDER BY name ASC`, orgID,
@@ -114,6 +126,9 @@ func (db *DB) GetEnabledSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*
 
 // UpdateSAMLProvider updates a SAML provider configuration.
 func (db *DB) UpdateSAMLProvider(ctx context.Context, id uuid.UUID, req *model.UpdateSAMLProviderRequest) (*model.SAMLProvider, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	attrJSON, _ := json.Marshal(req.AttributeMapping)
 
 	var p model.SAMLProvider
@@ -138,6 +153,9 @@ func (db *DB) UpdateSAMLProvider(ctx context.Context, id uuid.UUID, req *model.U
 
 // DeleteSAMLProvider deletes a SAML provider.
 func (db *DB) DeleteSAMLProvider(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, `DELETE FROM saml_providers WHERE id = $1`, id)
 	return err
 }

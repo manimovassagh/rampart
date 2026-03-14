@@ -16,6 +16,9 @@ import (
 
 // ListRoles returns a paginated, searchable list of roles for an org.
 func (db *DB) ListRoles(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*model.Role, int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	where := []string{"org_id = $1"}
 	args := []any{orgID}
 	paramIdx := 2
@@ -65,6 +68,9 @@ func (db *DB) ListRoles(ctx context.Context, orgID uuid.UUID, search string, lim
 
 // GetRoleByID retrieves a role by its UUID.
 func (db *DB) GetRoleByID(ctx context.Context, id uuid.UUID) (*model.Role, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `SELECT id, org_id, name, description, builtin, created_at, updated_at FROM roles WHERE id = $1`
 
 	var r model.Role
@@ -80,6 +86,9 @@ func (db *DB) GetRoleByID(ctx context.Context, id uuid.UUID) (*model.Role, error
 
 // CreateRole inserts a new role.
 func (db *DB) CreateRole(ctx context.Context, role *model.Role) (*model.Role, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		INSERT INTO roles (org_id, name, description)
 		VALUES ($1, $2, $3)
@@ -100,6 +109,9 @@ func (db *DB) CreateRole(ctx context.Context, role *model.Role) (*model.Role, er
 
 // UpdateRole updates mutable fields on a role, scoped to the given organization.
 func (db *DB) UpdateRole(ctx context.Context, id, orgID uuid.UUID, req *model.UpdateRoleRequest) (*model.Role, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		UPDATE roles
 		SET name = COALESCE(NULLIF($2, ''), name),
@@ -122,6 +134,9 @@ func (db *DB) UpdateRole(ctx context.Context, id, orgID uuid.UUID, req *model.Up
 
 // DeleteRole removes a role by ID, scoped to the given organization. Rejects deletion of builtin roles.
 func (db *DB) DeleteRole(ctx context.Context, id, orgID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	// Distinguish "not found" from "is builtin" before attempting delete.
 	var builtin bool
 	err := db.Pool.QueryRow(ctx, "SELECT builtin FROM roles WHERE id = $1 AND org_id = $2", id, orgID).Scan(&builtin)
@@ -147,6 +162,9 @@ func (db *DB) DeleteRole(ctx context.Context, id, orgID uuid.UUID) error {
 
 // UserCountsByRole returns the number of users per role in an org.
 func (db *DB) UserCountsByRole(ctx context.Context, orgID uuid.UUID) ([]model.RoleCount, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT r.name, COUNT(ur.user_id) AS cnt
 		FROM roles r
@@ -174,6 +192,9 @@ func (db *DB) UserCountsByRole(ctx context.Context, orgID uuid.UUID) ([]model.Ro
 
 // CountRoles returns the total number of roles in an org.
 func (db *DB) CountRoles(ctx context.Context, orgID uuid.UUID) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM roles WHERE org_id = $1", orgID).Scan(&count)
 	if err != nil {
@@ -184,6 +205,9 @@ func (db *DB) CountRoles(ctx context.Context, orgID uuid.UUID) (int, error) {
 
 // CountRoleUsers returns the number of users assigned to a role.
 func (db *DB) CountRoleUsers(ctx context.Context, roleID uuid.UUID) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM user_roles WHERE role_id = $1", roleID).Scan(&count)
 	if err != nil {
@@ -194,6 +218,9 @@ func (db *DB) CountRoleUsers(ctx context.Context, roleID uuid.UUID) (int, error)
 
 // AssignRole assigns a role to a user.
 func (db *DB) AssignRole(ctx context.Context, userID, roleID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		"INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
 		userID, roleID)
@@ -205,6 +232,9 @@ func (db *DB) AssignRole(ctx context.Context, userID, roleID uuid.UUID) error {
 
 // UnassignRole removes a role from a user.
 func (db *DB) UnassignRole(ctx context.Context, userID, roleID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, "DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2", userID, roleID)
 	if err != nil {
 		return fmt.Errorf("unassigning role: %w", err)
@@ -214,6 +244,9 @@ func (db *DB) UnassignRole(ctx context.Context, userID, roleID uuid.UUID) error 
 
 // GetUserRoles returns all roles assigned to a user.
 func (db *DB) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*model.Role, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT r.id, r.org_id, r.name, r.description, r.builtin, r.created_at, r.updated_at
 		FROM roles r
@@ -243,6 +276,9 @@ func (db *DB) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*model.Role
 
 // GetUserRoleNames returns the role names for a user (for JWT claims).
 func (db *DB) GetUserRoleNames(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT r.name
 		FROM roles r
@@ -272,6 +308,9 @@ func (db *DB) GetUserRoleNames(ctx context.Context, userID uuid.UUID) ([]string,
 
 // GetRoleUsers returns all users assigned to a role.
 func (db *DB) GetRoleUsers(ctx context.Context, roleID uuid.UUID) ([]*model.UserRoleAssignment, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT u.id, u.username, u.email, ur.assigned_at
 		FROM users u

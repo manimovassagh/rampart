@@ -22,6 +22,9 @@ type UserConsent struct {
 
 // HasConsent checks if a user has already granted consent for a client with the given scopes.
 func (db *DB) HasConsent(ctx context.Context, userID uuid.UUID, clientID, scopes string) (bool, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var exists bool
 	err := db.Pool.QueryRow(ctx,
 		`SELECT EXISTS(SELECT 1 FROM user_consents WHERE user_id = $1 AND client_id = $2 AND scopes = $3)`,
@@ -35,6 +38,9 @@ func (db *DB) HasConsent(ctx context.Context, userID uuid.UUID, clientID, scopes
 
 // GrantConsent stores or updates a user's consent for an OAuth client.
 func (db *DB) GrantConsent(ctx context.Context, userID uuid.UUID, clientID, scopes string) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		`INSERT INTO user_consents (user_id, client_id, scopes)
 		 VALUES ($1, $2, $3)
@@ -50,6 +56,9 @@ func (db *DB) GrantConsent(ctx context.Context, userID uuid.UUID, clientID, scop
 
 // RevokeConsent removes a user's consent for an OAuth client.
 func (db *DB) RevokeConsent(ctx context.Context, userID uuid.UUID, clientID string) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		`DELETE FROM user_consents WHERE user_id = $1 AND client_id = $2`,
 		userID, clientID,
@@ -62,6 +71,9 @@ func (db *DB) RevokeConsent(ctx context.Context, userID uuid.UUID, clientID stri
 
 // ListUserConsents returns all active consents for a user.
 func (db *DB) ListUserConsents(ctx context.Context, userID uuid.UUID) ([]UserConsent, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT id, user_id, client_id, scopes, created_at, updated_at
 		 FROM user_consents WHERE user_id = $1 ORDER BY created_at DESC`,
@@ -85,6 +97,9 @@ func (db *DB) ListUserConsents(ctx context.Context, userID uuid.UUID) ([]UserCon
 
 // GetConsent retrieves a specific consent record.
 func (db *DB) GetConsent(ctx context.Context, userID uuid.UUID, clientID string) (*UserConsent, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var c UserConsent
 	err := db.Pool.QueryRow(ctx,
 		`SELECT id, user_id, client_id, scopes, created_at, updated_at

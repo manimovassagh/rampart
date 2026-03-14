@@ -15,6 +15,9 @@ import (
 // The plaintext token is NOT stored — only its SHA-256 hash.
 // Any existing unused tokens for the user are invalidated.
 func (db *DB) CreateEmailVerificationToken(ctx context.Context, userID uuid.UUID, tokenPlaintext string, expiresAt time.Time) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	hash := sha256.Sum256([]byte(tokenPlaintext))
 
 	// Invalidate any existing unused tokens for this user
@@ -33,6 +36,9 @@ func (db *DB) CreateEmailVerificationToken(ctx context.Context, userID uuid.UUID
 // ConsumeEmailVerificationToken validates and consumes an email verification token.
 // Returns the user ID if valid, or an error if expired/used/not found.
 func (db *DB) ConsumeEmailVerificationToken(ctx context.Context, tokenPlaintext string) (uuid.UUID, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	hash := sha256.Sum256([]byte(tokenPlaintext))
 
 	var userID uuid.UUID
@@ -53,6 +59,9 @@ func (db *DB) ConsumeEmailVerificationToken(ctx context.Context, tokenPlaintext 
 
 // MarkEmailVerified sets email_verified = true for the given user.
 func (db *DB) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		`UPDATE users SET email_verified = true, updated_at = now() WHERE id = $1`,
 		userID,
@@ -65,6 +74,9 @@ func (db *DB) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
 
 // DeleteExpiredEmailVerificationTokens removes expired or consumed tokens.
 func (db *DB) DeleteExpiredEmailVerificationTokens(ctx context.Context) (int64, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx,
 		`DELETE FROM email_verification_tokens WHERE expires_at < now() OR (used = true AND created_at < now() - interval '1 day')`,
 	)

@@ -14,6 +14,9 @@ import (
 
 // GetOrgSettings returns the settings for an organization.
 func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSettings, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT id, org_id,
 		       password_min_length, password_require_uppercase, password_require_lowercase,
@@ -80,6 +83,9 @@ func (db *DB) GetOrgSettings(ctx context.Context, orgID uuid.UUID) (*model.OrgSe
 
 // UpdateOrgSettings updates the settings for an organization.
 func (db *DB) UpdateOrgSettings(ctx context.Context, orgID uuid.UUID, req *model.UpdateOrgSettingsRequest) (*model.OrgSettings, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	accessTTL := fmt.Sprintf("%d seconds", req.AccessTokenTTLSeconds)
 	refreshTTL := fmt.Sprintf("%d seconds", req.RefreshTokenTTLSeconds)
 
