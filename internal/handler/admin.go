@@ -417,6 +417,12 @@ func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Invalidate all sessions for the user after password reset to prevent
+	// continued access with potentially compromised credentials.
+	if err := h.sessions.DeleteByUserID(ctx, userID); err != nil {
+		h.logger.Error("failed to invalidate sessions after password reset", "user_id", userID, "error", err)
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
