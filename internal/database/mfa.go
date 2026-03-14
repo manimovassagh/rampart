@@ -13,6 +13,9 @@ import (
 
 // CreateMFADevice inserts a new unverified MFA device.
 func (db *DB) CreateMFADevice(ctx context.Context, userID uuid.UUID, deviceType, name, secret string) (*model.MFADevice, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	encSecret, err := db.encryptToken(secret)
 	if err != nil {
 		return nil, fmt.Errorf("encrypting MFA secret: %w", err)
@@ -36,6 +39,9 @@ func (db *DB) CreateMFADevice(ctx context.Context, userID uuid.UUID, deviceType,
 
 // VerifyMFADevice marks a device as verified and enables MFA on the user.
 func (db *DB) VerifyMFADevice(ctx context.Context, deviceID, userID uuid.UUID) error {
+	ctx, cancel := txCtx(ctx)
+	defer cancel()
+
 	tx, err := db.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
@@ -55,6 +61,9 @@ func (db *DB) VerifyMFADevice(ctx context.Context, deviceID, userID uuid.UUID) e
 
 // GetVerifiedMFADevice returns the verified TOTP device for a user, if any.
 func (db *DB) GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var d model.MFADevice
 	err := db.Pool.QueryRow(ctx,
 		`SELECT id, user_id, device_type, name, secret, verified, created_at, updated_at
@@ -77,6 +86,9 @@ func (db *DB) GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*mode
 
 // GetPendingMFADevice returns the unverified TOTP device for a user (enrollment in progress).
 func (db *DB) GetPendingMFADevice(ctx context.Context, userID uuid.UUID) (*model.MFADevice, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var d model.MFADevice
 	err := db.Pool.QueryRow(ctx,
 		`SELECT id, user_id, device_type, name, secret, verified, created_at, updated_at
@@ -99,12 +111,18 @@ func (db *DB) GetPendingMFADevice(ctx context.Context, userID uuid.UUID) (*model
 
 // DeleteUnverifiedMFADevices removes all unverified devices for a user.
 func (db *DB) DeleteUnverifiedMFADevices(ctx context.Context, userID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, `DELETE FROM mfa_devices WHERE user_id = $1 AND verified = false`, userID)
 	return err
 }
 
 // DisableMFA removes all MFA devices and backup codes, and sets mfa_enabled=false.
 func (db *DB) DisableMFA(ctx context.Context, userID uuid.UUID) error {
+	ctx, cancel := txCtx(ctx)
+	defer cancel()
+
 	tx, err := db.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
@@ -123,6 +141,9 @@ func (db *DB) DisableMFA(ctx context.Context, userID uuid.UUID) error {
 // StoreBackupCodes stores hashed backup codes for a user.
 // The delete + insert is wrapped in a transaction so codes are never partially replaced.
 func (db *DB) StoreBackupCodes(ctx context.Context, userID uuid.UUID, codeHashes [][]byte) error {
+	ctx, cancel := txCtx(ctx)
+	defer cancel()
+
 	tx, err := db.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
@@ -150,6 +171,9 @@ func (db *DB) StoreBackupCodes(ctx context.Context, userID uuid.UUID, codeHashes
 // ConsumeBackupCode marks a backup code as used if the hash matches.
 // Returns true if a valid code was consumed.
 func (db *DB) ConsumeBackupCode(ctx context.Context, userID uuid.UUID, codeHash []byte) (bool, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx,
 		`UPDATE mfa_backup_codes SET used = true
 		 WHERE user_id = $1 AND code_hash = $2 AND used = false`,

@@ -12,6 +12,9 @@ import (
 
 // CreateWebAuthnCredential inserts a new WebAuthn credential.
 func (db *DB) CreateWebAuthnCredential(ctx context.Context, cred *model.WebAuthnCredential) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		`INSERT INTO webauthn_credentials (user_id, credential_id, public_key, attestation_type, transport, flags_raw, aaguid, sign_count, name)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -26,6 +29,9 @@ func (db *DB) CreateWebAuthnCredential(ctx context.Context, cred *model.WebAuthn
 
 // GetWebAuthnCredentialsByUserID returns all WebAuthn credentials for a user.
 func (db *DB) GetWebAuthnCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]*model.WebAuthnCredential, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	rows, err := db.Pool.Query(ctx,
 		`SELECT id, user_id, credential_id, public_key, attestation_type, transport, flags_raw, aaguid, sign_count, name, created_at, updated_at
 		 FROM webauthn_credentials WHERE user_id = $1
@@ -55,6 +61,9 @@ func (db *DB) GetWebAuthnCredentialsByUserID(ctx context.Context, userID uuid.UU
 
 // UpdateWebAuthnSignCount updates the sign counter for a credential after successful authentication.
 func (db *DB) UpdateWebAuthnSignCount(ctx context.Context, credentialID []byte, signCount uint32) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		`UPDATE webauthn_credentials SET sign_count = $2, updated_at = now() WHERE credential_id = $1`,
 		credentialID, signCount,
@@ -64,6 +73,9 @@ func (db *DB) UpdateWebAuthnSignCount(ctx context.Context, credentialID []byte, 
 
 // DeleteWebAuthnCredential deletes a credential by ID for a given user.
 func (db *DB) DeleteWebAuthnCredential(ctx context.Context, id, userID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		`DELETE FROM webauthn_credentials WHERE id = $1 AND user_id = $2`,
 		id, userID,
@@ -73,6 +85,9 @@ func (db *DB) DeleteWebAuthnCredential(ctx context.Context, id, userID uuid.UUID
 
 // CountWebAuthnCredentials returns the number of WebAuthn credentials for a user.
 func (db *DB) CountWebAuthnCredentials(ctx context.Context, userID uuid.UUID) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM webauthn_credentials WHERE user_id = $1`, userID,
@@ -82,6 +97,9 @@ func (db *DB) CountWebAuthnCredentials(ctx context.Context, userID uuid.UUID) (i
 
 // StoreWebAuthnSessionData stores temporary session data for a WebAuthn ceremony.
 func (db *DB) StoreWebAuthnSessionData(ctx context.Context, userID uuid.UUID, data []byte, ceremony string, expiresAt time.Time) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	// Clean up any previous session data for this user+ceremony
 	_, _ = db.Pool.Exec(ctx,
 		`DELETE FROM webauthn_session_data WHERE user_id = $1 AND ceremony = $2`,
@@ -98,6 +116,9 @@ func (db *DB) StoreWebAuthnSessionData(ctx context.Context, userID uuid.UUID, da
 
 // GetWebAuthnSessionData retrieves and deletes the session data for a ceremony (one-time use).
 func (db *DB) GetWebAuthnSessionData(ctx context.Context, userID uuid.UUID, ceremony string) ([]byte, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var data []byte
 	err := db.Pool.QueryRow(ctx,
 		`DELETE FROM webauthn_session_data
@@ -113,6 +134,9 @@ func (db *DB) GetWebAuthnSessionData(ctx context.Context, userID uuid.UUID, cere
 
 // DeleteExpiredWebAuthnSessions cleans up expired ceremony sessions.
 func (db *DB) DeleteExpiredWebAuthnSessions(ctx context.Context) (int64, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx,
 		`DELETE FROM webauthn_session_data WHERE expires_at < now()`,
 	)

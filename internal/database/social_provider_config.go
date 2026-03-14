@@ -11,6 +11,9 @@ import (
 
 // UpsertSocialProviderConfig creates or updates a social provider config for an org.
 func (db *DB) UpsertSocialProviderConfig(ctx context.Context, cfg *model.SocialProviderConfig) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	extra, err := json.Marshal(cfg.ExtraConfig)
 	if err != nil {
 		return fmt.Errorf("marshalling extra_config: %w", err)
@@ -39,6 +42,9 @@ func (db *DB) UpsertSocialProviderConfig(ctx context.Context, cfg *model.SocialP
 
 // GetSocialProviderConfig returns a single provider config for an org.
 func (db *DB) GetSocialProviderConfig(ctx context.Context, orgID uuid.UUID, provider string) (*model.SocialProviderConfig, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT id, org_id, provider, enabled, client_id, client_secret, extra_config, created_at, updated_at
 		FROM social_provider_configs
@@ -66,6 +72,9 @@ func (db *DB) GetSocialProviderConfig(ctx context.Context, orgID uuid.UUID, prov
 
 // ListSocialProviderConfigs returns all provider configs for an org.
 func (db *DB) ListSocialProviderConfigs(ctx context.Context, orgID uuid.UUID) ([]*model.SocialProviderConfig, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT id, org_id, provider, enabled, client_id, client_secret, extra_config, created_at, updated_at
 		FROM social_provider_configs
@@ -105,6 +114,9 @@ func (db *DB) ListSocialProviderConfigs(ctx context.Context, orgID uuid.UUID) ([
 
 // DeleteSocialProviderConfig removes a provider config for an org.
 func (db *DB) DeleteSocialProviderConfig(ctx context.Context, orgID uuid.UUID, provider string) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, `DELETE FROM social_provider_configs WHERE org_id = $1 AND provider = $2`, orgID, provider)
 	if err != nil {
 		return fmt.Errorf("deleting social provider config: %w", err)

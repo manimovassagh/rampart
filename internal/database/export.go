@@ -105,6 +105,9 @@ func (db *DB) ExportOrganization(ctx context.Context, orgID uuid.UUID) (*model.O
 // ImportOrganization imports an organization snapshot in a single transaction.
 // It upserts the organization, settings, roles, groups (with role assignments), and clients.
 func (db *DB) ImportOrganization(ctx context.Context, export *model.OrgExport) error {
+	ctx, cancel := txCtx(ctx)
+	defer cancel()
+
 	tx, err := db.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("beginning import transaction: %w", err)

@@ -51,6 +51,9 @@ func ValidateRedirectURI(client *model.OAuthClient, uri string) bool {
 
 // ListOAuthClients returns a paginated, searchable list of OAuth clients for an org.
 func (db *DB) ListOAuthClients(ctx context.Context, orgID uuid.UUID, search string, limit, offset int) ([]*model.OAuthClient, int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	where := []string{"org_id = $1"}
 	args := []any{orgID}
 	paramIdx := 2
@@ -106,6 +109,9 @@ func (db *DB) ListOAuthClients(ctx context.Context, orgID uuid.UUID, search stri
 
 // CreateOAuthClient inserts a new OAuth client with a generated client ID.
 func (db *DB) CreateOAuthClient(ctx context.Context, client *model.OAuthClient) (*model.OAuthClient, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	if client.ID == "" {
 		client.ID = generateClientID()
 	}
@@ -131,6 +137,9 @@ func (db *DB) CreateOAuthClient(ctx context.Context, client *model.OAuthClient) 
 
 // UpdateOAuthClient updates mutable fields on an OAuth client, scoped to the given organization.
 func (db *DB) UpdateOAuthClient(ctx context.Context, clientID string, orgID uuid.UUID, req *model.UpdateClientRequest) (*model.OAuthClient, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	uris := parseRedirectURIs(req.RedirectURIs)
 
 	query := `
@@ -160,6 +169,9 @@ func (db *DB) UpdateOAuthClient(ctx context.Context, clientID string, orgID uuid
 
 // DeleteOAuthClient removes an OAuth client by ID, scoped to the given organization.
 func (db *DB) DeleteOAuthClient(ctx context.Context, clientID string, orgID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx, "DELETE FROM oauth_clients WHERE id = $1 AND org_id = $2", clientID, orgID)
 	if err != nil {
 		return fmt.Errorf("deleting oauth client: %w", err)
@@ -172,6 +184,9 @@ func (db *DB) DeleteOAuthClient(ctx context.Context, clientID string, orgID uuid
 
 // UpdateClientSecret sets a new secret hash for a confidential client, scoped to the given organization.
 func (db *DB) UpdateClientSecret(ctx context.Context, clientID string, orgID uuid.UUID, secretHash []byte) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		"UPDATE oauth_clients SET client_secret_hash = $2, updated_at = now() WHERE id = $1 AND org_id = $3",
 		clientID, secretHash, orgID)
@@ -183,6 +198,9 @@ func (db *DB) UpdateClientSecret(ctx context.Context, clientID string, orgID uui
 
 // CountOAuthClients returns the total number of OAuth clients in an org.
 func (db *DB) CountOAuthClients(ctx context.Context, orgID uuid.UUID) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM oauth_clients WHERE org_id = $1", orgID).Scan(&count)
 	if err != nil {

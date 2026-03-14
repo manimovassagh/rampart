@@ -17,6 +17,9 @@ import (
 
 // CreateUser inserts a new user and returns the populated User struct.
 func (db *DB) CreateUser(ctx context.Context, user *model.User) (*model.User, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		INSERT INTO users (org_id, username, email, given_name, family_name, password_hash)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -88,6 +91,9 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string, orgID uuid.UUID)
 // FindUserByEmail finds a user by email across all organizations.
 // Used for password reset where org context is not available.
 func (db *DB) FindUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT id, org_id, username, email, email_verified, COALESCE(given_name, '') AS given_name, COALESCE(family_name, '') AS family_name,
 		       enabled, mfa_enabled, password_hash, failed_login_attempts, locked_until,
@@ -142,6 +148,9 @@ func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error
 
 // UpdateLastLoginAt sets the last_login_at timestamp for a user.
 func (db *DB) UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, "UPDATE users SET last_login_at = now() WHERE id = $1", userID)
 	if err != nil {
 		return fmt.Errorf("updating last_login_at: %w", err)
@@ -151,6 +160,9 @@ func (db *DB) UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) error {
 
 // IncrementFailedLogins increments the failed login counter and optionally locks the account.
 func (db *DB) IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAttempts int, lockoutDuration time.Duration) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		UPDATE users
 		SET failed_login_attempts = failed_login_attempts + 1,
@@ -168,6 +180,9 @@ func (db *DB) IncrementFailedLogins(ctx context.Context, userID uuid.UUID, maxAt
 
 // ResetFailedLogins clears the failed login counter and lock on successful login.
 func (db *DB) ResetFailedLogins(ctx context.Context, userID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx,
 		"UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1", userID)
 	if err != nil {
@@ -206,6 +221,9 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string, orgID uuid
 
 // ListUsers returns a paginated, searchable, filterable list of users.
 func (db *DB) ListUsers(ctx context.Context, orgID uuid.UUID, search, status string, limit, offset int) ([]*model.User, int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	where := []string{"org_id = $1"}
 	args := []any{orgID}
 	paramIdx := 2
@@ -277,6 +295,9 @@ func (db *DB) ListUsers(ctx context.Context, orgID uuid.UUID, search, status str
 // UpdateUser updates mutable fields on a user. The orgID parameter ensures
 // the operation is scoped to a single organization (prevents cross-tenant IDOR).
 func (db *DB) UpdateUser(ctx context.Context, id, orgID uuid.UUID, req *model.UpdateUserRequest) (*model.User, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		UPDATE users
 		SET username = COALESCE(NULLIF($2, ''), username),
@@ -311,6 +332,9 @@ func (db *DB) UpdateUser(ctx context.Context, id, orgID uuid.UUID, req *model.Up
 
 // DeleteUser removes a user by ID, scoped to the given organization.
 func (db *DB) DeleteUser(ctx context.Context, id, orgID uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx, "DELETE FROM users WHERE id = $1 AND org_id = $2", id, orgID)
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
@@ -323,6 +347,9 @@ func (db *DB) DeleteUser(ctx context.Context, id, orgID uuid.UUID) error {
 
 // UpdatePassword sets a new password hash for a user, scoped to the given organization.
 func (db *DB) UpdatePassword(ctx context.Context, id, orgID uuid.UUID, passwordHash []byte) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	_, err := db.Pool.Exec(ctx, "UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1 AND org_id = $3", id, passwordHash, orgID)
 	if err != nil {
 		return fmt.Errorf("updating password: %w", err)
@@ -332,6 +359,9 @@ func (db *DB) UpdatePassword(ctx context.Context, id, orgID uuid.UUID, passwordH
 
 // CountUsers returns the total number of users in an organization.
 func (db *DB) CountUsers(ctx context.Context, orgID uuid.UUID) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE org_id = $1", orgID).Scan(&count)
 	if err != nil {
@@ -342,6 +372,9 @@ func (db *DB) CountUsers(ctx context.Context, orgID uuid.UUID) (int, error) {
 
 // CountRecentUsers returns the number of users created in the last N days.
 func (db *DB) CountRecentUsers(ctx context.Context, orgID uuid.UUID, days int) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx,
 		"SELECT COUNT(*) FROM users WHERE org_id = $1 AND created_at > now() - make_interval(days => $2)",

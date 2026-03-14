@@ -15,6 +15,9 @@ import (
 
 // CreateAuditEvent inserts a new audit event and populates the ID and CreatedAt fields.
 func (db *DB) CreateAuditEvent(ctx context.Context, event *model.AuditEvent) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	detailsJSON, err := json.Marshal(event.Details)
 	if err != nil {
 		detailsJSON = []byte("{}")
@@ -37,6 +40,9 @@ func (db *DB) CreateAuditEvent(ctx context.Context, event *model.AuditEvent) err
 
 // GetAuditEventByID returns a single audit event by ID.
 func (db *DB) GetAuditEventByID(ctx context.Context, id uuid.UUID) (*model.AuditEvent, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var e model.AuditEvent
 	var detailsJSON []byte
 	err := db.Pool.QueryRow(ctx,
@@ -56,6 +62,9 @@ func (db *DB) GetAuditEventByID(ctx context.Context, id uuid.UUID) (*model.Audit
 
 // ListAuditEvents returns a paginated, filterable list of audit events.
 func (db *DB) ListAuditEvents(ctx context.Context, orgID uuid.UUID, eventType, search string, limit, offset int) ([]*model.AuditEvent, int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	where := []string{"org_id = $1"}
 	args := []any{orgID}
 	paramIdx := 2
@@ -122,6 +131,9 @@ func (db *DB) ListAuditEvents(ctx context.Context, orgID uuid.UUID, eventType, s
 
 // LoginCountsByDay returns login event counts per day for the last N days.
 func (db *DB) LoginCountsByDay(ctx context.Context, orgID uuid.UUID, days int) ([]model.DayCount, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT d::date AS day, COALESCE(c.cnt, 0) AS count
 		FROM generate_series(
@@ -160,6 +172,9 @@ func (db *DB) LoginCountsByDay(ctx context.Context, orgID uuid.UUID, days int) (
 
 // CountRecentEvents returns the number of audit events in the last N hours.
 func (db *DB) CountRecentEvents(ctx context.Context, orgID uuid.UUID, hours int) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx,
 		"SELECT COUNT(*) FROM audit_events WHERE org_id = $1 AND created_at > now() - make_interval(hours => $2)",

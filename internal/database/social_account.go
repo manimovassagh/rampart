@@ -31,6 +31,9 @@ func (db *DB) decryptToken(value string) (string, error) {
 
 // CreateSocialAccount inserts a new social account link and returns the populated struct.
 func (db *DB) CreateSocialAccount(ctx context.Context, account *model.SocialAccount) (*model.SocialAccount, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	encAccess, err := db.encryptToken(account.AccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("encrypting access token: %w", err)
@@ -97,6 +100,9 @@ func (db *DB) decryptSocialAccount(sa *model.SocialAccount) error {
 
 // GetSocialAccount finds a social account by provider and provider user ID.
 func (db *DB) GetSocialAccount(ctx context.Context, provider, providerUserID string) (*model.SocialAccount, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT id, user_id, provider, provider_user_id, email, name, avatar_url,
 		       access_token, refresh_token, token_expires_at, created_at, updated_at
@@ -124,6 +130,9 @@ func (db *DB) GetSocialAccount(ctx context.Context, provider, providerUserID str
 
 // GetSocialAccountsByUserID returns all linked social accounts for a user.
 func (db *DB) GetSocialAccountsByUserID(ctx context.Context, userID uuid.UUID) ([]*model.SocialAccount, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT id, user_id, provider, provider_user_id, email, name, avatar_url,
 		       access_token, refresh_token, token_expires_at, created_at, updated_at
@@ -162,6 +171,9 @@ func (db *DB) GetSocialAccountsByUserID(ctx context.Context, userID uuid.UUID) (
 
 // UpdateSocialAccountTokens updates the OAuth tokens for a social account.
 func (db *DB) UpdateSocialAccountTokens(ctx context.Context, id uuid.UUID, accessToken, refreshToken string, expiresAt *time.Time) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	encAccess, err := db.encryptToken(accessToken)
 	if err != nil {
 		return fmt.Errorf("encrypting access token: %w", err)
@@ -188,6 +200,9 @@ func (db *DB) UpdateSocialAccountTokens(ctx context.Context, id uuid.UUID, acces
 
 // DeleteSocialAccount removes a social account link by ID.
 func (db *DB) DeleteSocialAccount(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx, "DELETE FROM social_accounts WHERE id = $1", id)
 	if err != nil {
 		return fmt.Errorf("deleting social account: %w", err)

@@ -20,6 +20,9 @@ const (
 	// connections indefinitely.
 	defaultQueryTimeout = 5 * time.Second
 
+	// defaultTxTimeout is the maximum duration for a multi-statement transaction.
+	defaultTxTimeout = 30 * time.Second
+
 	// pgUniqueViolation is the PostgreSQL error code for unique constraint violations.
 	pgUniqueViolation = "23505"
 )
@@ -28,6 +31,12 @@ const (
 // Callers must call the returned cancel function when done (typically via defer).
 func queryCtx(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(ctx, defaultQueryTimeout)
+}
+
+// txCtx derives a child context with the default transaction timeout.
+// Use this instead of queryCtx for multi-statement transactions.
+func txCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, defaultTxTimeout)
 }
 
 // DB wraps a pgx connection pool.

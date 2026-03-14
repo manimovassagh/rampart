@@ -23,6 +23,9 @@ type PasswordResetToken struct {
 // CreatePasswordResetToken stores a hashed token and returns the record.
 // The plaintext token is NOT stored — only its SHA-256 hash.
 func (db *DB) CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, tokenPlaintext string, expiresAt time.Time) error {
+	ctx, cancel := txCtx(ctx)
+	defer cancel()
+
 	hash := sha256.Sum256([]byte(tokenPlaintext))
 
 	tx, err := db.Pool.Begin(ctx)
@@ -50,6 +53,9 @@ func (db *DB) CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, to
 // ConsumePasswordResetToken validates and consumes a password reset token.
 // Returns the user ID if valid, or an error if expired/used/not found.
 func (db *DB) ConsumePasswordResetToken(ctx context.Context, tokenPlaintext string) (uuid.UUID, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	hash := sha256.Sum256([]byte(tokenPlaintext))
 
 	var token PasswordResetToken
@@ -70,6 +76,9 @@ func (db *DB) ConsumePasswordResetToken(ctx context.Context, tokenPlaintext stri
 
 // DeleteExpiredPasswordResetTokens removes tokens older than the given age.
 func (db *DB) DeleteExpiredPasswordResetTokens(ctx context.Context) (int64, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx,
 		`DELETE FROM password_reset_tokens WHERE expires_at < now() OR (used = true AND created_at < now() - interval '1 day')`,
 	)

@@ -14,6 +14,9 @@ import (
 
 // StoreAuthorizationCode persists an authorization code (as SHA-256 hash) in the database.
 func (db *DB) StoreAuthorizationCode(ctx context.Context, code, clientID string, userID, orgID uuid.UUID, redirectURI, codeChallenge, scope, nonce string, expiresAt time.Time) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	hash := sha256.Sum256([]byte(code))
 	_, err := db.Pool.Exec(ctx, `
 		INSERT INTO authorization_codes (code_hash, client_id, user_id, org_id, redirect_uri, code_challenge, scope, nonce, expires_at)
@@ -53,6 +56,9 @@ func (db *DB) ConsumeAuthorizationCode(ctx context.Context, code string) (*model
 
 // DeleteExpiredAuthorizationCodes removes authorization codes that have expired.
 func (db *DB) DeleteExpiredAuthorizationCodes(ctx context.Context) (int64, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	tag, err := db.Pool.Exec(ctx, "DELETE FROM authorization_codes WHERE expires_at < now()")
 	if err != nil {
 		return 0, fmt.Errorf("deleting expired authorization codes: %w", err)

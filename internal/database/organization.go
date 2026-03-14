@@ -64,6 +64,9 @@ func (db *DB) GetOrganizationByID(ctx context.Context, id uuid.UUID) (*model.Org
 
 // ListOrganizations returns a paginated, searchable list of organizations.
 func (db *DB) ListOrganizations(ctx context.Context, search string, limit, offset int) ([]*model.Organization, int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	where := []string{"1=1"}
 	args := []any{}
 	paramIdx := 1
@@ -118,6 +121,9 @@ func (db *DB) ListOrganizations(ctx context.Context, search string, limit, offse
 
 // CreateOrganization inserts an organization and its default settings atomically.
 func (db *DB) CreateOrganization(ctx context.Context, req *model.CreateOrgRequest) (*model.Organization, error) {
+	ctx, cancel := txCtx(ctx)
+	defer cancel()
+
 	tx, err := db.Pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("beginning transaction: %w", err)
@@ -155,6 +161,9 @@ func (db *DB) CreateOrganization(ctx context.Context, req *model.CreateOrgReques
 
 // UpdateOrganization updates mutable fields on an organization.
 func (db *DB) UpdateOrganization(ctx context.Context, id uuid.UUID, req *model.UpdateOrgRequest) (*model.Organization, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		UPDATE organizations
 		SET name = COALESCE(NULLIF($2, ''), name),
@@ -179,6 +188,9 @@ func (db *DB) UpdateOrganization(ctx context.Context, id uuid.UUID, req *model.U
 
 // DeleteOrganization removes an organization by ID. The default org cannot be deleted.
 func (db *DB) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	// Check that it's not the default org.
 	var slug string
 	err := db.Pool.QueryRow(ctx, "SELECT slug FROM organizations WHERE id = $1", id).Scan(&slug)
@@ -204,6 +216,9 @@ func (db *DB) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
 
 // CountOrganizations returns the total number of organizations.
 func (db *DB) CountOrganizations(ctx context.Context) (int, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var count int
 	err := db.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM organizations").Scan(&count)
 	if err != nil {
