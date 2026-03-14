@@ -301,6 +301,11 @@ func (h *AdminConsoleHandler) ResetPasswordAction(w http.ResponseWriter, r *http
 		return
 	}
 
+	// Invalidate all sessions for the user after password reset.
+	if err := h.sessions.DeleteByUserID(r.Context(), userID); err != nil {
+		h.logger.Error("failed to invalidate sessions after password reset", "user_id", userID, "error", err)
+	}
+
 	pwAuthUser := middleware.GetAuthenticatedUser(r.Context())
 	h.auditLog(r, pwAuthUser.OrgID, model.EventUserPasswordReset, "user", userID.String(), "")
 	middleware.SetFlash(w, "Password reset successfully.")
