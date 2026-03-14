@@ -28,6 +28,9 @@ func (db *DB) StoreAuthorizationCode(ctx context.Context, code, clientID string,
 // ConsumeAuthorizationCode atomically marks an authorization code as used and returns it.
 // Returns nil if the code doesn't exist, is already used, or is expired.
 func (db *DB) ConsumeAuthorizationCode(ctx context.Context, code string) (*model.AuthorizationCode, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	hash := sha256.Sum256([]byte(code))
 	row := db.Pool.QueryRow(ctx, `
 		UPDATE authorization_codes

@@ -8,7 +8,7 @@ description: Rampart is a lightweight, modern identity and access management ser
 
 Rampart is a lightweight, production-grade identity and access management (IAM) server. It provides OAuth 2.0 and OpenID Connect out of the box, with an admin console, CLI tool, and SDK adapters for every major stack — all shipped as a single binary.
 
-Built in Go with PostgreSQL, Rampart starts in under 1 second and runs at approximately 30 MB of memory. No Java runtime, no WAR files, no complex dependency chains. Just download, configure, and run.
+Built in Go with PostgreSQL, Rampart starts in under 1 second and runs at approximately 30 MB of memory. No Java runtime, no complex dependency chains. Just download, configure, and run.
 
 ## Key Features
 
@@ -38,7 +38,7 @@ Built in Go with PostgreSQL, Rampart starts in under 1 second and runs at approx
 | Language | Go | Java | Go | Go | Python |
 | Startup Time | < 1s | 10-30s | < 1s | ~3s | ~10s |
 | Memory | ~30 MB | 512 MB+ | ~50 MB | ~100 MB | ~300 MB |
-| Deployment | Single binary | WAR + WildFly | Multiple services | Single binary | Docker required |
+| Deployment | Single binary | Docker or Kubernetes (Quarkus-based) | Multiple services | Single binary | Docker required |
 | Admin UI | Yes | Yes | No (headless) | Yes | Yes |
 
 ## Next Steps

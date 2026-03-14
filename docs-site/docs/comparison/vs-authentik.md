@@ -18,8 +18,8 @@ Authentik is an open-source identity provider built in Python (Django) with a fo
 | **Request throughput** | High (compiled, goroutines) | Lower (interpreted, GIL constraints) |
 | **Deployment** | Single binary, Docker optional | Docker required (multiple containers) |
 | **Required services** | PostgreSQL | PostgreSQL, Redis, worker process, server process |
-| **Admin UI** | React + Vite + Tailwind | lit-element web components |
-| **Login UI** | React SPA, CSS variable themes | Flow-based, customizable |
+| **Admin UI** | htmx + Go templates + Tailwind | lit-element web components |
+| **Login UI** | htmx + Go templates, CSS variable themes | Flow-based, customizable |
 | **Configuration** | YAML + REST API | Admin UI + REST API, YAML (limited) |
 | **Flow engine** | Standard OAuth 2.0/OIDC flows | Visual flow designer (stages, policies) |
 | **Protocol support** | OAuth 2.0, OIDC, SAML (planned) | OAuth 2.0, OIDC, SAML, LDAP, SCIM, Proxy |
@@ -143,7 +143,7 @@ Authentik's proxy provider and LDAP outbound provider are particularly useful fo
 - You prefer lower operational complexity (one process vs four).
 - Your authentication flows follow standard OAuth 2.0/OIDC patterns.
 - You are running in resource-constrained environments (edge, small VMs, ARM devices).
-- You want a modern React-based admin UI.
+- You want a modern htmx + Go templates admin UI.
 - Your team has Go expertise for extending and contributing.
 
 ## When to Choose Authentik

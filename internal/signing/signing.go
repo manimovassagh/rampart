@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 )
 
-const rsaKeyBits = 2048
+const rsaKeyBits = 4096
 
 // KeyPair holds the RSA key pair and its computed Key ID.
 type KeyPair struct {
@@ -24,7 +24,7 @@ type KeyPair struct {
 }
 
 // LoadOrGenerate loads an RSA private key from the given PEM file path.
-// If the file does not exist, it generates a new 2048-bit key pair,
+// If the file does not exist, it generates a new 4096-bit key pair,
 // writes it to the file, and returns the key pair.
 func LoadOrGenerate(path string) (*KeyPair, error) {
 	clean := filepath.Clean(path)

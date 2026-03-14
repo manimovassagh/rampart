@@ -14,8 +14,8 @@ Ory provides a suite of open-source identity and access management services: Hyd
 |--------|---------|----------------------------|
 | **Architecture** | Single binary, all-in-one | Microservices (3–4 separate services) |
 | **Language** | Go | Go |
-| **Admin UI** | Included (React SPA) | Not included (build your own or use Ory Cloud) |
-| **Login UI** | Included (React SPA, themeable) | Not included (you must build it) |
+| **Admin UI** | Included (htmx + Go templates) | Not included (build your own or use Ory Cloud) |
+| **Login UI** | Included (htmx + Go templates, themeable) | Not included (you must build it) |
 | **Deployment** | 1 binary + PostgreSQL | 3–4 binaries + PostgreSQL + migrations per service |
 | **Configuration** | Single YAML file | Separate config per service |
 | **User management** | Built-in admin API + UI | Kratos handles identity, no admin UI |

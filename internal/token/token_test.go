@@ -139,7 +139,7 @@ func TestVerifyAccessTokenWrongKey(t *testing.T) {
 		t.Fatalf("GenerateAccessToken error: %v", err)
 	}
 
-	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	otherKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		t.Fatalf("failed to generate other key: %v", err)
 	}

@@ -112,11 +112,11 @@ golangci-lint run ./...
 - **String constants** — extract string literals used 3+ times into named constants.
 - **Keep functions short** — if a function needs a comment explaining what it does, consider splitting it.
 
-### Frontend (TypeScript / React)
+### Frontend (htmx + Go Templates)
 
-- Follow the existing ESLint and Prettier configuration in `client/` and `login-ui/`.
-- Use functional components with hooks.
-- Use TypeScript strict mode — no `any` types.
+- The admin UI and login UI use htmx with Go server-side templates, styled with Tailwind CSS.
+- Follow the existing template conventions in the `internal/` handler and template directories.
+- Keep JavaScript minimal — prefer htmx attributes for interactivity.
 
 ## Testing Requirements
 

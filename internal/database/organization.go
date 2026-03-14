@@ -23,6 +23,9 @@ func (db *DB) GetDefaultOrganizationID(ctx context.Context) (uuid.UUID, error) {
 
 // GetOrganizationIDBySlug returns the UUID of an organization by its slug.
 func (db *DB) GetOrganizationIDBySlug(ctx context.Context, slug string) (uuid.UUID, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	var id uuid.UUID
 	err := db.Pool.QueryRow(ctx,
 		"SELECT id FROM organizations WHERE slug = $1", slug,
@@ -38,6 +41,9 @@ func (db *DB) GetOrganizationIDBySlug(ctx context.Context, slug string) (uuid.UU
 
 // GetOrganizationByID returns a full Organization by its UUID.
 func (db *DB) GetOrganizationByID(ctx context.Context, id uuid.UUID) (*model.Organization, error) {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
 	query := `
 		SELECT id, name, slug, display_name, enabled, created_at, updated_at
 		FROM organizations

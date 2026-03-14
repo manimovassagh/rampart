@@ -15,9 +15,20 @@ const (
 	defaultMinConns = 2
 	connectTimeout  = 10 * time.Second
 
+	// defaultQueryTimeout is the maximum duration a single database query should
+	// take before being cancelled. This prevents runaway queries from holding
+	// connections indefinitely.
+	defaultQueryTimeout = 5 * time.Second
+
 	// pgUniqueViolation is the PostgreSQL error code for unique constraint violations.
 	pgUniqueViolation = "23505"
 )
+
+// queryCtx derives a child context with the default query timeout.
+// Callers must call the returned cancel function when done (typically via defer).
+func queryCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, defaultQueryTimeout)
+}
 
 // DB wraps a pgx connection pool.
 type DB struct {

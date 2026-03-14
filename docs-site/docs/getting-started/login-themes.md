@@ -5,7 +5,7 @@ title: Login Page Themes
 
 # Login Page Themes
 
-Rampart ships with **5 built-in themes** for the login and consent pages. Changing the theme for an organization is a single API call — no server restart, no template files, no WAR overlays.
+Rampart ships with **5 built-in themes** for the login and consent pages. Changing the theme for an organization is a single API call — no server restart, no template files, no theme archive deployments.
 
 ## Built-in Themes
 
