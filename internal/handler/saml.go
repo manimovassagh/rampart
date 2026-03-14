@@ -32,6 +32,7 @@ import (
 // SAMLStore defines the database operations required by SAMLHandler.
 type SAMLStore interface {
 	store.SAMLProviderStore
+	store.SAMLRequestStore
 	store.UserReader
 	store.UserWriter
 	store.OrgReader
@@ -139,6 +140,14 @@ func (h *SAMLHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Store the request ID so we can validate InResponseTo in the ACS callback.
+	requestExpiry := time.Now().Add(10 * time.Minute)
+	if err := h.store.StoreSAMLRequest(r.Context(), authnRequest.ID, providerID, requestExpiry); err != nil {
+		h.logger.Error("failed to store SAML request ID", "error", err)
+		apierror.InternalError(w)
+		return
+	}
+
 	redirectURL, err := authnRequest.Redirect("", sp)
 	if err != nil {
 		h.logger.Error("failed to create SAML redirect URL", "error", err)
@@ -176,11 +185,52 @@ func (h *SAMLHandler) ACS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	assertion, err := sp.ParseResponse(r, nil)
+	// Extract InResponseTo from the raw SAMLResponse to validate against stored request IDs.
+	inResponseTo := extractInResponseTo(r.FormValue("SAMLResponse"))
+
+	var possibleRequestIDs []string
+	if inResponseTo != "" {
+		valid, cErr := h.store.ConsumeSAMLRequest(ctx, inResponseTo, providerID)
+		if cErr != nil {
+			h.logger.Error("failed to validate SAML request ID", "error", cErr)
+			apierror.InternalError(w)
+			return
+		}
+		if !valid {
+			h.logger.Warn("SAML response references unknown or expired request", "in_response_to", inResponseTo, "provider", provider.Name)
+			apierror.Write(w, http.StatusForbidden, "saml_error", "SAML response references an unknown or expired request.")
+			return
+		}
+		possibleRequestIDs = []string{inResponseTo}
+	}
+
+	assertion, err := sp.ParseResponse(r, possibleRequestIDs)
 	if err != nil {
 		h.logger.Error("failed to parse SAML response", "error", err, "provider", provider.Name)
 		apierror.Write(w, http.StatusForbidden, "saml_error", "SAML authentication failed: "+err.Error())
 		return
+	}
+
+	// Check for assertion replay — reject if this assertion ID was already consumed.
+	assertionID := assertion.ID
+	if assertionID != "" {
+		consumed, aErr := h.store.IsSAMLAssertionConsumed(ctx, assertionID, providerID)
+		if aErr != nil {
+			h.logger.Error("failed to check SAML assertion replay", "error", aErr)
+			apierror.InternalError(w)
+			return
+		}
+		if consumed {
+			h.logger.Warn("SAML assertion replay detected", "assertion_id", assertionID, "provider", provider.Name)
+			apierror.Write(w, http.StatusForbidden, "saml_error", "SAML assertion has already been consumed.")
+			return
+		}
+		// Record this assertion ID with a 10-minute expiry window.
+		assertionExpiry := time.Now().Add(10 * time.Minute)
+		if sErr := h.store.StoreSAMLAssertionID(ctx, assertionID, providerID, assertionExpiry); sErr != nil {
+			h.logger.Error("failed to record SAML assertion ID", "error", sErr)
+			// Non-fatal — continue processing but log the failure
+		}
 	}
 
 	// Extract user attributes from the assertion
@@ -447,6 +497,23 @@ func (h *SAMLHandler) extractAttribute(assertion *saml.Assertion, provider *mode
 	}
 
 	return ""
+}
+
+// extractInResponseTo extracts the InResponseTo attribute from a base64-encoded SAMLResponse.
+// Returns empty string if the attribute is not found or the response cannot be decoded.
+func extractInResponseTo(samlResponse string) string {
+	raw, err := base64.StdEncoding.DecodeString(samlResponse)
+	if err != nil {
+		return ""
+	}
+	// Quick XML struct to extract just the InResponseTo attribute.
+	var resp struct {
+		InResponseTo string `xml:"InResponseTo,attr"`
+	}
+	if err := xml.Unmarshal(raw, &resp); err != nil {
+		return ""
+	}
+	return resp.InResponseTo
 }
 
 // ParseCertFromKey generates a self-signed X.509 certificate from the RSA private key.
