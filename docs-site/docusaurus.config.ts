@@ -100,7 +100,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Rampart Project. Licensed under AGPL-3.0.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Rampart Project. Licensed under MIT.`,
     },
     prism: {
       theme: prismThemes.github,

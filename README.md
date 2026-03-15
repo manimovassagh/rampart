@@ -14,7 +14,7 @@
   <a href="https://github.com/manimovassagh/rampart/actions/workflows/security.yml"><img src="https://github.com/manimovassagh/rampart/actions/workflows/security.yml/badge.svg?branch=main" alt="Security" /></a>
   <a href="https://github.com/manimovassagh/rampart/releases/latest"><img src="https://img.shields.io/github/v/release/manimovassagh/rampart?color=blue" alt="Release" /></a>
   <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26" />
-  <a href="https://github.com/manimovassagh/rampart/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg" alt="License" /></a>
+  <a href="https://github.com/manimovassagh/rampart/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
   <a href="https://manimovassagh.github.io/rampart/"><img src="https://img.shields.io/badge/docs-rampart.dev-blue?logo=github" alt="Docs" /></a>
 </p>
 
