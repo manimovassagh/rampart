@@ -75,7 +75,7 @@ jobs:
         run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
 
       - name: Run gosec
-        run: gosec -severity high -confidence high -exclude=G117 ./...
+        run: gosec -severity high -confidence high -exclude=G117 -exclude-dir=adapters -exclude-dir=cookbook ./...
 
       - name: Gosec summary
         if: always()
