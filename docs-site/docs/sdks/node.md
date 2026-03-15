@@ -1,32 +1,32 @@
 ---
 sidebar_position: 2
 title: Node.js / Express
-description: Integrate Rampart authentication into Node.js and Express applications with the @rampart/node SDK adapter.
+description: Integrate Rampart authentication into Node.js and Express applications with the @rampart-auth/node SDK adapter.
 ---
 
 # Node.js / Express Adapter
 
-The `@rampart/node` adapter provides Express middleware for protecting routes with Rampart-issued JWT tokens. It handles OIDC discovery, JWKS-based token verification, and user context extraction.
+The `@rampart-auth/node` adapter provides Express middleware for protecting routes with Rampart-issued JWT tokens. It handles OIDC discovery, JWKS-based token verification, and user context extraction.
 
 ## Installation
 
 ```bash
-npm install @rampart/node
+npm install @rampart-auth/node
 ```
 
 ```bash
-yarn add @rampart/node
+yarn add @rampart-auth/node
 ```
 
 ```bash
-pnpm add @rampart/node
+pnpm add @rampart-auth/node
 ```
 
 ## Quick Start
 
 ```typescript
 import express from "express";
-import { RampartAuth } from "@rampart/node";
+import { RampartAuth } from "@rampart-auth/node";
 
 const app = express();
 
@@ -153,7 +153,7 @@ app.get("/api/feed", auth.optionalAuth(), (req, res) => {
 The adapter ships with full TypeScript definitions. Extend the Express `Request` type by importing the module:
 
 ```typescript
-import "@rampart/node";
+import "@rampart-auth/node";
 
 // req.auth is now typed on all Express Request objects
 ```
@@ -181,7 +181,7 @@ interface AuthContext {
 The middleware emits standard error responses. Customize them with an error handler:
 
 ```typescript
-import { RampartAuthError, TokenExpiredError } from "@rampart/node";
+import { RampartAuthError, TokenExpiredError } from "@rampart-auth/node";
 
 const auth = new RampartAuth({
   issuerUrl: "https://auth.example.com",
@@ -219,7 +219,7 @@ The adapter performs the following checks on every request:
 ```typescript
 import express from "express";
 import cors from "cors";
-import { RampartAuth } from "@rampart/node";
+import { RampartAuth } from "@rampart-auth/node";
 
 const app = express();
 app.use(cors());
@@ -294,7 +294,7 @@ app.listen(PORT, () => {
 For server-to-server communication where your service acts as a confidential client:
 
 ```typescript
-import { RampartClient } from "@rampart/node";
+import { RampartClient } from "@rampart-auth/node";
 
 const client = new RampartClient({
   issuerUrl: "https://auth.example.com",

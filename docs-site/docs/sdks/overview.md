@@ -12,9 +12,9 @@ Rampart provides official SDK adapters as thin wrappers around its standard OAut
 
 | Adapter | Language / Framework | Use Case |
 |---------|---------------------|----------|
-| [`@rampart/node`](./node.md) | Node.js / Express | Backend APIs, server-rendered apps |
-| [`@rampart/react`](./react.md) | React (SPA) | Single-page applications with PKCE |
-| [`@rampart/nextjs`](./nextjs.md) | Next.js (App Router) | Full-stack Next.js applications |
+| [`@rampart-auth/node`](./node.md) | Node.js / Express | Backend APIs, server-rendered apps |
+| [`@rampart-auth/react`](./react.md) | React (SPA) | Single-page applications with PKCE |
+| [`@rampart-auth/nextjs`](./nextjs.md) | Next.js (App Router) | Full-stack Next.js applications |
 | [`rampart-go`](./go.md) | Go (net/http, chi, gin, fiber) | Go microservices and APIs |
 | [`rampart-python`](./python.md) | Python (FastAPI, Flask) | Python APIs and web apps |
 | [`rampart-spring-boot`](./spring-boot.md) | Java (Spring Boot) | Enterprise Java applications |
@@ -23,9 +23,9 @@ Rampart provides official SDK adapters as thin wrappers around its standard OAut
 
 | Adapter | Min Runtime | Rampart Server | OIDC Discovery | PKCE | Token Refresh | RBAC |
 |---------|-------------|----------------|----------------|------|---------------|------|
-| `@rampart/node` | Node 18+ | v0.1+ | Yes | N/A | Yes | Yes |
-| `@rampart/react` | React 18+ | v0.1+ | Yes | Yes | Yes | Yes |
-| `@rampart/nextjs` | Next.js 14+ | v0.1+ | Yes | Yes | Yes | Yes |
+| `@rampart-auth/node` | Node 18+ | v0.1+ | Yes | N/A | Yes | Yes |
+| `@rampart-auth/react` | React 18+ | v0.1+ | Yes | Yes | Yes | Yes |
+| `@rampart-auth/nextjs` | Next.js 14+ | v0.1+ | Yes | Yes | Yes | Yes |
 | `rampart-go` | Go 1.21+ | v0.1+ | Yes | N/A | Yes | Yes |
 | `rampart-python` | Python 3.10+ | v0.1+ | Yes | N/A | Yes | Yes |
 | `rampart-spring-boot` | Java 17+ / Spring Boot 3.x | v0.1+ | Yes | N/A | Yes | Yes |
@@ -72,7 +72,7 @@ All adapters cache JWKS keys and refresh them automatically when key rotation oc
 
 ### Backend API (no browser)
 
-Use **`@rampart/node`**, **`rampart-go`**, **`rampart-python`**, or **`rampart-spring-boot`** depending on your language. These adapters verify incoming bearer tokens from the `Authorization` header and extract user claims.
+Use **`@rampart-auth/node`**, **`rampart-go`**, **`rampart-python`**, or **`rampart-spring-boot`** depending on your language. These adapters verify incoming bearer tokens from the `Authorization` header and extract user claims.
 
 ```
 Client (mobile app, CLI, other service)
@@ -83,11 +83,11 @@ Client (mobile app, CLI, other service)
 
 ### Single-Page Application (SPA)
 
-Use **`@rampart/react`** for a standalone React SPA. It implements the Authorization Code flow with PKCE — the recommended flow for public clients. The adapter manages the full lifecycle: redirect to login, handle callback, store tokens, refresh silently.
+Use **`@rampart-auth/react`** for a standalone React SPA. It implements the Authorization Code flow with PKCE — the recommended flow for public clients. The adapter manages the full lifecycle: redirect to login, handle callback, store tokens, refresh silently.
 
 ### Full-Stack Next.js
 
-Use **`@rampart/nextjs`** when you need both server-side and client-side auth in a Next.js application. It provides middleware for protecting routes at the edge, server-side token verification in Server Components, and a client-side auth context for interactive pages.
+Use **`@rampart-auth/nextjs`** when you need both server-side and client-side auth in a Next.js application. It provides middleware for protecting routes at the edge, server-side token verification in Server Components, and a client-side auth context for interactive pages.
 
 ### Choosing Between Confidential and Public Clients
 

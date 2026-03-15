@@ -6,20 +6,20 @@ description: Integrate Rampart authentication into Next.js applications with ser
 
 # Next.js Adapter
 
-The `@rampart/nextjs` adapter provides full-stack authentication for Next.js applications using the App Router. It covers server-side token verification in Server Components, edge middleware for route protection, and a client-side auth context for interactive pages.
+The `@rampart-auth/nextjs` adapter provides full-stack authentication for Next.js applications using the App Router. It covers server-side token verification in Server Components, edge middleware for route protection, and a client-side auth context for interactive pages.
 
 ## Installation
 
 ```bash
-npm install @rampart/nextjs
+npm install @rampart-auth/nextjs
 ```
 
 ```bash
-yarn add @rampart/nextjs
+yarn add @rampart-auth/nextjs
 ```
 
 ```bash
-pnpm add @rampart/nextjs
+pnpm add @rampart-auth/nextjs
 ```
 
 ## Quick Start
@@ -30,7 +30,7 @@ Create a Rampart configuration file:
 
 ```typescript
 // lib/rampart.ts
-import { createRampartAuth } from "@rampart/nextjs";
+import { createRampartAuth } from "@rampart-auth/nextjs";
 
 export const rampart = createRampartAuth({
   issuerUrl: process.env.RAMPART_URL!,
@@ -80,7 +80,7 @@ export const config = {
 
 ```tsx
 // app/layout.tsx
-import { RampartProvider } from "@rampart/nextjs/client";
+import { RampartProvider } from "@rampart-auth/nextjs/client";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -238,7 +238,7 @@ Access authentication state in Client Components:
 ```tsx
 "use client";
 
-import { useAuth } from "@rampart/nextjs/client";
+import { useAuth } from "@rampart-auth/nextjs/client";
 
 export function UserMenu() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -265,7 +265,7 @@ Get a fresh access token for API calls from the client:
 ```tsx
 "use client";
 
-import { useAccessToken } from "@rampart/nextjs/client";
+import { useAccessToken } from "@rampart-auth/nextjs/client";
 import { useState, useEffect } from "react";
 
 export function TaskList() {
@@ -317,7 +317,7 @@ interface RampartSession {
 
 ```typescript
 // lib/rampart.ts
-import { createRampartAuth } from "@rampart/nextjs";
+import { createRampartAuth } from "@rampart-auth/nextjs";
 
 export const rampart = createRampartAuth({
   issuerUrl: process.env.RAMPART_URL!,
@@ -351,7 +351,7 @@ export const config = {
 
 ```tsx
 // app/layout.tsx
-import { RampartProvider } from "@rampart/nextjs/client";
+import { RampartProvider } from "@rampart-auth/nextjs/client";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

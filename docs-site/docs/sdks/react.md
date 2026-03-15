@@ -6,20 +6,20 @@ description: Integrate Rampart authentication into React single-page application
 
 # React SPA Adapter
 
-The `@rampart/react` adapter provides React components and hooks for integrating Rampart authentication into single-page applications. It implements the Authorization Code flow with PKCE — the recommended approach for public clients that cannot securely store a client secret.
+The `@rampart-auth/react` adapter provides React components and hooks for integrating Rampart authentication into single-page applications. It implements the Authorization Code flow with PKCE — the recommended approach for public clients that cannot securely store a client secret.
 
 ## Installation
 
 ```bash
-npm install @rampart/react
+npm install @rampart-auth/react
 ```
 
 ```bash
-yarn add @rampart/react
+yarn add @rampart-auth/react
 ```
 
 ```bash
-pnpm add @rampart/react
+pnpm add @rampart-auth/react
 ```
 
 ## Quick Start
@@ -29,7 +29,7 @@ Wrap your application with `RampartProvider` and use the `useAuth` hook to acces
 ```tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { RampartProvider } from "@rampart/react";
+import { RampartProvider } from "@rampart-auth/react";
 import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -46,7 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
 ```tsx
 // App.tsx
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 
 function App() {
   const { user, isAuthenticated, isLoading, login, logout } = useAuth();
@@ -99,7 +99,7 @@ export default App;
 The primary hook for accessing authentication state and actions.
 
 ```tsx
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 
 function MyComponent() {
   const {
@@ -125,7 +125,7 @@ function MyComponent() {
 Returns a fresh access token, automatically refreshing if needed. Useful for making authenticated API calls.
 
 ```tsx
-import { useAccessToken } from "@rampart/react";
+import { useAccessToken } from "@rampart-auth/react";
 
 function TaskList() {
   const getToken = useAccessToken();
@@ -157,7 +157,7 @@ function TaskList() {
 Check if the current user has specific roles.
 
 ```tsx
-import { useRoles } from "@rampart/react";
+import { useRoles } from "@rampart-auth/react";
 
 function AdminPanel() {
   const { hasRole, hasAnyRole, roles } = useRoles();
@@ -185,7 +185,7 @@ function AdminPanel() {
 Wraps a route so that only authenticated users can access it. Unauthenticated users are redirected to the Rampart login page.
 
 ```tsx
-import { ProtectedRoute } from "@rampart/react";
+import { ProtectedRoute } from "@rampart-auth/react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 function App() {
@@ -237,7 +237,7 @@ function App() {
 Handles the OAuth 2.0 redirect callback. Place this at your `redirectUri` route.
 
 ```tsx
-import { AuthCallback } from "@rampart/react";
+import { AuthCallback } from "@rampart-auth/react";
 
 // In your router:
 <Route
@@ -298,7 +298,7 @@ const token = await getAccessToken();
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { RampartProvider } from "@rampart/react";
+import { RampartProvider } from "@rampart-auth/react";
 import App from "./App";
 
 const RAMPART_URL = import.meta.env.VITE_RAMPART_URL || "https://auth.example.com";
@@ -325,7 +325,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 ```tsx
 // App.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useAuth, ProtectedRoute, AuthCallback } from "@rampart/react";
+import { useAuth, ProtectedRoute, AuthCallback } from "@rampart-auth/react";
 
 function App() {
   return (
