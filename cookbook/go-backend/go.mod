@@ -1,4 +1,4 @@
-module github.com/manimovassagh/rampart/samples/go-backend
+module github.com/manimovassagh/rampart/cookbook/go-backend
 
 go 1.23
 

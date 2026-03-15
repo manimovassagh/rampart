@@ -10,7 +10,7 @@ A sample Go backend that demonstrates the Rampart Go adapter for JWT authenticat
 ## Quick Start
 
 ```bash
-cd samples/go-backend
+cd cookbook/go-backend
 go run main.go
 ```
 
@@ -39,11 +39,11 @@ This backend is fully compatible with the React sample app. Start both:
 
 ```bash
 # Terminal 1 — backend
-cd samples/go-backend
+cd cookbook/go-backend
 go run main.go
 
 # Terminal 2 — frontend
-cd samples/react-app
+cd cookbook/react-app
 npm run dev
 ```
 

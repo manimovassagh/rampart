@@ -237,15 +237,18 @@ Full documentation is available at **[manimovassagh.github.io/rampart](https://m
 
 ---
 
-## Sample Apps
+## Cookbook
 
-The [`samples/`](samples/) directory contains working integration examples:
+The [`cookbook/`](cookbook/) directory contains working integration examples for every adapter:
 
 | Sample | Description | Port |
 |--------|-------------|------|
-| [express-backend](samples/express-backend/) | Express API with JWT verification via `@rampart/node` | 3001 |
-| [web-frontend](samples/web-frontend/) | Browser app with login/logout UI via `@rampart/web` | 3000 |
-| [react-app](samples/react-app/) | React SPA with routing, auth, and RBAC via `@rampart/react` | 3002 |
+| [express-backend](cookbook/express-backend/) | Express API with JWT verification via `@rampart-auth/node` | 3001 |
+| [go-backend](cookbook/go-backend/) | Go API with JWT verification via Rampart Go middleware | 3001 |
+| [fastapi-backend](cookbook/fastapi-backend/) | FastAPI with JWT verification via `rampart-python` | 3001 |
+| [spring-backend](cookbook/spring-backend/) | Spring Boot with Spring Security OAuth2 Resource Server | 3001 |
+| [react-app](cookbook/react-app/) | React SPA with routing, auth, and RBAC via `@rampart-auth/react` | 3002 |
+| [web-frontend](cookbook/web-frontend/) | Vanilla TS app with OAuth PKCE via `@rampart-auth/web` | 3000 |
 
 ---
 
