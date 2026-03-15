@@ -1,0 +1,185 @@
+name: Adapters CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "adapters/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "adapters/**"
+
+concurrency:
+  group: adapters-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  node-adapter:
+    name: Node Adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 20
+      - name: Build & Test
+        working-directory: adapters/backend/node
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+  go-adapter:
+    name: Go Adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-go@v6.3.0
+        with:
+          go-version-file: adapters/backend/go/go.mod
+      - name: Test
+        working-directory: adapters/backend/go
+        run: go test ./...
+
+  python-adapter:
+    name: Python Adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Install & Test
+        working-directory: adapters/backend/python
+        run: |
+          pip install -e ".[dev]"
+          pytest tests/
+
+  spring-adapter:
+    name: Spring Adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-java@v4.7.1
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Compile
+        working-directory: adapters/backend/spring
+        run: ./mvnw -q compile
+
+  dotnet-adapter:
+    name: .NET Adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-dotnet@v4.3.1
+        with:
+          dotnet-version: "8.0"
+      - name: Build
+        working-directory: adapters/backend/dotnet
+        run: dotnet build
+
+  react-adapter:
+    name: React Adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 20
+      - name: Build
+        working-directory: adapters/frontend/react
+        run: |
+          npm ci
+          npm run build
+
+  web-adapter:
+    name: Web Adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 20
+      - name: Build
+        working-directory: adapters/frontend/web
+        run: |
+          npm ci
+          npm run build
+
+  nextjs-adapter:
+    name: Next.js Adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 20
+      - name: Build
+        working-directory: adapters/frontend/nextjs
+        run: |
+          npm ci
+          npm run build
+
+  # Final status check — branch protection can require just this one job
+  ci-passed:
+    name: Adapters CI passed
+    runs-on: ubuntu-latest
+    needs:
+      - node-adapter
+      - go-adapter
+      - python-adapter
+      - spring-adapter
+      - dotnet-adapter
+      - react-adapter
+      - web-adapter
+      - nextjs-adapter
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          results=(
+            "${{ needs.node-adapter.result }}"
+            "${{ needs.go-adapter.result }}"
+            "${{ needs.python-adapter.result }}"
+            "${{ needs.spring-adapter.result }}"
+            "${{ needs.dotnet-adapter.result }}"
+            "${{ needs.react-adapter.result }}"
+            "${{ needs.web-adapter.result }}"
+            "${{ needs.nextjs-adapter.result }}"
+          )
+          for r in "${results[@]}"; do
+            if [[ "$r" != "success" ]]; then
+              echo "One or more adapter jobs failed"
+              exit 1
+            fi
+          done
+          echo "All adapter CI checks passed"
+
+      - name: Pipeline summary
+        if: always()
+        run: |
+          icon() { [ "$1" = "success" ] && echo "pass" || echo "FAIL"; }
+
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          # Adapters CI Summary
+
+          | Adapter | Status |
+          |---------|--------|
+          | Node    | $(icon "${{ needs.node-adapter.result }}") |
+          | Go      | $(icon "${{ needs.go-adapter.result }}") |
+          | Python  | $(icon "${{ needs.python-adapter.result }}") |
+          | Spring  | $(icon "${{ needs.spring-adapter.result }}") |
+          | .NET    | $(icon "${{ needs.dotnet-adapter.result }}") |
+          | React   | $(icon "${{ needs.react-adapter.result }}") |
+          | Web     | $(icon "${{ needs.web-adapter.result }}") |
+          | Next.js | $(icon "${{ needs.nextjs-adapter.result }}") |
+          EOF

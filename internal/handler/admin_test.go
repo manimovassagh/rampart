@@ -478,21 +478,24 @@ func TestAdminResetPasswordWeakPassword(t *testing.T) {
 }
 
 func TestAdminListSessionsSuccess(t *testing.T) {
-	userID := uuid.New()
+	user := newAdminTestUser()
 	sess := &session.Session{
 		ID:        uuid.New(),
-		UserID:    userID,
+		UserID:    user.ID,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 		CreatedAt: time.Now(),
 	}
-	store := &mockAdminUserStore{}
+	store := &mockAdminUserStore{userByID: user}
 	sessions := &mockAdminSessionStore{sessions: []*session.Session{sess}}
 	h := newTestAdminHandler(store, sessions)
 
 	r := chi.NewRouter()
 	r.Get("/api/v1/admin/users/{id}/sessions", h.ListSessions)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+userID.String()+"/sessions", http.NoBody)
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+user.ID.String()+"/sessions", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -510,15 +513,18 @@ func TestAdminListSessionsSuccess(t *testing.T) {
 }
 
 func TestAdminRevokeSessionsSuccess(t *testing.T) {
-	userID := uuid.New()
-	store := &mockAdminUserStore{}
+	user := newAdminTestUser()
+	store := &mockAdminUserStore{userByID: user}
 	sessions := &mockAdminSessionStore{}
 	h := newTestAdminHandler(store, sessions)
 
 	r := chi.NewRouter()
 	r.Delete("/api/v1/admin/users/{id}/sessions", h.RevokeSessions)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+userID.String()+"/sessions", http.NoBody)
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+user.ID.String()+"/sessions", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -912,14 +918,18 @@ func TestAdminGetUserStoreError(t *testing.T) {
 }
 
 func TestAdminListSessionsError(t *testing.T) {
-	store := &mockAdminUserStore{}
+	user := newAdminTestUser()
+	store := &mockAdminUserStore{userByID: user}
 	sessions := &mockAdminSessionStore{listErr: fmt.Errorf("db error")}
 	h := newTestAdminHandler(store, sessions)
 
 	r := chi.NewRouter()
 	r.Get("/api/v1/admin/users/{id}/sessions", h.ListSessions)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+uuid.New().String()+"/sessions", http.NoBody)
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+user.ID.String()+"/sessions", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -929,14 +939,18 @@ func TestAdminListSessionsError(t *testing.T) {
 }
 
 func TestAdminRevokeSessionsError(t *testing.T) {
-	store := &mockAdminUserStore{}
+	user := newAdminTestUser()
+	store := &mockAdminUserStore{userByID: user}
 	sessions := &mockAdminSessionStore{deleteErr: fmt.Errorf("session store down")}
 	h := newTestAdminHandler(store, sessions)
 
 	r := chi.NewRouter()
 	r.Delete("/api/v1/admin/users/{id}/sessions", h.RevokeSessions)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+uuid.New().String()+"/sessions", http.NoBody)
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+user.ID.String()+"/sessions", http.NoBody)
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

@@ -433,7 +433,18 @@ func (h *AdminHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessions, err := h.sessions.ListByUserID(r.Context(), userID)
+	ctx := r.Context()
+
+	// Verify target user belongs to the admin's organization (prevent cross-tenant IDOR).
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	orgID := resolveOrgID(r, authUser)
+	targetUser, err := h.store.GetUserByID(ctx, userID)
+	if err != nil || targetUser == nil || targetUser.OrgID != orgID {
+		apierror.NotFound(w)
+		return
+	}
+
+	sessions, err := h.sessions.ListByUserID(ctx, userID)
 	if err != nil {
 		h.logger.Error("failed to list sessions", "error", err)
 		apierror.InternalError(w)
@@ -460,6 +471,16 @@ func (h *AdminHandler) RevokeSessions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+
+	// Verify target user belongs to the admin's organization (prevent cross-tenant IDOR).
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	orgID := resolveOrgID(r, authUser)
+	targetUser, err := h.store.GetUserByID(ctx, userID)
+	if err != nil || targetUser == nil || targetUser.OrgID != orgID {
+		apierror.NotFound(w)
+		return
+	}
+
 	count, _ := h.sessions.CountByUserID(ctx, userID)
 
 	if err := h.sessions.DeleteByUserID(ctx, userID); err != nil {
