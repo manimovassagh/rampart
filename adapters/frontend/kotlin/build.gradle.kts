@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.rampart"
-version = "0.1.0"
+version = "1.0.0"
 
 android {
     namespace = "com.rampart"

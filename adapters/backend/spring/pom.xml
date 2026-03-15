@@ -13,7 +13,7 @@
 
     <groupId>io.github.manimovassagh</groupId>
     <artifactId>rampart-spring-boot-starter</artifactId>
-    <version>0.1.0</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>Rampart Spring Boot Starter</name>

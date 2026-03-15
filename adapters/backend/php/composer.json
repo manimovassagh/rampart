@@ -1,7 +1,7 @@
 {
     "name": "rampart/laravel",
     "description": "Laravel & PSR-15 middleware adapter for Rampart IAM — JWT verification with RBAC",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "type": "library",
     "license": "MIT",
     "keywords": ["rampart", "jwt", "oauth2", "oidc", "laravel", "middleware", "psr-15", "rbac"],

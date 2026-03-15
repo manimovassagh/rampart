@@ -1,6 +1,6 @@
 name: rampart_flutter
 description: Flutter authentication SDK for Rampart IAM. Implements OAuth 2.0 Authorization Code with PKCE for mobile (iOS/Android) and web platforms.
-version: 0.1.0
+version: 1.0.0
 homepage: https://github.com/manimovassagh/rampart
 repository: https://github.com/manimovassagh/rampart/tree/main/adapters/frontend/flutter
 
