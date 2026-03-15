@@ -12,6 +12,7 @@ Server-side middleware for verifying Rampart JWTs on protected API routes.
 | [Go](./backend/go/) | `rampart` (Go module) | net/http, chi, gin | Ready |
 | [Python](./backend/python/) | `rampart-python` | FastAPI, Flask | Ready |
 | [Spring Boot](./backend/spring/) | `rampart-spring-boot-starter` | Spring Boot 3.x | Ready |
+| [.NET](./backend/dotnet/) | `Rampart.AspNetCore` (NuGet) | ASP.NET Core (.NET 8+) | Ready |
 
 ## Frontend
 
