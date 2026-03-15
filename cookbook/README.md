@@ -14,6 +14,7 @@ All backend samples listen on port **3001** and expose the same routes:
 | [go-backend](./go-backend/) | Go 1.23+, net/http | [`rampart` Go module](../adapters/backend/go/) | `go run main.go` |
 | [fastapi-backend](./fastapi-backend/) | Python 3.9+, FastAPI, Uvicorn | [`rampart-python`](../adapters/backend/python/) | `pip install -r requirements.txt && python main.py` |
 | [spring-backend](./spring-backend/) | Java 17+, Spring Boot 3.3, Spring Security | [`rampart-spring-boot-starter`](../adapters/backend/spring/) | `./mvnw spring-boot:run` |
+| [dotnet-backend](./dotnet-backend/) | .NET 8, ASP.NET Core Minimal API | [`Rampart.AspNetCore`](../adapters/backend/dotnet/) | `dotnet run` |
 
 ### Frontend Samples
 
