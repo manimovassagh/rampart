@@ -61,3 +61,8 @@ Rampart is a Go-based IAM/OAuth 2.0 server with OIDC support.
 - `cookbook/` — Sample apps (React, Express, Go, FastAPI, Spring Boot, .NET)
 - `adapters/` — SDK packages (Node, Go, Python, Spring, .NET, React, Web, Next.js)
 - `.github/workflows/` — CI/CD pipelines
+
+## CRITICAL: E2E Tests Must Start from Logged-Out State
+- Always logout or clear browser storage before starting an E2E test
+- Every test must begin with "Not signed in" on the landing page
+- Never assume a clean browser — previous tests leave cached tokens
