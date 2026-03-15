@@ -16,7 +16,8 @@ const (
 	valueDeny              = "DENY"
 	valueXSSBlock          = "1; mode=block"
 	valueReferrerPolicy    = "strict-origin-when-cross-origin"
-	valueCSP               = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+	valueCSP               = "default-src 'self'; script-src 'self'; style-src 'self'"
+	valueCSPWithInline     = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
 	valuePermissionsPolicy = "camera=(), microphone=(), geolocation=()"
 	valueHSTS              = "max-age=31536000; includeSubDomains"
 )
@@ -26,6 +27,16 @@ type SecurityHeadersConfig struct {
 	// HSTSEnabled controls whether the Strict-Transport-Security header is set.
 	// Should only be true when TLS termination happens at this server.
 	HSTSEnabled bool
+}
+
+// CSPAllowInlineStyle is middleware that relaxes the Content-Security-Policy to
+// permit inline <style> blocks. This is needed for login pages where theme colors
+// are rendered server-side into CSS custom properties.
+func CSPAllowInlineStyle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(headerCSP, valueCSPWithInline)
+		next.ServeHTTP(w, r)
+	})
 }
 
 // SecurityHeaders is middleware that sets common security headers on all responses.
