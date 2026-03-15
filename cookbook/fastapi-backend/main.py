@@ -21,7 +21,7 @@ if os.path.isdir(_ADAPTER_PATH):
     sys.path.insert(0, os.path.abspath(_ADAPTER_PATH))
 
 from rampart import RampartClaims  # noqa: E402
-from rampart.fastapi import rampart_auth, require_roles_from_claims  # noqa: E402
+from rampart.fastapi import rampart_auth, require_roles  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -78,8 +78,8 @@ app.add_middleware(
 auth = rampart_auth(RAMPART_ISSUER)
 
 # Role checkers
-check_editor = require_roles_from_claims("editor")
-check_manager = require_roles_from_claims("manager")
+check_editor = require_roles("editor")
+check_manager = require_roles("manager")
 
 # ---------------------------------------------------------------------------
 # Routes
