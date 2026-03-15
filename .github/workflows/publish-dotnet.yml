@@ -37,4 +37,6 @@ jobs:
           dotnet pack --configuration Release --no-build -p:Version=${{ steps.version.outputs.version }} --output ./nupkg
 
       - name: Publish to NuGet
-        run: dotnet nuget push ./adapters/backend/dotnet/nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push ./adapters/backend/dotnet/nupkg/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
