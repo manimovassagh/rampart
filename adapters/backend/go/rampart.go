@@ -1,6 +1,39 @@
 // Package rampart provides JWT verification middleware for Go HTTP servers.
-// It fetches JWKS from a Rampart IAM server and verifies Bearer tokens,
-// working with standard net/http, chi, and any router using http.Handler.
+//
+// It validates RS256 tokens issued by a Rampart IAM server, extracts typed
+// claims, and supports role-based access control. The middleware fetches
+// JWKS from the issuer's /.well-known/jwks.json endpoint and caches the
+// key set automatically.
+//
+// It works with standard [net/http], chi, gorilla/mux, and any router
+// that accepts the [http.Handler] interface.
+//
+// # Quick Start
+//
+//	auth := rampart.NewMiddleware(rampart.Config{
+//		Issuer: "https://auth.example.com",
+//	})
+//	mux.Handle("/api/profile", auth(handler))
+//
+// # Claims
+//
+// After successful verification, claims are available via [ClaimsFromContext]:
+//
+//	claims, ok := rampart.ClaimsFromContext(r.Context())
+//	fmt.Println(claims.Email, claims.Roles)
+//
+// # Role-Based Access Control
+//
+// Chain [RequireRoles] after the auth middleware to enforce role checks:
+//
+//	adminOnly := rampart.RequireRoles("admin")
+//	mux.Handle("/admin", auth(adminOnly(handler)))
+//
+// # Error Handling
+//
+// Both [NewMiddleware] and [RequireRoles] return JSON error responses using
+// the [ErrorResponse] struct. The auth middleware returns 401 Unauthorized;
+// the role middleware returns 403 Forbidden.
 package rampart
 
 import (
@@ -16,40 +49,100 @@ import (
 
 type contextKey struct{}
 
-// Config holds the configuration for the Rampart middleware.
+// Config holds the configuration for the Rampart authentication middleware.
+//
+// At minimum, [Config.Issuer] must be set. The middleware uses it to locate
+// the JWKS endpoint at {Issuer}/.well-known/jwks.json.
 type Config struct {
-	// Issuer is the base URL of the Rampart server (e.g. "https://auth.example.com").
+	// Issuer is the base URL of the Rampart server, without a trailing slash
+	// (e.g., "https://auth.example.com"). The middleware appends
+	// /.well-known/jwks.json to discover signing keys and validates the
+	// "iss" claim in every token against this value.
 	Issuer string
 
-	// Algorithms is the list of accepted signing algorithms. Defaults to ["RS256"].
+	// Algorithms is the list of accepted signing algorithms.
+	// Reserved for future use; the current implementation relies on the
+	// algorithm declared in the JWKS key set.
 	Algorithms []string
 }
 
-// Claims represents the verified JWT claims from a Rampart access token.
+// Claims represents the verified JWT claims extracted from a Rampart access
+// token. Obtain it from a request context with [ClaimsFromContext].
+//
+// Fields map to the JSON claim names shown in their struct tags.
+// Optional fields (GivenName, FamilyName, Roles) use the omitempty tag
+// and will be zero-valued when absent from the token.
 type Claims struct {
-	Sub               string   `json:"sub"`
-	Iss               string   `json:"iss"`
-	Iat               float64  `json:"iat"`
-	Exp               float64  `json:"exp"`
-	OrgID             string   `json:"org_id"`
-	PreferredUsername string   `json:"preferred_username"`
-	Email             string   `json:"email"`
-	EmailVerified     bool     `json:"email_verified"`
-	GivenName         string   `json:"given_name,omitempty"`
-	FamilyName        string   `json:"family_name,omitempty"`
-	Roles             []string `json:"roles,omitempty"`
+	// Sub is the subject identifier (user UUID) — JWT "sub" claim.
+	Sub string `json:"sub"`
+
+	// Iss is the issuer URL — JWT "iss" claim.
+	Iss string `json:"iss"`
+
+	// Iat is the token issued-at time as a Unix timestamp — JWT "iat" claim.
+	Iat float64 `json:"iat"`
+
+	// Exp is the token expiration time as a Unix timestamp — JWT "exp" claim.
+	Exp float64 `json:"exp"`
+
+	// OrgID is the organization UUID the user belongs to — custom "org_id" claim.
+	OrgID string `json:"org_id"`
+
+	// PreferredUsername is the user's display name — OIDC "preferred_username" claim.
+	PreferredUsername string `json:"preferred_username"`
+
+	// Email is the user's email address — OIDC "email" claim.
+	Email string `json:"email"`
+
+	// EmailVerified indicates whether the email address has been verified —
+	// OIDC "email_verified" claim.
+	EmailVerified bool `json:"email_verified"`
+
+	// GivenName is the user's first name, if provided — OIDC "given_name" claim.
+	GivenName string `json:"given_name,omitempty"`
+
+	// FamilyName is the user's last name, if provided — OIDC "family_name" claim.
+	FamilyName string `json:"family_name,omitempty"`
+
+	// Roles is the set of roles assigned to the user — custom "roles" claim.
+	// Use [RequireRoles] for declarative role checks, or inspect this field
+	// directly for finer-grained authorization logic.
+	Roles []string `json:"roles,omitempty"`
 }
 
-// ErrorResponse is the JSON body returned on auth failures.
+// ErrorResponse is the JSON body returned by the middleware on authentication
+// or authorization failures. It follows the Rampart server error format.
 type ErrorResponse struct {
-	Error            string `json:"error"`
+	// Error is a machine-readable error code (e.g., "unauthorized", "forbidden").
+	Error string `json:"error"`
+
+	// ErrorDescription is a human-readable explanation of the failure.
 	ErrorDescription string `json:"error_description"`
-	Status           int    `json:"status"`
+
+	// Status is the HTTP status code (e.g., 401, 403).
+	Status int `json:"status"`
 }
 
-// NewMiddleware returns an http.Handler middleware that verifies JWT tokens
-// issued by the configured Rampart server. It fetches the JWKS from
-// {issuer}/.well-known/jwks.json and caches it automatically.
+// NewMiddleware returns an [http.Handler] middleware that verifies JWT Bearer
+// tokens issued by the configured Rampart server.
+//
+// On each request the middleware:
+//  1. Extracts the Bearer token from the Authorization header.
+//  2. Fetches (and caches) the JWKS from {Issuer}/.well-known/jwks.json.
+//  3. Validates the token signature, issuer, and expiration.
+//  4. Stores the parsed [Claims] in the request context for downstream handlers.
+//
+// If any step fails, the middleware writes a 401 JSON [ErrorResponse] and
+// does not call the next handler.
+//
+// Example:
+//
+//	auth := rampart.NewMiddleware(rampart.Config{
+//		Issuer: "https://auth.example.com",
+//	})
+//
+//	mux := http.NewServeMux()
+//	mux.Handle("/api/profile", auth(http.HandlerFunc(profileHandler)))
 func NewMiddleware(cfg Config) func(http.Handler) http.Handler {
 	issuer := strings.TrimRight(cfg.Issuer, "/")
 	jwksURL := issuer + "/.well-known/jwks.json"
@@ -95,16 +188,39 @@ func NewMiddleware(cfg Config) func(http.Handler) http.Handler {
 	}
 }
 
-// ClaimsFromContext extracts the verified Rampart claims from the request context.
-// Returns nil and false if the middleware has not run or authentication failed.
+// ClaimsFromContext extracts the verified [Claims] from the request context.
+// It returns the claims and true on success, or nil and false if
+// [NewMiddleware] has not run or authentication failed.
+//
+// Example:
+//
+//	claims, ok := rampart.ClaimsFromContext(r.Context())
+//	if !ok {
+//		http.Error(w, "not authenticated", http.StatusUnauthorized)
+//		return
+//	}
+//	fmt.Fprintf(w, "Hello, %s", claims.PreferredUsername)
 func ClaimsFromContext(ctx context.Context) (*Claims, bool) {
 	c, ok := ctx.Value(contextKey{}).(*Claims)
 	return c, ok
 }
 
-// RequireRoles returns middleware that checks the authenticated user has all
-// of the specified roles. Must be used after NewMiddleware. Returns 403 if
-// any required role is missing.
+// RequireRoles returns middleware that enforces role-based access control.
+// It checks that the authenticated user possesses every role listed in roles.
+//
+// RequireRoles must be chained after [NewMiddleware]; if no [Claims] are
+// found in the context it returns 401 Unauthorized. If the user is
+// authenticated but lacks one or more required roles it returns 403 Forbidden
+// with the missing role names in the error description.
+//
+// Example:
+//
+//	auth := rampart.NewMiddleware(rampart.Config{Issuer: issuer})
+//	adminOnly := rampart.RequireRoles("admin")
+//	editorOrAdmin := rampart.RequireRoles("editor", "admin")
+//
+//	mux.Handle("/admin", auth(adminOnly(handler)))
+//	mux.Handle("/publish", auth(editorOrAdmin(handler)))
 func RequireRoles(roles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +292,7 @@ func mapClaims(token jwt.Token) *Claims {
 		}
 	}
 	if v, ok := token.Get("roles"); ok {
-		if arr, ok := v.([]interface{}); ok {
+		if arr, ok := v.([]any); ok {
 			roles := make([]string, 0, len(arr))
 			for _, item := range arr {
 				if s, ok := item.(string); ok {

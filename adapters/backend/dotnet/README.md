@@ -1,55 +1,54 @@
 # Rampart.AspNetCore
 
-ASP.NET Core middleware for verifying [Rampart](https://github.com/manimovassagh/rampart) JWTs. Handles JWKS fetching, RS256 verification, claim extraction, and role-based authorization with zero configuration beyond the issuer URL.
+[![NuGet](https://img.shields.io/nuget/v/Rampart.AspNetCore?logo=nuget&color=004880)](https://www.nuget.org/packages/Rampart.AspNetCore)
+[![.NET](https://img.shields.io/badge/.NET-8.0+-512BD4?logo=dotnet)](https://dotnet.microsoft.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Install
+ASP.NET Core middleware for verifying [Rampart](https://github.com/manimovassagh/rampart) JWTs. Drop-in authentication and authorization with zero configuration beyond the issuer URL.
+
+## Features
+
+- **Automatic JWKS discovery** -- fetches and caches signing keys from your Rampart server
+- **RS256 JWT verification** -- validates signatures, issuer, and token expiry out of the box
+- **Typed claim extraction** -- `RampartClaims` gives you `Sub`, `Email`, `OrgId`, `Roles`, and more with full IntelliSense
+- **Role-based authorization** -- works with ASP.NET Core `[Authorize(Roles = "...")]` and a custom `[RequireRoles]` attribute
+- **Consistent error responses** -- returns structured JSON error bodies (401/403) matching the Rampart error format across all adapters
+
+## Quick Start
 
 ```bash
 dotnet add package Rampart.AspNetCore
 ```
 
-Requires .NET 8.0 or later.
+Requires **.NET 8.0** or later.
 
-## Quick Start
+Add three lines to `Program.cs` to enable Rampart authentication:
 
-Configure authentication in `Program.cs`:
+```csharp
+builder.Services.AddRampartAuth("https://auth.example.com"); // 1. Configure
+app.UseAuthentication();                                       // 2. Authenticate
+app.UseAuthorization();                                        // 3. Authorize
+```
+
+Full minimal example:
 
 ```csharp
 using Rampart.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddRampartAuth("http://localhost:8080");
-builder.Services.AddControllers();
+builder.Services.AddRampartAuth("https://auth.example.com");
 
 var app = builder.Build();
-
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
+
+app.MapGet("/me", (HttpContext ctx) =>
+{
+    var claims = RampartClaims.FromPrincipal(ctx.User);
+    return Results.Ok(new { userId = claims.Sub, org = claims.OrgId });
+}).RequireAuthorization();
 
 app.Run();
-```
-
-Protect a controller:
-
-```csharp
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Rampart.AspNetCore;
-
-[ApiController]
-[Route("api")]
-[Authorize]
-public class ProfileController : ControllerBase
-{
-    [HttpGet("me")]
-    public IActionResult Me()
-    {
-        var claims = RampartClaims.FromPrincipal(User);
-        return Ok(new { userId = claims.Sub, org = claims.OrgId });
-    }
-}
 ```
 
 ## Configuration
@@ -62,11 +61,27 @@ Call on `IServiceCollection` to configure JWT Bearer authentication:
 builder.Services.AddRampartAuth("https://auth.example.com");
 ```
 
-This:
+This single call:
 
-1. Fetches the JWKS from `{issuer}/.well-known/jwks.json` (cached automatically)
-2. Validates RS256 signatures, issuer, and token expiry
-3. Maps the `roles` JWT claim to `ClaimsPrincipal` role claims for `[Authorize(Roles = "...")]`
+1. Fetches the JWKS from `{issuer}/.well-known/jwks.json` (cached automatically by the underlying OIDC metadata handler)
+2. Validates RS256 signatures, issuer claim, and token lifetime
+3. Maps the `roles` JWT claim to ASP.NET Core role claims so `[Authorize(Roles = "...")]` works
+4. Configures JSON error responses for 401 challenges (instead of the default `WWW-Authenticate` header)
+5. Disables HTTPS metadata requirement for `http://` issuers (local development)
+
+**Options applied under the hood:**
+
+| Setting                       | Value                                  |
+|-------------------------------|----------------------------------------|
+| `ValidateIssuer`              | `true`                                 |
+| `ValidIssuer`                 | The issuer URL you provide             |
+| `ValidateAudience`            | `false` (Rampart tokens are not audience-scoped) |
+| `ValidateLifetime`            | `true`                                 |
+| `ValidateIssuerSigningKey`    | `true`                                 |
+| `ValidAlgorithms`             | `RS256`                                |
+| `RoleClaimType`               | `roles`                                |
+| `NameClaimType`               | `preferred_username`                   |
+| `RequireHttpsMetadata`        | `true` for `https://`, `false` for `http://` |
 
 ## Claims
 
@@ -76,18 +91,28 @@ Typed representation of Rampart JWT claims. Extract from the authenticated user:
 
 ```csharp
 var claims = RampartClaims.FromPrincipal(User);
+
+// IntelliSense-friendly properties:
+// claims.Sub               -> "550e8400-e29b-41d4-a716-446655440000"
+// claims.Email             -> "alice@example.com"
+// claims.EmailVerified     -> true
+// claims.OrgId             -> "org_abc123"
+// claims.PreferredUsername  -> "alice"
+// claims.Roles             -> ["admin", "editor"]
+// claims.GivenName         -> "Alice"
+// claims.FamilyName        -> "Smith"
 ```
 
-| Property            | Type                   | Description                |
-|---------------------|------------------------|----------------------------|
-| `Sub`               | `string`               | User ID (UUID)             |
-| `OrgId`             | `string?`              | Organization ID (UUID)     |
-| `PreferredUsername`  | `string?`              | Username                   |
-| `Email`             | `string?`              | Email address              |
-| `EmailVerified`     | `bool`                 | Whether email is verified  |
-| `GivenName`         | `string?`              | First name (if set)        |
-| `FamilyName`        | `string?`              | Last name (if set)         |
-| `Roles`             | `IReadOnlyList<string>`| Assigned roles             |
+| Property            | Type                   | JWT Claim              | Description                |
+|---------------------|------------------------|------------------------|----------------------------|
+| `Sub`               | `string`               | `sub`                  | User ID (UUID)             |
+| `OrgId`             | `string?`              | `org_id`               | Organization ID            |
+| `PreferredUsername`  | `string?`              | `preferred_username`   | Username                   |
+| `Email`             | `string?`              | `email`                | Email address              |
+| `EmailVerified`     | `bool`                 | `email_verified`       | Whether email is verified  |
+| `GivenName`         | `string?`              | `given_name`           | First name                 |
+| `FamilyName`        | `string?`              | `family_name`          | Last name                  |
+| `Roles`             | `IReadOnlyList<string>`| `roles`                | Assigned roles             |
 
 ### Claims middleware
 
@@ -95,7 +120,7 @@ Optionally, register the claims middleware to make `RampartClaims` available via
 
 ```csharp
 app.UseAuthentication();
-app.UseRampartClaims(); // extracts claims into HttpContext.Items
+app.UseRampartClaims();   // must be after UseAuthentication()
 app.UseAuthorization();
 ```
 
@@ -103,6 +128,7 @@ Then access claims from anywhere with access to `HttpContext`:
 
 ```csharp
 var claims = HttpContext.GetRampartClaims();
+// Returns null if the user is not authenticated
 ```
 
 ## Role-Based Authorization
@@ -116,6 +142,7 @@ Rampart roles are mapped to ASP.NET Core role claims automatically:
 [HttpGet("admin/dashboard")]
 public IActionResult Dashboard() => Ok(new { area = "admin" });
 
+// Comma-separated = any of these roles
 [Authorize(Roles = "editor,admin")]
 [HttpPost("articles")]
 public IActionResult CreateArticle() => Ok();
@@ -123,9 +150,13 @@ public IActionResult CreateArticle() => Ok();
 
 ### Using `[RequireRoles]` attribute
 
-For Rampart-specific error format (matches other adapter error responses):
+For Rampart-specific JSON error responses (consistent across all Rampart adapters):
 
 ```csharp
+/// <summary>
+/// Requires both "editor" AND the authenticated state.
+/// Returns 403 JSON: {"error":"forbidden","error_description":"Missing required role(s): editor","status":403}
+/// </summary>
 [Authorize]
 [RequireRoles("editor")]
 [HttpPut("articles/{id}")]
@@ -143,13 +174,15 @@ app.UseAuthorization();
 app.Map("/api/admin", adminApp =>
 {
     adminApp.RequireRampartRoles("admin");
-    // ... admin routes
+    // all routes in this group require the "admin" role
 });
 ```
 
 ## Error Responses
 
-On authentication failure, returns a `401` JSON response matching Rampart's error format:
+All error responses use a consistent JSON format that matches across Rampart's Go, Node.js, Python, and .NET adapters.
+
+**401 Unauthorized** (missing or invalid token):
 
 ```json
 {
@@ -159,7 +192,7 @@ On authentication failure, returns a `401` JSON response matching Rampart's erro
 }
 ```
 
-On authorization failure (missing roles), returns `403`:
+**403 Forbidden** (authenticated but missing required roles):
 
 ```json
 {
@@ -175,11 +208,18 @@ On authorization failure (missing roles), returns `403`:
 |----------------------------------------|-------------------------------------------------------|
 | `AddRampartAuth(issuer)`               | Configures JWT Bearer auth with Rampart JWKS          |
 | `RampartClaims.FromPrincipal(user)`    | Extracts typed claims from `ClaimsPrincipal`          |
-| `UseRampartClaims()`                   | Middleware to set `HttpContext.Items["RampartClaims"]` |
-| `HttpContext.GetRampartClaims()`       | Gets typed claims from `HttpContext.Items`            |
-| `[RequireRoles("role")]`               | Authorization filter with Rampart error format        |
+| `UseRampartClaims()`                   | Middleware: stores claims in `HttpContext.Items`       |
+| `HttpContext.GetRampartClaims()`       | Retrieves typed claims from `HttpContext.Items`       |
+| `[RequireRoles("role")]`               | Filter attribute with Rampart JSON error format       |
 | `RequireRampartRoles("role")`          | Inline middleware for role enforcement                |
+
+## Related
+
+- [Rampart IAM Server](https://github.com/manimovassagh/rampart) -- the OAuth 2.0 / OIDC server this adapter connects to
+- [Rampart Node.js Adapter](https://github.com/manimovassagh/rampart/tree/main/adapters/backend/node) -- Express.js middleware
+- [Rampart Python Adapter](https://github.com/manimovassagh/rampart/tree/main/adapters/backend/python) -- FastAPI/Flask middleware
+- [Rampart Go Adapter](https://github.com/manimovassagh/rampart/tree/main/adapters/backend/go) -- Go middleware
 
 ## License
 
-MIT
+[MIT](https://opensource.org/licenses/MIT)

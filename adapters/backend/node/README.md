@@ -1,6 +1,19 @@
 # @rampart-auth/node
 
+[![npm version](https://img.shields.io/npm/v/@rampart-auth/node.svg)](https://www.npmjs.com/package/@rampart-auth/node)
+[![license](https://img.shields.io/npm/l/@rampart-auth/node.svg)](https://github.com/manimovassagh/rampart/blob/main/adapters/backend/node/LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+
 Express middleware for verifying [Rampart](https://github.com/manimovassagh/rampart) JWTs. Handles JWKS fetching, RS256 verification, and claim extraction with zero configuration beyond the issuer URL.
+
+## Features
+
+- **Zero-config JWT verification** -- just provide the issuer URL
+- **Automatic JWKS fetching and caching** from the Rampart discovery endpoint
+- **RS256 signature, issuer, and expiry validation** using [jose](https://github.com/panva/jose)
+- **Role-based access control** with the `requireRoles` middleware
+- **Full TypeScript support** with typed claims on `req.auth` via Express module augmentation
+- **Standardized error responses** matching the Rampart error format
 
 ## Install
 

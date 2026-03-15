@@ -1,6 +1,19 @@
 # @rampart-auth/react
 
-React hooks and components for [Rampart](https://github.com/manimovassagh/rampart) authentication. Wraps `@rampart-auth/web` to provide a provider/hook pattern for login, logout, token management, and route protection.
+[![npm version](https://img.shields.io/npm/v/@rampart-auth/react.svg)](https://www.npmjs.com/package/@rampart-auth/react)
+[![license](https://img.shields.io/npm/l/@rampart-auth/react.svg)](https://github.com/manimovassagh/rampart/blob/main/adapters/frontend/react/LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+
+React hooks and components for [Rampart](https://github.com/manimovassagh/rampart) authentication. Wraps [`@rampart-auth/web`](https://www.npmjs.com/package/@rampart-auth/web) to provide a provider/hook pattern for login, logout, token management, and route protection.
+
+## Features
+
+- **`<RampartProvider>`** -- single wrapper component that initializes auth for your entire app
+- **`useAuth()` hook** -- access user, login, logout, token, and `authFetch` from any component
+- **`<ProtectedRoute>`** -- declarative route protection with role-based access control
+- **Automatic token persistence** -- tokens stored in `localStorage` by default, restored on reload
+- **Built on `@rampart-auth/web`** -- OAuth 2.0 Authorization Code + PKCE under the hood
+- **Full TypeScript support** with re-exported types from `@rampart-auth/web`
 
 ## Install
 
