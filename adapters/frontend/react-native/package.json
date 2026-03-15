@@ -1,0 +1,67 @@
+{
+  "name": "@rampart-auth/react-native",
+  "version": "0.1.0",
+  "description": "Rampart authentication provider and hooks for React Native",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "rampart",
+    "auth",
+    "react-native",
+    "expo",
+    "hooks",
+    "oidc",
+    "oauth",
+    "pkce",
+    "jwt",
+    "mobile"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manimovassagh/rampart",
+    "directory": "adapters/frontend/react-native"
+  },
+  "dependencies": {
+    "@rampart-auth/web": "^0.1.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.72",
+    "@react-native-async-storage/async-storage": ">=1.19.0"
+  },
+  "devDependencies": {
+    "@react-native-async-storage/async-storage": "^2.0.0",
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "react-native": "^0.76.0",
+    "tsup": "^8.0.0",
+    "typescript": "~5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
