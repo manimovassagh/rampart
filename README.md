@@ -247,6 +247,7 @@ The [`cookbook/`](cookbook/) directory contains working integration examples for
 | [go-backend](cookbook/go-backend/) | Go API with JWT verification via Rampart Go middleware | 3001 |
 | [fastapi-backend](cookbook/fastapi-backend/) | FastAPI with JWT verification via `rampart-python` | 3001 |
 | [spring-backend](cookbook/spring-backend/) | Spring Boot with Spring Security OAuth2 Resource Server | 3001 |
+| [dotnet-backend](cookbook/dotnet-backend/) | ASP.NET Core with JWT Bearer via `Rampart.AspNetCore` | 3001 |
 | [react-app](cookbook/react-app/) | React SPA with routing, auth, and RBAC via `@rampart-auth/react` | 3002 |
 | [web-frontend](cookbook/web-frontend/) | Vanilla TS app with OAuth PKCE via `@rampart-auth/web` | 3000 |
 

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- NuGet package metadata -->
+    <PackageId>Rampart.AspNetCore</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>manimovassagh</Authors>
+    <Description>ASP.NET Core middleware for Rampart IAM JWT verification. Handles JWKS fetching, RS256 validation, claim extraction, and role-based authorization.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/manimovassagh/rampart</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>rampart;iam;oauth2;jwt;oidc;authentication;authorization</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
