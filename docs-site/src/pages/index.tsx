@@ -106,7 +106,7 @@ const SDKS = [
   {name: 'Node.js', icon: '\uD83D\uDFE9'},
   {name: 'React', icon: '\u269B\uFE0F'},
   {name: 'Next.js', icon: '\u25B2'},
-  {name: 'Go', icon: '\uD83D\uDC99'},
+  {name: 'Go', icon: '', img: '/rampart/img/sdk-logos/go.png'},
   {name: 'Python', icon: '\uD83D\uDC0D'},
   {name: 'Spring Boot', icon: '\u2615'},
   {name: '.NET', icon: '\uD83D\uDFEA'},
@@ -351,7 +351,11 @@ function SDKSection(): React.JSX.Element {
               (e.currentTarget as HTMLElement).style.borderColor = isDark ? '#27272a' : '#e4e4e7';
               (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
             }}>
-            <span style={{fontSize: '2rem'}}>{sdk.icon}</span>
+            {(sdk as any).img ? (
+              <img src={(sdk as any).img} alt={sdk.name} style={{width: '2rem', height: '2rem', objectFit: 'contain'}} />
+            ) : (
+              <span style={{fontSize: '2rem'}}>{sdk.icon}</span>
+            )}
             <span
               style={{
                 fontSize: '0.8rem',
