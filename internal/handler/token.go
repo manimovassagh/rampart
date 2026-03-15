@@ -116,6 +116,19 @@ func (h *TokenHandler) handleAuthorizationCode(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Confidential clients MUST authenticate with client_secret (RFC 6749 §2.3)
+	if client.ClientType == "confidential" {
+		clientSecret := r.FormValue("client_secret")
+		if clientSecret == "" {
+			h.writeOAuthError(w, http.StatusUnauthorized, "invalid_client", "Confidential clients must provide client_secret.")
+			return
+		}
+		if !oauth.VerifyClientSecret(clientSecret, client.ClientSecretHash) {
+			h.writeOAuthError(w, http.StatusUnauthorized, "invalid_client", "Invalid client_secret.")
+			return
+		}
+	}
+
 	// Consume the authorization code (atomic single-use)
 	authCode, err := h.store.ConsumeAuthorizationCode(ctx, code)
 	if err != nil {
@@ -253,6 +266,32 @@ func (h *TokenHandler) handleRefreshToken(w http.ResponseWriter, r *http.Request
 	if sess == nil {
 		h.writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "Invalid or expired refresh token.")
 		return
+	}
+
+	// Verify client binding: if session was created for a specific client,
+	// require client_id and (for confidential clients) client_secret on refresh.
+	if sess.ClientID != "" {
+		reqClientID := r.FormValue("client_id")
+		if reqClientID == "" {
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_request", "Missing required parameter: client_id.")
+			return
+		}
+		if reqClientID != sess.ClientID {
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "Refresh token was not issued to this client.")
+			return
+		}
+		client, cErr := h.store.GetOAuthClient(ctx, sess.ClientID)
+		if cErr != nil || client == nil {
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_client", "Unknown client_id.")
+			return
+		}
+		if client.ClientType == "confidential" {
+			clientSecret := r.FormValue("client_secret")
+			if clientSecret == "" || !oauth.VerifyClientSecret(clientSecret, client.ClientSecretHash) {
+				h.writeOAuthError(w, http.StatusUnauthorized, "invalid_client", "Invalid client_secret.")
+				return
+			}
+		}
 	}
 
 	// Fetch user
