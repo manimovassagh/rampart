@@ -67,9 +67,9 @@
 <img src="docs-site/static/img/screenshots/login.png" alt="Login Page" width="100%" />
 </td>
 <td width="50%" align="center">
-<strong>Consent Screen</strong><br />
-<sub>OAuth consent with scope descriptions. Deny or allow per-app.</sub><br /><br />
-<img src="docs-site/static/img/screenshots/consent.png" alt="Consent Screen" width="100%" />
+<strong>Social Login</strong><br />
+<sub>Google, GitHub, and Apple sign-in. One-click config in the admin console.</sub><br /><br />
+<img src="docs-site/static/img/screenshots/social-providers.png" alt="Social Providers" width="100%" />
 </td>
 </tr>
 </table>
