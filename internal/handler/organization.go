@@ -263,6 +263,12 @@ func (h *OrgHandler) UpdateOrgSettings(w http.ResponseWriter, r *http.Request) {
 		apierror.BadRequest(w, "Refresh token TTL must be at least 60 seconds.")
 		return
 	}
+	if req.LogoURL != "" {
+		if !strings.HasPrefix(req.LogoURL, "https://") {
+			apierror.BadRequest(w, "Logo URL must be empty or use the https:// scheme.")
+			return
+		}
+	}
 	if err := model.ValidateCSSColor(req.PrimaryColor); err != nil {
 		apierror.BadRequest(w, "Invalid primary color: "+err.Error())
 		return

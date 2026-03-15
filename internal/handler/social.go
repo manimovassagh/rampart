@@ -19,6 +19,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/audit"
 	"github.com/manimovassagh/rampart/internal/auth"
 	"github.com/manimovassagh/rampart/internal/database"
@@ -90,7 +91,7 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 	providerName := chi.URLParam(r, "provider")
 	provider, ok := h.registry.Get(providerName)
 	if !ok {
-		http.Error(w, "Unknown social provider.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Unknown social provider.")
 		return
 	}
 
@@ -102,12 +103,12 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 	codeChallenge := q.Get("code_challenge")
 
 	if clientID == "" || redirectURI == "" {
-		http.Error(w, "Missing required parameters: client_id and redirect_uri.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Missing required parameters: client_id and redirect_uri.")
 		return
 	}
 
 	if state == "" {
-		http.Error(w, "Missing required parameter: state.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Missing required parameter: state.")
 		return
 	}
 
@@ -116,16 +117,16 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 	client, err := h.store.GetOAuthClient(ctx, clientID)
 	if err != nil {
 		h.logger.Error("failed to fetch oauth client", "error", err)
-		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
+		apierror.InternalError(w)
 		return
 	}
 	if client == nil {
-		http.Error(w, "Unknown client_id.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Unknown client_id.")
 		return
 	}
 
 	if !database.ValidateRedirectURI(client, redirectURI) {
-		http.Error(w, "Invalid redirect_uri.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Invalid redirect_uri.")
 		return
 	}
 
@@ -137,7 +138,7 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 	providerState, err := generateRandomState()
 	if err != nil {
 		h.logger.Error("failed to generate provider state", "error", err)
-		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
+		apierror.InternalError(w)
 		return
 	}
 
@@ -155,7 +156,7 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
 		h.logger.Error("failed to sign social cookie", "error", err)
-		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
+		apierror.InternalError(w)
 		return
 	}
 
@@ -186,7 +187,7 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	providerName := chi.URLParam(r, "provider")
 	provider, ok := h.registry.Get(providerName)
 	if !ok {
-		http.Error(w, "Unknown social provider.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Unknown social provider.")
 		return
 	}
 
@@ -203,28 +204,28 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if code == "" || returnedState == "" {
-		http.Error(w, "Missing code or state parameter.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Missing code or state parameter.")
 		return
 	}
 
 	// Validate the signed cookie
 	cookie, err := r.Cookie(socialCookieName)
 	if err != nil {
-		http.Error(w, "Missing social login state cookie.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Missing social login state cookie.")
 		return
 	}
 
 	payload, err := h.verifyCookiePayload(cookie.Value)
 	if err != nil {
 		h.logger.Warn("invalid social cookie signature", "error", err)
-		http.Error(w, "Invalid or expired social login state.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Invalid or expired social login state.")
 		return
 	}
 
 	// Verify state matches what we stored
 	if returnedState != payload.ProviderState {
 		h.logger.Warn("social login state mismatch", "expected", payload.ProviderState, "got", returnedState)
-		http.Error(w, "Invalid social login state.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Invalid social login state.")
 		return
 	}
 
@@ -248,13 +249,13 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("social provider exchange failed", "provider", providerName, "error", err)
 		h.audit.Log(ctx, r, uuid.Nil, model.EventSocialLoginFailed, nil, "", "social", "", providerName, map[string]any{"reason": "exchange_failed", "provider": providerName})
 		metrics.AuthTotal.WithLabelValues("failure").Inc()
-		http.Error(w, "Failed to authenticate with social provider.", http.StatusBadGateway)
+		apierror.Write(w, http.StatusBadGateway, "social_exchange_failed", "Failed to authenticate with social provider.")
 		return
 	}
 
 	if userInfo.Email == "" {
 		h.logger.Warn("social provider returned no email", "provider", providerName)
-		http.Error(w, "Social provider did not return an email address.", http.StatusBadRequest)
+		apierror.BadRequest(w, "Social provider did not return an email address.")
 		return
 	}
 
@@ -265,11 +266,11 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 			h.logger.Warn("social login blocked: email not verified at provider", "provider", providerName, "email", userInfo.Email)
 			h.audit.Log(ctx, r, uuid.Nil, model.EventSocialLoginFailed, nil, "", "social", "", providerName, map[string]any{"reason": "email_not_verified", "provider": providerName})
 			metrics.AuthTotal.WithLabelValues("failure").Inc()
-			http.Error(w, "Your email address has not been verified by the social provider. Please verify your email and try again.", http.StatusForbidden)
+			apierror.Forbidden(w, "Your email address has not been verified by the social provider. Please verify your email and try again.")
 			return
 		}
 		h.logger.Error("failed to resolve social user", "error", err)
-		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
+		apierror.InternalError(w)
 		return
 	}
 
@@ -277,14 +278,14 @@ func (h *SocialHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	authCode, err := oauth.GenerateAuthorizationCode()
 	if err != nil {
 		h.logger.Error("failed to generate authorization code", "error", err)
-		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
+		apierror.InternalError(w)
 		return
 	}
 
 	expiresAt := time.Now().Add(authCodeTTL)
 	if err := h.store.StoreAuthorizationCode(ctx, authCode, payload.ClientID, user.ID, orgID, payload.RedirectURI, payload.CodeChallenge, payload.Scope, "", expiresAt); err != nil {
 		h.logger.Error("failed to store authorization code", "error", err)
-		http.Error(w, msgUnexpectedErr, http.StatusInternalServerError)
+		apierror.InternalError(w)
 		return
 	}
 
