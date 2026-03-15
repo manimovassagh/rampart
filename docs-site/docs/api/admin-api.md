@@ -199,14 +199,14 @@ curl -X PUT https://your-rampart-instance/api/v1/admin/users/usr_550e8400-e29b-4
 
 **Response (200 OK):** Returns the updated user object.
 
-### PUT /api/v1/admin/users/\{user_id\}/password
+### POST /api/v1/admin/users/\{user_id\}/reset-password
 
 Reset a user's password administratively.
 
 **Request:**
 
 ```bash
-curl -X PUT https://your-rampart-instance/api/v1/admin/users/usr_550e8400-e29b-41d4-a716-446655440000/password \
+curl -X POST https://your-rampart-instance/api/v1/admin/users/usr_550e8400-e29b-41d4-a716-446655440000/reset-password \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{

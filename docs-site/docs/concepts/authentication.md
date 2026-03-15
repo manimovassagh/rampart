@@ -128,40 +128,19 @@ Client                         Rampart                        User
 
 Rampart uses industry-standard password hashing algorithms to protect stored credentials.
 
-### bcrypt (Default)
+### Argon2id (Default)
 
-The default hashing algorithm is **bcrypt** with a cost factor of **12**:
-
-- Approximately 250ms to compute per hash on modern hardware
-- Each hash includes a unique random salt
-- Brute-force attacks are computationally prohibitive
-- The cost factor is configurable and can be increased as hardware improves
-
-### Argon2id (Recommended for New Deployments)
-
-Rampart also supports **Argon2id**, the winner of the Password Hashing Competition and the current OWASP recommendation:
+The default and only hashing algorithm for user passwords is **argon2id**, the winner of the Password Hashing Competition and the current OWASP recommendation:
 
 - Memory-hard — resistant to GPU and ASIC attacks
-- Configurable parameters: memory cost, time cost, parallelism
 - Default parameters: 64 MB memory, 3 iterations, 4 threads
+- 16-byte cryptographically random salt per password
+- 32-byte key length
+- Output in PHC string format: `$argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>`
 
-**Configuration:**
+These parameters are defined as constants in the `internal/auth` package.
 
-```yaml
-auth:
-  password_hashing:
-    algorithm: argon2id  # or "bcrypt"
-    bcrypt:
-      cost: 12
-    argon2id:
-      memory: 65536    # 64 MB in KiB
-      iterations: 3
-      parallelism: 4
-      salt_length: 16
-      key_length: 32
-```
-
-**Automatic rehashing:** When a user logs in and their password is hashed with an older algorithm or lower parameters, Rampart transparently rehashes the password with the current configuration. This allows gradual migration from bcrypt to Argon2id without requiring users to reset their passwords.
+OAuth client secrets use **bcrypt** for hashing, since they are high-entropy random strings that do not benefit from argon2id's memory-hardness.
 
 ### Password Policy
 

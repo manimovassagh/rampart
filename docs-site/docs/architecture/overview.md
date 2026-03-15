@@ -101,8 +101,10 @@ Rampart follows standard Go project layout conventions:
 ```
 rampart/
 ├── cmd/
-│   └── rampart/
-│       └── main.go              # Entry point, wires dependencies
+│   ├── rampart/
+│   │   └── main.go              # Server entry point, wires dependencies
+│   └── rampart-cli/
+│       └── main.go              # CLI tool entry point
 ├── internal/
 │   ├── apierror/                # Structured API error types
 │   ├── audit/                   # Audit event logging
@@ -129,6 +131,8 @@ rampart/
 │   ├── token/                   # JWT token issuance and validation
 │   └── webhook/                 # Webhook dispatch and delivery retry
 ├── migrations/                  # SQL migration files
+├── adapters/                    # Official SDK adapters (Node, Go, Python, etc.)
+├── cookbook/                     # Complete sample applications
 ├── docs/                        # API specs, architecture docs
 └── docs-site/                   # Docusaurus documentation site
 ```
@@ -146,7 +150,9 @@ rampart/
 Rampart compiles to a single static binary with the admin and login UIs (built with htmx, Go templates, and Tailwind CSS) embedded via Go's `embed` package. No external file dependencies, no runtime installations, no containers required (though Docker is supported).
 
 ```bash
-# Deploy Rampart (configured via environment variables)
+# Deploy Rampart (configured entirely via environment variables)
+export RAMPART_DB_URL="postgres://user:pass@host:5432/rampart"
+export RAMPART_ISSUER="https://auth.example.com"
 ./rampart
 ```
 

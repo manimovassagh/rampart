@@ -72,7 +72,7 @@ Configurable per organization:
 |----------|-------|
 | Format | JWT (RFC 7519) |
 | Signing algorithm | RS256 (RSA 2048-bit minimum) |
-| Default lifetime | 1 hour |
+| Default lifetime | 15 minutes (900 seconds) |
 | Configurable lifetime | Yes (via `RAMPART_ACCESS_TOKEN_TTL` env var) |
 | Storage | Not stored server-side (stateless validation via signature) |
 

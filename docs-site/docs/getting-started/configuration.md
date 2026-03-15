@@ -67,6 +67,7 @@ Both values are integers representing seconds.
 | `RAMPART_SECURE_COOKIES` | Set the `Secure` flag on all cookies (requires HTTPS) | `false` |
 | `RAMPART_ENCRYPTION_KEY` | Hex-encoded 32-byte key for encrypting secrets at rest | (none — secrets stored in plaintext) |
 | `RAMPART_METRICS_TOKEN` | Bearer token required to access `/metrics` endpoint | (none — endpoint disabled) |
+| `RAMPART_TRUSTED_PROXIES` | Comma-separated CIDR ranges or IPs whose `X-Forwarded-For` / `X-Real-IP` headers are trusted for rate limiting | (none — proxy headers ignored) |
 
 ### Rate Limiting
 

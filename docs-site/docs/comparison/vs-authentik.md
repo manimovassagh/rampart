@@ -70,8 +70,9 @@ A minimum Authentik deployment runs 4 containers. The server and worker are sepa
 ### Rampart
 
 ```bash
-# Option 1: Single binary
-./rampart serve --config rampart.yaml
+# Option 1: Single binary (configured via environment variables)
+export RAMPART_DB_URL="postgres://localhost:5432/rampart"
+./rampart
 
 # Option 2: Docker (single container)
 docker run -p 8080:8080 rampart/rampart:latest
