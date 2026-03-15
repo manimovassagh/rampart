@@ -661,7 +661,9 @@ func TestMiscHandlers_SCIMGetGroup(t *testing.T) {
 	r := chi.NewRouter()
 	r.Get("/scim/v2/Groups/{id}", h.GetGroup)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/scim/v2/Groups/"+g.ID.String(), http.NoBody))
+	req := httptest.NewRequest(http.MethodGet, "/scim/v2/Groups/"+g.ID.String(), http.NoBody)
+	req = req.WithContext(scimCtx(g.OrgID))
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
 	}
@@ -735,11 +737,13 @@ func TestMiscHandlers_SCIMCreateGroupBadJSON(t *testing.T) {
 
 func TestMiscHandlers_SCIMUpdateGroup(t *testing.T) {
 	g := newTestGroup()
-	h := NewSCIMHandler(&mockSCIMStore{updateGroup: g}, noopLogger())
+	h := NewSCIMHandler(&mockSCIMStore{group: g, updateGroup: g}, noopLogger())
 	r := chi.NewRouter()
 	r.Put("/scim/v2/Groups/{id}", h.UpdateGroup)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPut, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(`{"displayName":"Up"}`)))
+	req := httptest.NewRequest(http.MethodPut, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(`{"displayName":"Up"}`))
+	req = req.WithContext(scimCtx(g.OrgID))
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
 	}
@@ -757,11 +761,14 @@ func TestMiscHandlers_SCIMUpdateGroupBadID(t *testing.T) {
 }
 
 func TestMiscHandlers_SCIMUpdateGroupStoreErr(t *testing.T) {
-	h := NewSCIMHandler(&mockSCIMStore{updateGrpErr: fmt.Errorf("db")}, noopLogger())
+	g := newTestGroup()
+	h := NewSCIMHandler(&mockSCIMStore{group: g, updateGrpErr: fmt.Errorf("db")}, noopLogger())
 	r := chi.NewRouter()
 	r.Put("/scim/v2/Groups/{id}", h.UpdateGroup)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPut, "/scim/v2/Groups/"+uuid.New().String(), strings.NewReader(`{"displayName":"x"}`)))
+	req := httptest.NewRequest(http.MethodPut, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(`{"displayName":"x"}`))
+	req = req.WithContext(scimCtx(g.OrgID))
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("status = %d", w.Code)
 	}
@@ -774,7 +781,9 @@ func TestMiscHandlers_SCIMPatchGroupAdd(t *testing.T) {
 	r.Patch("/scim/v2/Groups/{id}", h.PatchGroup)
 	body := fmt.Sprintf(`{"schemas":[],"Operations":[{"op":"add","path":"members","value":[{"value":%q}]}]}`, uuid.New().String())
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPatch, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(body)))
+	req := httptest.NewRequest(http.MethodPatch, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(body))
+	req = req.WithContext(scimCtx(g.OrgID))
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
 	}
@@ -787,7 +796,9 @@ func TestMiscHandlers_SCIMPatchGroupRemove(t *testing.T) {
 	r.Patch("/scim/v2/Groups/{id}", h.PatchGroup)
 	body := fmt.Sprintf(`{"schemas":[],"Operations":[{"op":"remove","path":"members[value eq \"%s\"]"}]}`, uuid.New().String())
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPatch, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(body)))
+	req := httptest.NewRequest(http.MethodPatch, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(body))
+	req = req.WithContext(scimCtx(g.OrgID))
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
 	}
@@ -799,7 +810,9 @@ func TestMiscHandlers_SCIMPatchGroupReplace(t *testing.T) {
 	r := chi.NewRouter()
 	r.Patch("/scim/v2/Groups/{id}", h.PatchGroup)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPatch, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(`{"schemas":[],"Operations":[{"op":"replace","path":"displayName","value":"R"}]}`)))
+	req := httptest.NewRequest(http.MethodPatch, "/scim/v2/Groups/"+g.ID.String(), strings.NewReader(`{"schemas":[],"Operations":[{"op":"replace","path":"displayName","value":"R"}]}`))
+	req = req.WithContext(scimCtx(g.OrgID))
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
 	}
@@ -828,11 +841,14 @@ func TestMiscHandlers_SCIMPatchGroupNotFound(t *testing.T) {
 }
 
 func TestMiscHandlers_SCIMDeleteGroup(t *testing.T) {
-	h := NewSCIMHandler(&mockSCIMStore{}, noopLogger())
+	g := newTestGroup()
+	h := NewSCIMHandler(&mockSCIMStore{group: g}, noopLogger())
 	r := chi.NewRouter()
 	r.Delete("/scim/v2/Groups/{id}", h.DeleteGroup)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/scim/v2/Groups/"+uuid.New().String(), http.NoBody))
+	req := httptest.NewRequest(http.MethodDelete, "/scim/v2/Groups/"+g.ID.String(), http.NoBody)
+	req = req.WithContext(scimCtx(g.OrgID))
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNoContent {
 		t.Errorf("status = %d", w.Code)
 	}
@@ -850,11 +866,14 @@ func TestMiscHandlers_SCIMDeleteGroupBadID(t *testing.T) {
 }
 
 func TestMiscHandlers_SCIMDeleteGroupStoreErr(t *testing.T) {
-	h := NewSCIMHandler(&mockSCIMStore{deleteGrpErr: fmt.Errorf("db")}, noopLogger())
+	g := newTestGroup()
+	h := NewSCIMHandler(&mockSCIMStore{group: g, deleteGrpErr: fmt.Errorf("db")}, noopLogger())
 	r := chi.NewRouter()
 	r.Delete("/scim/v2/Groups/{id}", h.DeleteGroup)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/scim/v2/Groups/"+uuid.New().String(), http.NoBody))
+	req := httptest.NewRequest(http.MethodDelete, "/scim/v2/Groups/"+g.ID.String(), http.NoBody)
+	req = req.WithContext(scimCtx(g.OrgID))
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("status = %d", w.Code)
 	}

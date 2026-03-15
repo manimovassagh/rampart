@@ -25,9 +25,9 @@ func (db *DB) CreateMFADevice(ctx context.Context, userID uuid.UUID, deviceType,
 	err = db.Pool.QueryRow(ctx,
 		`INSERT INTO mfa_devices (user_id, device_type, name, secret)
 		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, user_id, device_type, name, secret, verified, created_at, updated_at`,
+		 RETURNING id, user_id, device_type, name, secret, verified, last_used_at, created_at, updated_at`,
 		userID, deviceType, name, encSecret,
-	).Scan(&d.ID, &d.UserID, &d.DeviceType, &d.Name, &d.Secret, &d.Verified, &d.CreatedAt, &d.UpdatedAt)
+	).Scan(&d.ID, &d.UserID, &d.DeviceType, &d.Name, &d.Secret, &d.Verified, &d.LastUsedAt, &d.CreatedAt, &d.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("inserting MFA device: %w", err)
 	}
@@ -66,11 +66,11 @@ func (db *DB) GetVerifiedMFADevice(ctx context.Context, userID uuid.UUID) (*mode
 
 	var d model.MFADevice
 	err := db.Pool.QueryRow(ctx,
-		`SELECT id, user_id, device_type, name, secret, verified, created_at, updated_at
+		`SELECT id, user_id, device_type, name, secret, verified, last_used_at, created_at, updated_at
 		 FROM mfa_devices WHERE user_id = $1 AND verified = true AND device_type = 'totp'
 		 LIMIT 1`,
 		userID,
-	).Scan(&d.ID, &d.UserID, &d.DeviceType, &d.Name, &d.Secret, &d.Verified, &d.CreatedAt, &d.UpdatedAt)
+	).Scan(&d.ID, &d.UserID, &d.DeviceType, &d.Name, &d.Secret, &d.Verified, &d.LastUsedAt, &d.CreatedAt, &d.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -91,11 +91,11 @@ func (db *DB) GetPendingMFADevice(ctx context.Context, userID uuid.UUID) (*model
 
 	var d model.MFADevice
 	err := db.Pool.QueryRow(ctx,
-		`SELECT id, user_id, device_type, name, secret, verified, created_at, updated_at
+		`SELECT id, user_id, device_type, name, secret, verified, last_used_at, created_at, updated_at
 		 FROM mfa_devices WHERE user_id = $1 AND verified = false AND device_type = 'totp'
 		 ORDER BY created_at DESC LIMIT 1`,
 		userID,
-	).Scan(&d.ID, &d.UserID, &d.DeviceType, &d.Name, &d.Secret, &d.Verified, &d.CreatedAt, &d.UpdatedAt)
+	).Scan(&d.ID, &d.UserID, &d.DeviceType, &d.Name, &d.Secret, &d.Verified, &d.LastUsedAt, &d.CreatedAt, &d.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -166,6 +166,21 @@ func (db *DB) StoreBackupCodes(ctx context.Context, userID uuid.UUID, codeHashes
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+// UpdateMFADeviceLastUsedAt records the TOTP time step to prevent replay attacks.
+func (db *DB) UpdateMFADeviceLastUsedAt(ctx context.Context, deviceID uuid.UUID, lastUsedAt int64) error {
+	ctx, cancel := queryCtx(ctx)
+	defer cancel()
+
+	_, err := db.Pool.Exec(ctx,
+		`UPDATE mfa_devices SET last_used_at = $1, updated_at = now() WHERE id = $2`,
+		lastUsedAt, deviceID,
+	)
+	if err != nil {
+		return fmt.Errorf("updating MFA last_used_at: %w", err)
+	}
+	return nil
 }
 
 // ConsumeBackupCode marks a backup code as used if the hash matches.

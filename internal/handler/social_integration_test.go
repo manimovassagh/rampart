@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -226,6 +227,7 @@ func TestSocialCallbackInvalidStateTableDriven(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "xyz",
 		ProviderState: "valid-provider-state",
+		Timestamp:     time.Now().Unix(),
 	}
 	validCookie, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -385,6 +387,7 @@ func TestSocialCallbackProviderExchangeFails(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-456",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -427,6 +430,7 @@ func TestSocialCallbackProviderReturnsNoEmail(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-789",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -478,6 +482,7 @@ func TestSocialCallbackSuccessLinksExistingUser(t *testing.T) {
 		State:         "client-state-abc",
 		CodeChallenge: "challengeXYZ",
 		ProviderState: "provider-state-link",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -528,6 +533,7 @@ func TestSocialCallbackCookieClearedAfterCallback(t *testing.T) {
 		State:         "state-clear",
 		CodeChallenge: "challenge",
 		ProviderState: "pstate-clear",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {

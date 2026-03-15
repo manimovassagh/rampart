@@ -1,0 +1,1 @@
+ALTER TABLE mfa_devices ADD COLUMN last_used_at BIGINT NOT NULL DEFAULT 0;

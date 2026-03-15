@@ -36,16 +36,19 @@ func TestValidateCodeRoundTrip(t *testing.T) {
 	}
 	// We can't easily test a valid code without reimplementing the generation,
 	// but we can verify that invalid codes are rejected
-	if ValidateCode(secret, "000000") && ValidateCode(secret, "111111") && ValidateCode(secret, "999999") {
+	ok1, _ := ValidateCode(secret, "000000", 0)
+	ok2, _ := ValidateCode(secret, "111111", 0)
+	ok3, _ := ValidateCode(secret, "999999", 0)
+	if ok1 && ok2 && ok3 {
 		t.Fatal("all codes validated — something is wrong")
 	}
 }
 
 func TestValidateCodeWrongLength(t *testing.T) {
-	if ValidateCode("JBSWY3DPEHPK3PXP", "12345") {
+	if ok, _ := ValidateCode("JBSWY3DPEHPK3PXP", "12345", 0); ok {
 		t.Fatal("should reject 5-digit code")
 	}
-	if ValidateCode("JBSWY3DPEHPK3PXP", "1234567") {
+	if ok, _ := ValidateCode("JBSWY3DPEHPK3PXP", "1234567", 0); ok {
 		t.Fatal("should reject 7-digit code")
 	}
 }

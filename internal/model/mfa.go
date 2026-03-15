@@ -14,6 +14,7 @@ type MFADevice struct {
 	Name       string
 	Secret     string `json:"-"`
 	Verified   bool
+	LastUsedAt int64
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }

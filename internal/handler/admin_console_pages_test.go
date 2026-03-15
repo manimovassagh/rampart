@@ -314,7 +314,7 @@ func TestAdminConsolePagesOrgDetailPage(t *testing.T) {
 	r := chi.NewRouter()
 	r.Get("/admin/organizations/{id}", h.OrgDetailPage)
 
-	req := getRequest("/admin/organizations/"+orgID.String(), uuid.New(), uuid.New())
+	req := getRequest("/admin/organizations/"+orgID.String(), uuid.New(), orgID)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -348,7 +348,7 @@ func TestAdminConsolePagesUpdateOrgActionSuccess(t *testing.T) {
 	r.Post("/admin/organizations/{id}", h.UpdateOrgAction)
 
 	form := url.Values{"name": {"Updated Org"}, "display_name": {"Updated"}, "enabled": {"true"}}
-	req := formRequest("/admin/organizations/"+orgID.String(), form, uuid.New(), uuid.New())
+	req := formRequest("/admin/organizations/"+orgID.String(), form, uuid.New(), orgID)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -421,7 +421,7 @@ func TestAdminConsolePagesDeleteOrgActionDefaultOrg(t *testing.T) {
 	r.Post("/admin/organizations/{id}/delete", h.DeleteOrgAction)
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/organizations/"+orgID.String()+"/delete", http.NoBody)
-	req = req.WithContext(authContext(uuid.New(), uuid.New()))
+	req = req.WithContext(authContext(uuid.New(), orgID))
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

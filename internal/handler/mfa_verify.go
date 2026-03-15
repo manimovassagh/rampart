@@ -126,7 +126,7 @@ func (h *MFAVerifyHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Try TOTP code first, then backup code
-	valid := mfa.ValidateCode(device.Secret, req.Code)
+	valid, usedStep := mfa.ValidateCode(device.Secret, req.Code, device.LastUsedAt)
 	if !valid {
 		// Try as backup code
 		codeHash := mfa.HashBackupCode(req.Code)
@@ -163,6 +163,13 @@ func (h *MFAVerifyHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 
 		apierror.Unauthorized(w, "Invalid MFA code.")
 		return
+	}
+
+	// MFA passed — record the time step to prevent replay attacks
+	if usedStep > 0 {
+		if err := h.store.UpdateMFADeviceLastUsedAt(ctx, device.ID, usedStep); err != nil {
+			h.logger.Warn("failed to update MFA last_used_at", "error", err)
+		}
 	}
 
 	// MFA passed — issue real tokens

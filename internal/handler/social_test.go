@@ -350,6 +350,7 @@ func TestSocialCallbackStateMismatch(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "xyz",
 		ProviderState: "correct-provider-state",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -395,6 +396,7 @@ func TestSocialCallbackSuccessCreatesUser(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-123",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -477,6 +479,7 @@ func TestCookieSignAndVerify(t *testing.T) {
 		State:         "state-abc",
 		CodeChallenge: "challenge",
 		ProviderState: "pstate",
+		Timestamp:     time.Now().Unix(),
 	}
 
 	signed, err := h.signCookiePayload(&payload)
@@ -559,6 +562,7 @@ func TestSocialCallbackExistingSocialAccountLinksUser(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-existing",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -605,6 +609,7 @@ func TestSocialCallbackStoreCodeError(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-err",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -680,6 +685,7 @@ func TestSocialCallbackNewUserHasNonEmptyPasswordHash(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "xyz",
 		ProviderState: "provider-state-pw",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {
@@ -842,6 +848,7 @@ func TestCallback_UnverifiedEmail_Returns403(t *testing.T) {
 		State:         "original-state",
 		CodeChallenge: "challenge",
 		ProviderState: "provider-state-abc",
+		Timestamp:     time.Now().Unix(),
 	}
 	cookieValue, err := h.signCookiePayload(&payload)
 	if err != nil {

@@ -73,6 +73,9 @@ func (m *mockMFAStore) StoreBackupCodes(_ context.Context, _ uuid.UUID, _ [][]by
 func (m *mockMFAStore) ConsumeBackupCode(_ context.Context, _ uuid.UUID, _ []byte) (bool, error) {
 	return false, nil
 }
+func (m *mockMFAStore) UpdateMFADeviceLastUsedAt(_ context.Context, _ uuid.UUID, _ int64) error {
+	return nil
+}
 
 const testTOTPSecret = "JBSWY3DPEHPK3PXP"
 
