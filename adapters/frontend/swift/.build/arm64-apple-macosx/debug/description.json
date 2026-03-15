@@ -1,0 +1,241 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.Rampart-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/sources",
+      "importPath" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClaims.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartError.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "Rampart",
+      "moduleOutputPath" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Modules/Rampart.swiftmodule",
+      "objects" : [
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClaims.swift.o",
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClient.swift.o",
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartError.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx12.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/include/Rampart-Swift.h",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "swift"
+      ],
+      "outputFileMapPath" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClaims.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartError.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Modules/Rampart.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClaims.swift",
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClient.swift",
+        "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartError.swift"
+      ],
+      "tempsPath" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "Rampart" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "Rampart",
+      "-package-name",
+      "swift",
+      "-c",
+      "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClaims.swift",
+      "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClient.swift",
+      "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartError.swift",
+      "-I",
+      "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx12.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/include/Rampart-Swift.h",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "swift",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "Rampart" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClaims.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartError.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/sources"
+    },
+    "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+    }
+  }
+}

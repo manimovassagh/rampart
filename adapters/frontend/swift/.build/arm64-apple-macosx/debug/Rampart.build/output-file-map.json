@@ -1,0 +1,26 @@
+{
+  "": {
+    "swift-dependencies": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/master.swiftdeps"
+  },
+  "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClaims.swift": {
+    "dependencies": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClaims.d",
+    "object": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClaims.swift.o",
+    "swiftmodule": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClaims~partial.swiftmodule",
+    "swift-dependencies": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClaims.swiftdeps",
+    "diagnostics": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClaims.dia"
+  },
+  "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartClient.swift": {
+    "dependencies": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClient.d",
+    "object": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClient.swift.o",
+    "swiftmodule": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClient~partial.swiftmodule",
+    "swift-dependencies": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClient.swiftdeps",
+    "diagnostics": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartClient.dia"
+  },
+  "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/Sources/Rampart/RampartError.swift": {
+    "dependencies": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartError.d",
+    "object": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartError.swift.o",
+    "swiftmodule": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartError~partial.swiftmodule",
+    "swift-dependencies": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartError.swiftdeps",
+    "diagnostics": "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/RampartError.dia"
+  }
+}
