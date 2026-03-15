@@ -8,7 +8,7 @@ const METRICS = [
   {value: '<1s', label: 'Startup'},
   {value: '~30MB', label: 'Memory'},
   {value: '1', label: 'Binary'},
-  {value: '7', label: 'SDK Adapters'},
+  {value: '8', label: 'SDK Adapters'},
 ];
 
 const FEATURES = [
@@ -16,7 +16,7 @@ const FEATURES = [
     icon: '\uD83D\uDD10',
     title: 'OAuth 2.0 + OIDC',
     description:
-      'Full RFC 6749 / OpenID Connect compliant. Authorization code + PKCE, client credentials, refresh tokens, device flow.',
+      'Full RFC 6749 / OpenID Connect compliant. Authorization code + PKCE, client credentials, refresh tokens.',
   },
   {
     icon: '\uD83D\uDC65',
@@ -52,19 +52,37 @@ const FEATURES = [
     icon: '\u23F1\uFE0F',
     title: 'Session Management',
     description:
-      'Redis-backed sessions with token blacklisting. View and revoke active sessions per user.',
+      'PostgreSQL-backed sessions with token rotation. View and revoke active sessions per user.',
   },
   {
     icon: '\u2328\uFE0F',
     title: 'CLI Tool',
     description:
-      'rampart-cli for server management, user provisioning, and developer auth via device flow.',
+      'rampart-cli for server management, user provisioning, and development workflows.',
   },
   {
     icon: '\uD83D\uDCE6',
     title: 'Single Binary',
     description:
       'One binary, zero external dependencies at runtime. UI embedded. Deploy anywhere in seconds.',
+  },
+  {
+    icon: '\uD83C\uDF10',
+    title: 'Social Login',
+    description:
+      'Google, GitHub, and Apple sign-in out of the box. One-click configuration in the admin console.',
+  },
+  {
+    icon: '\uD83D\uDD17',
+    title: 'SAML 2.0',
+    description:
+      'Service Provider and Identity Provider support for enterprise single sign-on.',
+  },
+  {
+    icon: '\uD83D\uDD14',
+    title: 'Webhooks',
+    description:
+      'HMAC-signed event delivery for user lifecycle, login, and admin actions. Configurable per event type.',
   },
 ];
 
@@ -75,12 +93,12 @@ const COMPARISON = {
     ['Memory usage', '~30MB', '~512MB+', '~50MB', '~100MB', '~300MB'],
     ['Single binary', 'Yes', 'No (JVM)', 'Yes', 'Yes', 'No (Python)'],
     ['Admin UI', 'Built-in', 'Built-in', 'None', 'Built-in', 'Built-in'],
-    ['Login theming', '10+ themes', 'FreeMarker', 'BYO', 'Limited', 'Limited'],
+    ['Login theming', '5 themes', 'FreeMarker', 'BYO', 'Limited', 'Limited'],
     ['PKCE support', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes'],
     ['Multi-tenant', 'Native', 'Realms', 'No', 'Yes', 'Tenants'],
     ['CLI tool', 'Yes', 'kcadm.sh', 'Yes', 'Yes', 'No'],
     ['Database', 'PostgreSQL', 'Many DBs', 'PostgreSQL', 'CockroachDB', 'PostgreSQL'],
-    ['SDK adapters', 'Node/React/Go', 'Java-first', 'REST only', 'Go/gRPC', 'Python-first'],
+    ['SDK adapters', '8 SDKs', 'Java-first', 'REST only', 'Go/gRPC', 'Python-first'],
   ],
 };
 
@@ -90,14 +108,14 @@ const SDKS = [
   {name: 'Next.js', icon: '\u25B2'},
   {name: 'Go', icon: '\uD83D\uDC39'},
   {name: 'Python', icon: '\uD83D\uDC0D'},
-  {name: 'Spring Boot', icon: '\uD83C\uDF31'},
+  {name: 'Spring Boot', icon: '\u2615'},
+  {name: '.NET', icon: '\uD83D\uDFEA'},
   {name: 'Web / JS', icon: '\uD83C\uDF10'},
-  {name: 'Docker', icon: '\uD83D\uDC33'},
 ];
 
 function getRampartCellClass(rampart: string, others: string[]): string {
   const rampartLower = rampart.toLowerCase();
-  if (rampartLower === 'yes' || rampartLower.includes('<1') || rampartLower.includes('~30mb') || rampartLower.includes('native') || rampartLower.includes('10+') || rampartLower.includes('built-in')) {
+  if (rampartLower === 'yes' || rampartLower.includes('<1') || rampartLower.includes('~30mb') || rampartLower.includes('native') || rampartLower.includes('8 sdk') || rampartLower.includes('5 theme') || rampartLower.includes('built-in')) {
     return 'win';
   }
   return '';
