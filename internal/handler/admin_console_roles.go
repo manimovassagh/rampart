@@ -211,14 +211,33 @@ func (h *AdminConsoleHandler) AssignRoleAction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if err := h.store.AssignRole(r.Context(), userID, roleID); err != nil {
+	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	adminOrgID := authUser.OrgID
+
+	// Verify the target user belongs to the admin's organization
+	targetUser, err := h.store.GetUserByID(ctx, userID)
+	if err != nil || targetUser == nil || targetUser.OrgID != adminOrgID {
+		middleware.SetFlash(w, "User not found.")
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
+		return
+	}
+
+	// Verify the role belongs to the admin's organization
+	role, err := h.store.GetRoleByID(ctx, roleID)
+	if err != nil || role == nil || role.OrgID != adminOrgID {
+		middleware.SetFlash(w, msgInvalidRole)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
+		return
+	}
+
+	if err := h.store.AssignRole(ctx, userID, roleID); err != nil {
 		h.logger.Error("failed to assign role", "error", err)
 		middleware.SetFlash(w, "Failed to assign role.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
-	authUser := middleware.GetAuthenticatedUser(r.Context())
 	h.auditLog(r, authUser.OrgID, model.EventRoleAssigned, "user", userID.String(), roleID.String())
 
 	middleware.SetFlash(w, "Role assigned.")
@@ -240,14 +259,33 @@ func (h *AdminConsoleHandler) UnassignRoleAction(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := h.store.UnassignRole(r.Context(), userID, roleID); err != nil {
+	ctx := r.Context()
+	unassignAuthUser := middleware.GetAuthenticatedUser(ctx)
+	adminOrgID := unassignAuthUser.OrgID
+
+	// Verify the target user belongs to the admin's organization
+	targetUser, err := h.store.GetUserByID(ctx, userID)
+	if err != nil || targetUser == nil || targetUser.OrgID != adminOrgID {
+		middleware.SetFlash(w, "User not found.")
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
+		return
+	}
+
+	// Verify the role belongs to the admin's organization
+	role, err := h.store.GetRoleByID(ctx, roleID)
+	if err != nil || role == nil || role.OrgID != adminOrgID {
+		middleware.SetFlash(w, msgInvalidRole)
+		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
+		return
+	}
+
+	if err := h.store.UnassignRole(ctx, userID, roleID); err != nil {
 		h.logger.Error("failed to unassign role", "error", err)
 		middleware.SetFlash(w, "Failed to remove role.")
 		http.Redirect(w, r, fmt.Sprintf(pathAdminUserFmt, userID), http.StatusFound)
 		return
 	}
 
-	unassignAuthUser := middleware.GetAuthenticatedUser(r.Context())
 	h.auditLog(r, unassignAuthUser.OrgID, model.EventRoleUnassigned, "user", userID.String(), roleID.String())
 
 	middleware.SetFlash(w, "Role removed.")

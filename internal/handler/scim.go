@@ -368,8 +368,9 @@ func (h *SCIMHandler) GetGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orgID := scimOrgID(r)
 	group, err := h.store.GetGroupByID(ctx, id)
-	if err != nil || group == nil {
+	if err != nil || group == nil || group.OrgID != orgID {
 		h.scimError(w, http.StatusNotFound, "Group not found.")
 		return
 	}
@@ -422,9 +423,17 @@ func (h *SCIMHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 func (h *SCIMHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, scimMaxBodySize)
 	ctx := r.Context()
+	orgID := scimOrgID(r)
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		h.scimError(w, http.StatusBadRequest, "Invalid group ID.")
+		return
+	}
+
+	// Verify group belongs to the caller's organization
+	existing, err := h.store.GetGroupByID(ctx, id)
+	if err != nil || existing == nil || existing.OrgID != orgID {
+		h.scimError(w, http.StatusNotFound, "Group not found.")
 		return
 	}
 
@@ -452,9 +461,17 @@ func (h *SCIMHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 func (h *SCIMHandler) PatchGroup(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, scimMaxBodySize)
 	ctx := r.Context()
+	orgID := scimOrgID(r)
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		h.scimError(w, http.StatusBadRequest, "Invalid group ID.")
+		return
+	}
+
+	// Verify group belongs to the caller's organization
+	existing, err := h.store.GetGroupByID(ctx, id)
+	if err != nil || existing == nil || existing.OrgID != orgID {
+		h.scimError(w, http.StatusNotFound, "Group not found.")
 		return
 	}
 
@@ -498,6 +515,14 @@ func (h *SCIMHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		h.scimError(w, http.StatusBadRequest, "Invalid group ID.")
+		return
+	}
+
+	// Verify group belongs to the caller's organization
+	orgID := scimOrgID(r)
+	group, err := h.store.GetGroupByID(r.Context(), id)
+	if err != nil || group == nil || group.OrgID != orgID {
+		h.scimError(w, http.StatusNotFound, "Group not found.")
 		return
 	}
 
