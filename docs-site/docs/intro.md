@@ -26,7 +26,7 @@ Built in Go with PostgreSQL, Rampart starts in under 1 second and runs at approx
 - **SCIM 2.0 Provisioning** — Automated user and group provisioning from external identity providers
 - **Compliance Reporting** — Built-in reports for access reviews, login activity, and policy enforcement
 - **CLI Tool** — Manage users, inspect tokens, and authenticate via the command line
-- **SDK Adapters** — Official integrations for Node.js, React, Next.js, Go, Python, Spring Boot, .NET, and vanilla JavaScript
+- **SDK Adapters** — 15 official integrations for Node.js, React, Next.js, Go, Python, Spring Boot, .NET, Web/JS, Ruby, PHP, Rust, Flutter, React Native, Swift, and Kotlin
 - **Themeable Login Pages** — CSS variable-based themes, selectable per organization
 - **Low Resource Footprint** — ~30 MB memory, sub-second startup, minimal CPU usage
 

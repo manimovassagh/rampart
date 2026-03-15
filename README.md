@@ -78,7 +78,7 @@
 
 ## Official SDKs
 
-Eight adapters covering every major stack. Drop-in middleware and client libraries.
+15 adapters covering every major stack. Drop-in middleware and client libraries.
 
 ### Backend
 
@@ -87,8 +87,11 @@ Eight adapters covering every major stack. Drop-in middleware and client librari
 | **Node.js** | `@rampart-auth/node` | [![npm](https://img.shields.io/npm/v/@rampart-auth/node?logo=npm&label=npm)](https://www.npmjs.com/package/@rampart-auth/node) |
 | **Go** | `github.com/manimovassagh/rampart/adapters/backend/go` | [![Go](https://img.shields.io/badge/go-module-00ADD8?logo=go&logoColor=white)](https://pkg.go.dev/github.com/manimovassagh/rampart/adapters/backend/go) |
 | **Python** | `rampart-python` | [![PyPI](https://img.shields.io/pypi/v/rampart-python?logo=pypi&label=PyPI)](https://pypi.org/project/rampart-python/) |
-| **Spring Boot** | `rampart-spring-boot-starter` | [![Maven](https://img.shields.io/badge/Maven_Central-0.1.0-C71A36?logo=apachemaven&logoColor=white)](https://central.sonatype.com/artifact/io.github.manimovassagh/rampart-spring-boot-starter) |
+| **Spring Boot** | `rampart-spring-boot-starter` | [![Maven](https://img.shields.io/badge/Maven_Central-1.0.0-C71A36?logo=apachemaven&logoColor=white)](https://central.sonatype.com/artifact/io.github.manimovassagh/rampart-spring-boot-starter) |
 | **.NET** | `Rampart.AspNetCore` | [![NuGet](https://img.shields.io/nuget/v/Rampart.AspNetCore?logo=nuget&label=NuGet)](https://www.nuget.org/packages/Rampart.AspNetCore) |
+| **Ruby** | `rampart-ruby` | [![Gem](https://img.shields.io/badge/RubyGems-1.0.0-CC342D?logo=rubygems&logoColor=white)](https://rubygems.org/gems/rampart-ruby) |
+| **PHP** | `rampart/laravel` | [![Packagist](https://img.shields.io/badge/Packagist-1.0.0-F28D1A?logo=packagist&logoColor=white)](https://packagist.org/packages/rampart/laravel) |
+| **Rust** | `rampart-rust` | [![crates.io](https://img.shields.io/badge/crates.io-1.0.0-e6832f?logo=rust&logoColor=white)](https://crates.io/crates/rampart-rust) |
 
 ### Frontend
 
@@ -97,6 +100,10 @@ Eight adapters covering every major stack. Drop-in middleware and client librari
 | **Web** (vanilla JS/TS) | `@rampart-auth/web` | [![npm](https://img.shields.io/npm/v/@rampart-auth/web?logo=npm&label=npm)](https://www.npmjs.com/package/@rampart-auth/web) |
 | **React** | `@rampart-auth/react` | [![npm](https://img.shields.io/npm/v/@rampart-auth/react?logo=npm&label=npm)](https://www.npmjs.com/package/@rampart-auth/react) |
 | **Next.js** | `@rampart-auth/nextjs` | [![npm](https://img.shields.io/npm/v/@rampart-auth/nextjs?logo=npm&label=npm)](https://www.npmjs.com/package/@rampart-auth/nextjs) |
+| **React Native** | `@rampart-auth/react-native` | [![npm](https://img.shields.io/npm/v/@rampart-auth/react-native?logo=npm&label=npm)](https://www.npmjs.com/package/@rampart-auth/react-native) |
+| **Flutter** | `rampart_flutter` | [![pub.dev](https://img.shields.io/badge/pub.dev-1.0.0-02569B?logo=dart&logoColor=white)](https://pub.dev/packages/rampart_flutter) |
+| **Swift/iOS** | `Rampart` | [![SPM](https://img.shields.io/badge/SPM-1.0.0-FA7343?logo=swift&logoColor=white)](https://github.com/manimovassagh/rampart-swift) |
+| **Kotlin** | `com.rampart` | [![Maven](https://img.shields.io/badge/Maven_Central-1.0.0-C71A36?logo=apachemaven&logoColor=white)](https://central.sonatype.com/artifact/com.rampart/rampart-kotlin) |
 
 ---
 
@@ -151,6 +158,9 @@ The [`cookbook/`](cookbook/) directory contains a working integration example fo
 | [dotnet-backend](cookbook/dotnet-backend/) | C# + ASP.NET Core | JWT Bearer via `Rampart.AspNetCore` |
 | [react-app](cookbook/react-app/) | React | SPA with auth, routing, and RBAC |
 | [web-frontend](cookbook/web-frontend/) | Vanilla TS | OAuth PKCE flow via `@rampart-auth/web` |
+| [ruby-backend](cookbook/ruby-backend/) | Ruby + Sinatra | JWT verification via `rampart-ruby` |
+| [php-backend](cookbook/php-backend/) | PHP + Laravel | JWT verification via `rampart/laravel` |
+| [rust-backend](cookbook/rust-backend/) | Rust + Actix Web | JWT verification via `rampart-rust` |
 
 ---
 
@@ -187,7 +197,7 @@ Rampart is designed for the AI-first development era. Every adapter can be imple
 
 - **AI Integration Skill** -- `.github/copilot-instructions.md` provides decision trees, minimal code patterns, and common pitfalls for Claude, Copilot, Cursor, and Windsurf
 - **Copy-paste Quick Start** -- every adapter README contains working code that AI assistants can paste directly into your project
-- **Consistent API** -- all 5 backend adapters share the same JWT claims structure and error format, so switching stacks requires zero auth redesign
+- **Consistent API** -- all 8 backend adapters share the same JWT claims structure and error format, so switching stacks requires zero auth redesign
 - **Typed SDKs** -- TypeScript, Go structs, Python dataclasses, C# classes, and Java POJOs provide full autocomplete and type safety in any AI-assisted IDE
 
 ```

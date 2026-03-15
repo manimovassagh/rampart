@@ -20,6 +20,13 @@ Rampart provides official SDK adapters as thin wrappers around its standard OAut
 | [`rampart-spring-boot`](./spring-boot.md) | Java (Spring Boot) | Enterprise Java applications |
 | [`Rampart.AspNetCore`](./dotnet.md) | .NET / ASP.NET Core | .NET APIs and web apps |
 | [`@rampart-auth/web`](./web.md) | JavaScript (Browser) | Framework-agnostic SPAs with PKCE |
+| [`rampart-ruby`](./ruby.md) | Ruby (Rails, Sinatra) | Ruby backend APIs and web apps |
+| [`rampart-php`](./php.md) | PHP (Laravel, Symfony) | PHP backend APIs and web apps |
+| [`rampart-rust`](./rust.md) | Rust (Actix, Axum) | Rust microservices and APIs |
+| [`@rampart-auth/flutter`](./flutter.md) | Flutter (Dart) | Cross-platform mobile apps |
+| [`@rampart-auth/react-native`](./react-native.md) | React Native | iOS and Android mobile apps |
+| [`@rampart-auth/swift`](./swift.md) | Swift (iOS / macOS) | Native Apple platform apps |
+| [`@rampart-auth/kotlin`](./kotlin.md) | Kotlin (Android) | Native Android apps |
 
 ## Compatibility Matrix
 
@@ -33,6 +40,13 @@ Rampart provides official SDK adapters as thin wrappers around its standard OAut
 | `rampart-spring-boot` | Java 17+ / Spring Boot 3.x | v0.1+ | Yes | N/A | Yes | Yes |
 | `Rampart.AspNetCore` | .NET 8.0+ | v0.1+ | Yes | N/A | Yes | Yes |
 | `@rampart-auth/web` | Modern browsers (ES2020+) | v0.1+ | Yes | Yes | Yes | N/A |
+| `rampart-ruby` | Ruby 3.1+ | v0.1+ | Yes | N/A | Yes | Yes |
+| `rampart-php` | PHP 8.1+ | v0.1+ | Yes | N/A | Yes | Yes |
+| `rampart-rust` | Rust 1.70+ | v0.1+ | Yes | N/A | Yes | Yes |
+| `@rampart-auth/flutter` | Flutter 3.10+ / Dart 3.0+ | v0.1+ | Yes | Yes | Yes | Yes |
+| `@rampart-auth/react-native` | React Native 0.72+ | v0.1+ | Yes | Yes | Yes | Yes |
+| `@rampart-auth/swift` | Swift 5.9+ / iOS 16+ | v0.1+ | Yes | Yes | Yes | Yes |
+| `@rampart-auth/kotlin` | Kotlin 1.9+ / Android API 26+ | v0.1+ | Yes | Yes | Yes | Yes |
 
 ## Common Configuration
 
@@ -76,7 +90,7 @@ All adapters cache JWKS keys and refresh them automatically when key rotation oc
 
 ### Backend API (no browser)
 
-Use **`@rampart-auth/node`**, **`rampart-go`**, **`rampart-python`**, or **`rampart-spring-boot`** depending on your language. These adapters verify incoming bearer tokens from the `Authorization` header and extract user claims.
+Use **`@rampart-auth/node`**, **`rampart-go`**, **`rampart-python`**, **`rampart-spring-boot`**, **`Rampart.AspNetCore`**, **`rampart-ruby`**, **`rampart-php`**, or **`rampart-rust`** depending on your language. These adapters verify incoming bearer tokens from the `Authorization` header and extract user claims.
 
 ```
 Client (mobile app, CLI, other service)
@@ -148,3 +162,10 @@ Pick the adapter for your stack and follow the integration guide:
 - [Spring Boot](./spring-boot.md)
 - [.NET / ASP.NET Core](./dotnet.md)
 - [Web / JavaScript](./web.md)
+- [Ruby](./ruby.md)
+- [PHP](./php.md)
+- [Rust](./rust.md)
+- [Flutter](./flutter.md)
+- [React Native](./react-native.md)
+- [Swift / iOS](./swift.md)
+- [Kotlin / Android](./kotlin.md)

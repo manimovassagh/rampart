@@ -15,6 +15,9 @@ All backend samples listen on port **3001** and expose the same routes:
 | [fastapi-backend](./fastapi-backend/) | Python 3.9+, FastAPI, Uvicorn | [`rampart-python`](../adapters/backend/python/) | `pip install -r requirements.txt && python main.py` |
 | [spring-backend](./spring-backend/) | Java 17+, Spring Boot 3.3, Spring Security | [`rampart-spring-boot-starter`](../adapters/backend/spring/) | `./mvnw spring-boot:run` |
 | [dotnet-backend](./dotnet-backend/) | .NET 8, ASP.NET Core Minimal API | [`Rampart.AspNetCore`](../adapters/backend/dotnet/) | `dotnet run` |
+| [ruby-backend](./ruby-backend/) | Ruby 3.2+, Rails / Sinatra, Rack | [`rampart-ruby`](../adapters/backend/ruby/) | `bundle install && bundle exec ruby main.rb` |
+| [php-backend](./php-backend/) | PHP 8.2+, Laravel | [`rampart/laravel`](../adapters/backend/php/) | `composer install && php artisan serve --port=3001` |
+| [rust-backend](./rust-backend/) | Rust 1.75+, Actix-web | [`rampart-rust`](../adapters/backend/rust/) | `cargo run` |
 
 ### Frontend Samples
 
@@ -70,6 +73,24 @@ python main.py
 # Option D: Java / Spring Boot
 cd cookbook/spring-backend
 ./mvnw spring-boot:run
+
+# Option E: .NET
+cd cookbook/dotnet-backend
+dotnet run
+
+# Option F: Ruby / Rails
+cd cookbook/ruby-backend
+bundle install
+bundle exec ruby main.rb
+
+# Option G: PHP / Laravel
+cd cookbook/php-backend
+composer install
+php artisan serve --port=3001
+
+# Option H: Rust / Actix-web
+cd cookbook/rust-backend
+cargo run
 ```
 
 **Terminal 2 -- Start a frontend (choose one):**
@@ -154,6 +175,18 @@ For full API documentation, configuration options, and advanced usage of each ad
 
 - **Spring Boot** -- [`adapters/backend/spring/README.md`](../adapters/backend/spring/README.md)
   Package: `rampart-spring-boot-starter` | Spring Security OAuth2 Resource Server integration
+
+- **.NET** -- [`adapters/backend/dotnet/README.md`](../adapters/backend/dotnet/README.md)
+  Package: `Rampart.AspNetCore` (NuGet) | ASP.NET Core middleware for JWT verification
+
+- **Ruby** -- [`adapters/backend/ruby/README.md`](../adapters/backend/ruby/README.md)
+  Package: `rampart-ruby` (RubyGems) | Rack middleware for Rails and Sinatra
+
+- **PHP** -- [`adapters/backend/php/README.md`](../adapters/backend/php/README.md)
+  Package: `rampart/laravel` (Packagist) | Laravel and PSR-15 middleware
+
+- **Rust** -- [`adapters/backend/rust/README.md`](../adapters/backend/rust/README.md)
+  Package: `rampart-rust` (crates.io) | Actix-web and Axum middleware
 
 ### Frontend Adapters
 

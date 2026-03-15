@@ -53,6 +53,13 @@ const sidebars: SidebarsConfig = {
         'sdks/spring-boot',
         'sdks/dotnet',
         'sdks/web',
+        'sdks/ruby',
+        'sdks/php',
+        'sdks/rust',
+        'sdks/flutter',
+        'sdks/react-native',
+        'sdks/swift',
+        'sdks/kotlin',
       ],
     },
     {
