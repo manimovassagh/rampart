@@ -74,3 +74,4 @@ SECURITY_AUDIT.md
 docker-compose.override.yml
 firebase-debug.log
 /rampart
+internal/handler/static/node_modules/

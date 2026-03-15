@@ -123,3 +123,10 @@ dev-setup: setup-hooks
 ## tidy: run go mod tidy
 tidy:
 	go mod tidy
+
+.PHONY: admin-css admin-css-watch
+admin-css: ## Rebuild admin console CSS from Tailwind source
+	cd internal/handler/static && npm run build
+
+admin-css-watch: ## Watch mode for admin CSS development
+	cd internal/handler/static && npm run watch

@@ -1,0 +1,13 @@
+{
+  "name": "rampart-admin-css",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npx @tailwindcss/cli --input input.css --output admin.css --minify",
+    "watch": "npx @tailwindcss/cli --input input.css --output admin.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.1",
+    "tailwindcss": "^4.2.1"
+  }
+}
