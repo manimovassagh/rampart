@@ -79,3 +79,4 @@ adapters/backend/rust/target/
 adapters/frontend/swift/.build/
 adapters/backend/rust/Cargo.lock
 cookbook/rust-backend/target/
+cookbook/php-backend/vendor/
