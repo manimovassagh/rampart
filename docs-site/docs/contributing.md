@@ -326,4 +326,4 @@ Check the [GitHub issues](https://github.com/manimovassagh/rampart/issues) for i
 
 ## License
 
-By contributing to Rampart, you agree that your contributions will be licensed under the AGPL-3.0 license.
+By contributing to Rampart, you agree that your contributions will be licensed under the MIT license.

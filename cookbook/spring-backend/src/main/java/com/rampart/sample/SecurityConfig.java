@@ -105,6 +105,7 @@ public class SecurityConfig {
 
     /**
      * CORS configuration: allow all origins for local development.
+     * WARNING: Restrict to your frontend domain in production. Never use "*" in production.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

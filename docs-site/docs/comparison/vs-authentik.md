@@ -23,7 +23,7 @@ Authentik is an open-source identity provider built in Python (Django) with a fo
 | **Configuration** | YAML + REST API | Admin UI + REST API, YAML (limited) |
 | **Flow engine** | Standard OAuth 2.0/OIDC flows | Visual flow designer (stages, policies) |
 | **Protocol support** | OAuth 2.0, OIDC, SAML (planned) | OAuth 2.0, OIDC, SAML, LDAP, SCIM, Proxy |
-| **License** | AGPL-3.0 | MIT (recently changed from custom) |
+| **License** | MIT | MIT (recently changed from custom) |
 
 ## Performance
 
@@ -133,7 +133,7 @@ Authentik's proxy provider and LDAP outbound provider are particularly useful fo
 - **Protocol breadth.** SAML, LDAP outbound, SCIM, and proxy authentication are available today.
 - **Community and ecosystem.** Large, active community with extensive documentation and community-contributed blueprints.
 - **Blueprints.** Declarative YAML-based configuration as code for reproducible deployments.
-- **MIT license.** More permissive than AGPL-3.0.
+- **MIT license.** Same permissive license as Rampart.
 - **Maturity.** Production-tested with a large user base and active development.
 
 ## When to Choose Rampart
@@ -152,5 +152,5 @@ Authentik's proxy provider and LDAP outbound provider are particularly useful fo
 - You need SAML, LDAP, SCIM, or proxy authentication today.
 - Docker-based deployment is standard in your environment.
 - You want a large community with established documentation and support.
-- MIT licensing is preferred over AGPL-3.0.
+- MIT licensing parity with Rampart is important.
 - Performance at the level of hundreds of requests per second (not thousands) is sufficient.

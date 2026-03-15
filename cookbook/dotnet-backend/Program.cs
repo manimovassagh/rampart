@@ -70,6 +70,7 @@ builder.Services.AddAuthorization();
 
 // ---------------------------------------------------------------------------
 // CORS — allow all origins (matches the Express sample)
+// WARNING: Restrict to your frontend domain in production. Never use "*" in production.
 // ---------------------------------------------------------------------------
 builder.Services.AddCors(options =>
 {

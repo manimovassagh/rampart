@@ -26,8 +26,8 @@ Before implementation:
 
 ## Licensing
 
-- Server (Rampart core): AGPL-3.0 (unchanged)
-- All adapter packages: MIT — allows proprietary use without AGPL obligations
+- Server (Rampart core): MIT
+- All adapter packages: MIT
 - Each adapter directory gets its own MIT LICENSE file
 
 ## Phase 1: Publishing Blockers

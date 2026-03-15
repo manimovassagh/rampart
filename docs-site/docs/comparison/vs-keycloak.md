@@ -27,7 +27,7 @@ Both are excellent choices depending on your requirements. This page offers a fa
 | **Extension model** | Plugin system (planned) | Java SPIs |
 | **Protocol support** | OAuth 2.0, OIDC, SAML (planned) | OAuth 2.0, OIDC, SAML, LDAP, Kerberos |
 | **Multi-tenancy** | Built-in (organizations) | Realms |
-| **License** | AGPL-3.0 | Apache 2.0 |
+| **License** | MIT | Apache 2.0 |
 | **Maturity** | Early stage | 10+ years, battle-tested |
 
 ## Resource Usage

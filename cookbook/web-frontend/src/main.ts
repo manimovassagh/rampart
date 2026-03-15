@@ -76,26 +76,53 @@ function showAuth(user: {
   apiResponseSection.classList.add("hidden");
   callbackStatus.classList.add("hidden");
 
-  const verified = user.email_verified
-    ? '<span class="badge badge-green">verified</span>'
-    : '<span class="badge badge-yellow">unverified</span>';
-
   const name = [user.given_name, user.family_name].filter(Boolean).join(" ");
 
-  userInfo.innerHTML = `
-    <dl>
-      <dt>User</dt><dd>${user.preferred_username ?? user.username ?? "—"}</dd>
-      ${name ? `<dt>Name</dt><dd>${name}</dd>` : ""}
-      <dt>Email</dt><dd>${user.email} ${verified}</dd>
-      <dt>User ID</dt><dd>${user.id}</dd>
-      <dt>Org ID</dt><dd>${user.org_id}</dd>
-    </dl>
-  `;
+  // Build user info using safe DOM manipulation (no innerHTML to prevent XSS)
+  userInfo.textContent = "";
+  const dl = document.createElement("dl");
+
+  const addRow = (label: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    dl.appendChild(dt);
+    dl.appendChild(dd);
+  };
+
+  addRow("User", user.preferred_username ?? user.username ?? "\u2014");
+  if (name) addRow("Name", name);
+
+  // Email row with verified badge
+  const emailDt = document.createElement("dt");
+  emailDt.textContent = "Email";
+  const emailDd = document.createElement("dd");
+  emailDd.textContent = user.email + " ";
+  const badge = document.createElement("span");
+  badge.className = user.email_verified ? "badge badge-green" : "badge badge-yellow";
+  badge.textContent = user.email_verified ? "verified" : "unverified";
+  emailDd.appendChild(badge);
+  dl.appendChild(emailDt);
+  dl.appendChild(emailDd);
+
+  addRow("User ID", user.id);
+  addRow("Org ID", user.org_id);
+
+  userInfo.appendChild(dl);
 }
 
 function showApiResponse(endpoint: string, data: unknown, status: number) {
-  const color = status >= 200 && status < 300 ? "#4ade80" : "#f87171";
-  endpointLabel.innerHTML = `<code>${endpoint}</code> — <span style="color:${color}">${status}</span>`;
+  // Build endpoint label using safe DOM manipulation (no innerHTML to prevent XSS)
+  endpointLabel.textContent = "";
+  const code = document.createElement("code");
+  code.textContent = endpoint;
+  const statusSpan = document.createElement("span");
+  statusSpan.className = status >= 200 && status < 300 ? "status-success" : "status-error";
+  statusSpan.textContent = String(status);
+  endpointLabel.appendChild(code);
+  endpointLabel.appendChild(document.createTextNode(" \u2014 "));
+  endpointLabel.appendChild(statusSpan);
   apiResult.textContent = JSON.stringify(data, null, 2);
   apiResponseSection.classList.remove("hidden");
 }
@@ -103,7 +130,16 @@ function showApiResponse(endpoint: string, data: unknown, status: number) {
 // --- Unauthenticated endpoint tests ---
 
 function showUnauthResponse(endpoint: string, data: unknown, status: number) {
-  unauthEndpointLabel.innerHTML = `<code>${endpoint}</code> — <span style="color:#f87171">${status} Unauthorized</span>`;
+  // Build endpoint label using safe DOM manipulation (no innerHTML to prevent XSS)
+  unauthEndpointLabel.textContent = "";
+  const unauthCode = document.createElement("code");
+  unauthCode.textContent = endpoint;
+  const unauthStatus = document.createElement("span");
+  unauthStatus.className = "status-error";
+  unauthStatus.textContent = `${status} Unauthorized`;
+  unauthEndpointLabel.appendChild(unauthCode);
+  unauthEndpointLabel.appendChild(document.createTextNode(" \u2014 "));
+  unauthEndpointLabel.appendChild(unauthStatus);
   unauthResult.textContent = JSON.stringify(data, null, 2);
   unauthResponse.classList.remove("hidden");
 }

@@ -65,6 +65,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
     )
 
 
+# WARNING: Restrict to your frontend domain in production. Never use "*" in production.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

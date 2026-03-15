@@ -45,7 +45,7 @@
     "directory": "adapters/frontend/react"
   },
   "dependencies": {
-    "@rampart-auth/web": "^0.1.0"
+    "@rampart-auth/web": "^1.0.0"
   },
   "peerDependencies": {
     "react": ">=18"
