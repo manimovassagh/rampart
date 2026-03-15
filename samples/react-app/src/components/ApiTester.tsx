@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 
 interface Endpoint {
   label: string;

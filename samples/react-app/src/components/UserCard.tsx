@@ -1,4 +1,4 @@
-import type { RampartUser } from "@rampart/react";
+import type { RampartUser } from "@rampart-auth/react";
 
 interface UserCardProps {
   user: RampartUser;

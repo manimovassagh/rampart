@@ -73,7 +73,7 @@ Invalidates the refresh token on the server and clears local tokens.
 
 #### `isAuthenticated(): boolean`
 
-Returns `true` if an access token is present. Does not verify token expiry.
+Returns `true` if an access token is present and not expired. Checks expiry by decoding the JWT payload client-side (without cryptographic verification).
 
 #### `getAccessToken(): string | null`
 

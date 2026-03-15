@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 
 export function Landing() {
   const { loginWithRedirect } = useAuth();
@@ -27,7 +27,7 @@ export function Landing() {
         <p className="text-gray-500">
           Full-stack auth demo with{" "}
           <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm">
-            @rampart/react
+            @rampart-auth/react
           </code>
         </p>
       </div>

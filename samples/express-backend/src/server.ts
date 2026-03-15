@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { rampartAuth, requireRoles } from "@rampart/node";
+import { rampartAuth, requireRoles } from "@rampart-auth/node";
 
 const RAMPART_ISSUER = process.env.RAMPART_ISSUER ?? "http://localhost:8080";
 const PORT = Number(process.env.PORT ?? 3001);

@@ -9,7 +9,7 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@rampart/node": "file:../../adapters/backend/node",
+    "@rampart-auth/node": "^0.1.0",
     "cors": "^2.8.5",
     "express": "^5.0.0"
   },

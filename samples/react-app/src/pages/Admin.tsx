@@ -1,4 +1,4 @@
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 
 export function Admin() {
   const { user } = useAuth();

@@ -1,4 +1,4 @@
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 import { UserCard } from "../components/UserCard";
 import { ApiTester } from "../components/ApiTester";
 

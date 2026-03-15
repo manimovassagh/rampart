@@ -1,9 +1,12 @@
-import { RampartClient } from "@rampart/web";
+import { RampartClient } from "@rampart-auth/web";
 
 const RAMPART_ISSUER = "http://localhost:8080";
+const CLIENT_ID = "sample-react-app"; // reuse the same OAuth client
 
 const client = new RampartClient({
   issuer: RAMPART_ISSUER,
+  clientId: CLIENT_ID,
+  redirectUri: "http://localhost:3000/callback",
   onTokenChange(tokens) {
     if (tokens) {
       localStorage.setItem("rampart_tokens", JSON.stringify(tokens));
@@ -25,7 +28,8 @@ if (saved) {
 
 // --- DOM elements ---
 
-// Unauthenticated test
+const loginSection = document.getElementById("login-section")!;
+const loginBtn = document.getElementById("login-btn")!;
 const unauthSection = document.getElementById("unauth-section")!;
 const unauthProfileBtn = document.getElementById("unauth-profile-btn")!;
 const unauthClaimsBtn = document.getElementById("unauth-claims-btn")!;
@@ -33,28 +37,6 @@ const unauthResponse = document.getElementById("unauth-response")!;
 const unauthEndpointLabel = document.getElementById("unauth-endpoint-label")!;
 const unauthResult = document.getElementById("unauth-result")!;
 
-// Login
-const loginSection = document.getElementById("login-section")!;
-const identifierInput = document.getElementById("identifier") as HTMLInputElement;
-const passwordInput = document.getElementById("password") as HTMLInputElement;
-const loginBtn = document.getElementById("login-btn")!;
-const loginError = document.getElementById("login-error")!;
-const showSignupBtn = document.getElementById("show-signup-btn")!;
-
-// Signup
-const signupSection = document.getElementById("signup-section")!;
-const regUsername = document.getElementById("reg-username") as HTMLInputElement;
-const regEmail = document.getElementById("reg-email") as HTMLInputElement;
-const regPassword = document.getElementById("reg-password") as HTMLInputElement;
-const regGivenName = document.getElementById("reg-given-name") as HTMLInputElement;
-const regFamilyName = document.getElementById("reg-family-name") as HTMLInputElement;
-const signupBtn = document.getElementById("signup-btn")!;
-const showLoginBtn = document.getElementById("show-login-btn")!;
-const signupError = document.getElementById("signup-error")!;
-const signupFieldErrors = document.getElementById("signup-field-errors")!;
-const signupSuccess = document.getElementById("signup-success")!;
-
-// Authenticated
 const authSection = document.getElementById("auth-section")!;
 const userInfo = document.getElementById("user-info")!;
 const profileBtn = document.getElementById("profile-btn")!;
@@ -65,6 +47,7 @@ const apiResponseSection = document.getElementById("api-response-section")!;
 const endpointLabel = document.getElementById("endpoint-label")!;
 const apiResult = document.getElementById("api-result")!;
 const issuerUrl = document.getElementById("issuer-url")!;
+const callbackStatus = document.getElementById("callback-status")!;
 
 issuerUrl.textContent = RAMPART_ISSUER;
 
@@ -73,19 +56,8 @@ issuerUrl.textContent = RAMPART_ISSUER;
 function showLogin() {
   loginSection.classList.remove("hidden");
   unauthSection.classList.remove("hidden");
-  signupSection.classList.add("hidden");
   authSection.classList.add("hidden");
-  loginError.classList.add("hidden");
-}
-
-function showSignup() {
-  signupSection.classList.remove("hidden");
-  unauthSection.classList.remove("hidden");
-  loginSection.classList.add("hidden");
-  authSection.classList.add("hidden");
-  signupError.classList.add("hidden");
-  signupFieldErrors.classList.add("hidden");
-  signupSuccess.classList.add("hidden");
+  callbackStatus.classList.add("hidden");
 }
 
 function showAuth(user: {
@@ -99,10 +71,10 @@ function showAuth(user: {
   family_name?: string;
 }) {
   loginSection.classList.add("hidden");
-  signupSection.classList.add("hidden");
   unauthSection.classList.add("hidden");
   authSection.classList.remove("hidden");
   apiResponseSection.classList.add("hidden");
+  callbackStatus.classList.add("hidden");
 
   const verified = user.email_verified
     ? '<span class="badge badge-green">verified</span>'
@@ -122,12 +94,13 @@ function showAuth(user: {
 }
 
 function showApiResponse(endpoint: string, data: unknown, status: number) {
-  endpointLabel.innerHTML = `<code>${endpoint}</code> — ${status}`;
+  const color = status >= 200 && status < 300 ? "#4ade80" : "#f87171";
+  endpointLabel.innerHTML = `<code>${endpoint}</code> — <span style="color:${color}">${status}</span>`;
   apiResult.textContent = JSON.stringify(data, null, 2);
   apiResponseSection.classList.remove("hidden");
 }
 
-// --- Unauthenticated endpoint tests (no token) ---
+// --- Unauthenticated endpoint tests ---
 
 function showUnauthResponse(endpoint: string, data: unknown, status: number) {
   unauthEndpointLabel.innerHTML = `<code>${endpoint}</code> — <span style="color:#f87171">${status} Unauthorized</span>`;
@@ -147,70 +120,10 @@ unauthClaimsBtn.addEventListener("click", async () => {
   showUnauthResponse("GET /api/claims (no token)", data, res.status);
 });
 
-// --- Toggle login / signup ---
-
-showSignupBtn.addEventListener("click", showSignup);
-showLoginBtn.addEventListener("click", showLogin);
-
-// --- Signup ---
-
-signupBtn.addEventListener("click", async () => {
-  signupError.classList.add("hidden");
-  signupFieldErrors.classList.add("hidden");
-  signupSuccess.classList.add("hidden");
-
-  try {
-    const user = await client.register({
-      username: regUsername.value,
-      email: regEmail.value,
-      password: regPassword.value,
-      given_name: regGivenName.value || undefined,
-      family_name: regFamilyName.value || undefined,
-    });
-
-    signupSuccess.textContent = `Account created for ${user.email}. You can now login.`;
-    signupSuccess.classList.remove("hidden");
-
-    // Auto-switch to login after 1.5s
-    setTimeout(() => {
-      identifierInput.value = regUsername.value;
-      passwordInput.value = "";
-      showLogin();
-    }, 1500);
-  } catch (err: unknown) {
-    const rampartErr = err as {
-      error_description?: string;
-      fields?: { field: string; message: string }[];
-    };
-
-    if (rampartErr.fields?.length) {
-      signupFieldErrors.innerHTML = rampartErr.fields
-        .map((f) => `<li><strong>${f.field}:</strong> ${f.message}</li>`)
-        .join("");
-      signupFieldErrors.classList.remove("hidden");
-    } else {
-      signupError.textContent =
-        rampartErr.error_description ?? "Registration failed";
-      signupError.classList.remove("hidden");
-    }
-  }
-});
-
-// --- Login ---
+// --- Login (OAuth PKCE redirect) ---
 
 loginBtn.addEventListener("click", async () => {
-  loginError.classList.add("hidden");
-  try {
-    const res = await client.login({
-      identifier: identifierInput.value,
-      password: passwordInput.value,
-    });
-    showAuth(res.user);
-  } catch (err: unknown) {
-    const rampartErr = err as { error_description?: string };
-    loginError.textContent = rampartErr.error_description ?? "Login failed";
-    loginError.classList.remove("hidden");
-  }
+  await client.loginWithRedirect();
 });
 
 // --- Protected endpoints ---
@@ -240,16 +153,43 @@ logoutBtn.addEventListener("click", async () => {
   showLogin();
 });
 
-// --- Init ---
+// --- Init: handle callback or restore session ---
 
-if (client.isAuthenticated()) {
-  client
-    .getUser()
-    .then((user) => showAuth(user))
-    .catch(() => {
+async function init() {
+  const url = new URL(window.location.href);
+
+  // Check if this is an OAuth callback
+  if (url.pathname === "/callback" && url.searchParams.has("code")) {
+    callbackStatus.textContent = "Exchanging authorization code...";
+    callbackStatus.classList.remove("hidden");
+    loginSection.classList.add("hidden");
+    unauthSection.classList.add("hidden");
+
+    try {
+      await client.handleCallback();
+      // Redirect to home after successful token exchange
+      window.history.replaceState({}, "", "/");
+      const user = await client.getUser();
+      showAuth(user);
+    } catch (err) {
+      callbackStatus.textContent = `Login failed: ${(err as { error_description?: string }).error_description ?? "unknown error"}`;
+      callbackStatus.style.color = "#f87171";
+    }
+    return;
+  }
+
+  // Try to restore existing session
+  if (client.isAuthenticated()) {
+    try {
+      const user = await client.getUser();
+      showAuth(user);
+    } catch {
       client.setTokens(null);
       showLogin();
-    });
-} else {
-  showLogin();
+    }
+  } else {
+    showLogin();
+  }
 }
+
+init();

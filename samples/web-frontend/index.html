@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rampart Sample App</title>
+    <title>Rampart Web Sample</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -11,25 +11,14 @@
       h1 { font-size: 1.5rem; margin-bottom: 0.25rem; color: #38bdf8; }
       h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #94a3b8; font-weight: 400; }
       .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
-      label { display: block; font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.25rem; }
-      input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; font-size: 0.875rem; margin-bottom: 0.75rem; }
-      input:focus { outline: none; border-color: #38bdf8; }
       button { padding: 0.5rem 1rem; border: none; border-radius: 6px; font-size: 0.875rem; cursor: pointer; font-weight: 500; }
-      .btn-primary { background: #38bdf8; color: #0f172a; width: 100%; }
+      .btn-primary { background: #38bdf8; color: #0f172a; width: 100%; padding: 0.75rem; font-size: 1rem; }
       .btn-primary:hover { background: #7dd3fc; }
-      .btn-success { background: #22c55e; color: white; width: 100%; }
-      .btn-success:hover { background: #4ade80; }
       .btn-danger { background: #ef4444; color: white; }
       .btn-secondary { background: #334155; color: #e2e8f0; }
-      .btn-outline { background: transparent; color: #38bdf8; border: 1px solid #334155; width: 100%; margin-top: 0.5rem; }
-      .btn-outline:hover { border-color: #38bdf8; }
       .actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
       .actions button { flex: 1; }
       .status { font-size: 0.75rem; color: #64748b; margin-top: 0.75rem; }
-      .error { color: #f87171; font-size: 0.875rem; margin-top: 0.5rem; }
-      .success { color: #4ade80; font-size: 0.875rem; margin-top: 0.5rem; }
-      .field-errors { margin-top: 0.5rem; font-size: 0.8rem; }
-      .field-errors li { color: #fb923c; margin-left: 1rem; }
       pre { background: #0f172a; border-radius: 6px; padding: 1rem; font-size: 0.75rem; overflow-x: auto; margin-top: 0.75rem; color: #94a3b8; white-space: pre-wrap; word-break: break-all; }
       .hidden { display: none; }
       .user-info { font-size: 0.875rem; }
@@ -40,14 +29,19 @@
       .badge-yellow { background: #713f12; color: #fbbf24; }
       .endpoint-label { font-size: 0.75rem; color: #64748b; margin-top: 0.75rem; margin-bottom: 0.25rem; }
       .endpoint-label code { color: #38bdf8; background: #0f172a; padding: 0.1rem 0.3rem; border-radius: 3px; }
+      .callback-status { color: #38bdf8; font-size: 0.875rem; text-align: center; padding: 2rem 0; }
+      .sdk-label { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; background: #1e3a5f; color: #38bdf8; font-family: monospace; }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>Rampart Sample</h1>
-      <h2>Full-stack auth demo</h2>
+      <h1>Rampart Web Sample</h1>
+      <h2>Vanilla TypeScript auth demo with <span class="sdk-label">@rampart-auth/web</span></h2>
 
-      <!-- ========== TRY WITHOUT AUTH (always visible before login) ========== -->
+      <!-- Callback status -->
+      <div id="callback-status" class="callback-status hidden"></div>
+
+      <!-- Unauthenticated test endpoints -->
       <div id="unauth-section" class="card">
         <label style="color:#e2e8f0;font-weight:500;margin-bottom:0.5rem">Try protected endpoints without logging in</label>
         <div class="actions" style="margin-top:0">
@@ -60,37 +54,13 @@
         </div>
       </div>
 
-      <!-- ========== SIGNUP FORM ========== -->
-      <div id="signup-section" class="card hidden">
-        <label for="reg-username">Username</label>
-        <input type="text" id="reg-username" placeholder="johndoe" />
-        <label for="reg-email">Email</label>
-        <input type="email" id="reg-email" placeholder="john@example.com" />
-        <label for="reg-password">Password</label>
-        <input type="password" id="reg-password" placeholder="Min 8 chars, upper+lower+num+symbol" />
-        <label for="reg-given-name">First Name (optional)</label>
-        <input type="text" id="reg-given-name" placeholder="John" />
-        <label for="reg-family-name">Last Name (optional)</label>
-        <input type="text" id="reg-family-name" placeholder="Doe" />
-        <button class="btn-success" id="signup-btn">Sign Up</button>
-        <button class="btn-outline" id="show-login-btn">Already have an account? Login</button>
-        <div id="signup-error" class="error hidden"></div>
-        <ul id="signup-field-errors" class="field-errors hidden"></ul>
-        <div id="signup-success" class="success hidden"></div>
+      <!-- Login button (OAuth PKCE redirect) -->
+      <div id="login-section" class="card" style="text-align:center">
+        <p style="color:#94a3b8;margin-bottom:1rem">Click below to sign in via the Rampart authorization server using OAuth 2.0 PKCE.</p>
+        <button class="btn-primary" id="login-btn">Login with Rampart</button>
       </div>
 
-      <!-- ========== LOGIN FORM ========== -->
-      <div id="login-section" class="card">
-        <label for="identifier">Email or Username</label>
-        <input type="text" id="identifier" placeholder="admin" />
-        <label for="password">Password</label>
-        <input type="password" id="password" placeholder="password" />
-        <button class="btn-primary" id="login-btn">Login</button>
-        <button class="btn-outline" id="show-signup-btn">Don't have an account? Sign Up</button>
-        <div id="login-error" class="error hidden"></div>
-      </div>
-
-      <!-- ========== AUTHENTICATED SECTION ========== -->
+      <!-- Authenticated section -->
       <div id="auth-section" class="hidden">
         <div class="card">
           <div class="user-info" id="user-info"></div>
@@ -105,7 +75,6 @@
           </div>
         </div>
 
-        <!-- API Response display -->
         <div id="api-response-section" class="hidden">
           <p class="endpoint-label" id="endpoint-label"></p>
           <pre id="api-result"></pre>

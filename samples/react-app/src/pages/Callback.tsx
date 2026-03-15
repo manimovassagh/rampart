@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 
 export function Callback() {
   const { handleCallback } = useAuth();

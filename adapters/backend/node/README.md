@@ -70,6 +70,24 @@ Available on `req.auth` after successful verification:
 | `email_verified`     | `boolean` | Whether email is verified  |
 | `given_name`         | `string?` | First name (if set)        |
 | `family_name`        | `string?` | Last name (if set)         |
+| `roles`              | `string[]?` | Assigned roles           |
+
+### `requireRoles(...roles: string[])`
+
+Express middleware that checks the authenticated user has ALL specified roles. Use after `rampartAuth`:
+
+```typescript
+import { rampartAuth, requireRoles } from "@rampart-auth/node";
+
+const auth = rampartAuth({ issuer: "http://localhost:8080" });
+
+// Requires "editor" role
+app.get("/api/editor", auth, requireRoles("editor"), (req, res) => {
+  res.json({ user: req.auth!.preferred_username, roles: req.auth!.roles });
+});
+```
+
+Returns 403 with `{ error: "forbidden", error_description: "Missing required role(s): ...", status: 403 }` if the user lacks the required roles.
 
 ### Error Responses
 
