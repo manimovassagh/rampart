@@ -1,6 +1,6 @@
 {
   "name": "@rampart-auth/node",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Rampart authentication middleware for Express / Node.js",
   "type": "module",
   "main": "./dist/index.cjs",
