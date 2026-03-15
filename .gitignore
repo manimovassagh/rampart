@@ -39,8 +39,12 @@ package-lock.json
 dist/
 build/
 adapters/**/dist/
-samples/**/node_modules/
-samples/**/dist/
+cookbook/**/node_modules/
+cookbook/**/dist/
+cookbook/**/.vite/
+cookbook/**/target/
+cookbook/**/__pycache__/
+cookbook/**/.venv/
 
 # Signing keys
 *.pem

@@ -51,23 +51,23 @@ Since every backend exposes the same API on the same port, you can mix and match
 
 ```bash
 # Option A: Node.js / Express
-cd samples/express-backend
+cd cookbook/express-backend
 npm install
 npm run dev
 
 # Option B: Go
-cd samples/go-backend
+cd cookbook/go-backend
 go run main.go
 
 # Option C: Python / FastAPI
-cd samples/fastapi-backend
+cd cookbook/fastapi-backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e ../../adapters/backend/python
 python main.py
 
 # Option D: Java / Spring Boot
-cd samples/spring-backend
+cd cookbook/spring-backend
 ./mvnw spring-boot:run
 ```
 
@@ -75,12 +75,12 @@ cd samples/spring-backend
 
 ```bash
 # Option A: React SPA (port 3002)
-cd samples/react-app
+cd cookbook/react-app
 npm install
 npm run dev
 
 # Option B: Vanilla JS (port 3000)
-cd samples/web-frontend
+cd cookbook/web-frontend
 npm install
 npm run dev
 ```
