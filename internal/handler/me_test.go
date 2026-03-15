@@ -131,7 +131,7 @@ func TestMeResponseContentType(t *testing.T) {
 	h.Me(w, req)
 
 	contentType := w.Header().Get("Content-Type")
-	if contentType != "application/json" {
+	if contentType != contentTypeJSON {
 		t.Errorf("content-type = %q, want application/json", contentType)
 	}
 }
