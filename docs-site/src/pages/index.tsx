@@ -242,17 +242,16 @@ function ComparisonSection(): React.JSX.Element {
   const isDark = colorMode === 'dark';
 
   return (
-    <section style={{padding: '3rem 1.5rem', maxWidth: 1100, margin: '0 auto'}}>
+    <section style={{padding: '3rem 1.5rem', maxWidth: 900, margin: '0 auto'}}>
       <h2 style={{textAlign: 'center', fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem'}}>
         How Rampart stacks up
       </h2>
       <p style={{textAlign: 'center', color: 'var(--ifm-color-emphasis-600)', marginBottom: '2rem'}}>
         A fair comparison with the alternatives.
       </p>
-      <div style={{overflowX: 'auto'}}>
+      <div style={{overflowX: 'auto', display: 'flex', justifyContent: 'center'}}>
         <table
           style={{
-            width: '100%',
             borderCollapse: 'collapse',
             fontSize: '0.9rem',
           }}>
