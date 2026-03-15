@@ -55,7 +55,9 @@ func (db *DB) GetAuditEventByID(ctx context.Context, id uuid.UUID) (*model.Audit
 		return nil, fmt.Errorf("getting audit event: %w", err)
 	}
 	if len(detailsJSON) > 0 {
-		_ = json.Unmarshal(detailsJSON, &e.Details)
+		if unmarshalErr := json.Unmarshal(detailsJSON, &e.Details); unmarshalErr != nil {
+			slog.Warn("failed to unmarshal audit event details", "event_id", e.ID, "error", unmarshalErr)
+		}
 	}
 	return &e, nil
 }

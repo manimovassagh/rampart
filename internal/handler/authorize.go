@@ -218,6 +218,8 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	if err := r.ParseForm(); err != nil {
 		apierror.BadRequest(w, "Invalid form data.")
 		return
@@ -535,6 +537,8 @@ func (h *AuthorizeHandler) renderConsentPage(w http.ResponseWriter, client *mode
 
 // Consent handles POST /oauth/consent — the consent form submission.
 func (h *AuthorizeHandler) Consent(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	if err := r.ParseForm(); err != nil {
 		apierror.BadRequest(w, "Invalid form data.")
 		return

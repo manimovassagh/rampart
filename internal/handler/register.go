@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -172,6 +173,10 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	created, err := h.store.CreateUser(ctx, user)
 	if err != nil {
+		if errors.Is(err, store.ErrDuplicateKey) {
+			apierror.Conflict(w, "Registration failed. Please try again or use a different email/username.")
+			return
+		}
 		h.logger.Error("failed to create user", "error", err)
 		apierror.InternalError(w)
 		return

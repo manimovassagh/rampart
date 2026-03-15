@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -33,7 +34,9 @@ func (db *DB) CreateSAMLProvider(ctx context.Context, p *model.SAMLProvider) (*m
 	if err != nil {
 		return nil, fmt.Errorf("creating SAML provider: %w", err)
 	}
-	_ = json.Unmarshal(attrBytes, &out.AttributeMapping)
+	if err := json.Unmarshal(attrBytes, &out.AttributeMapping); err != nil {
+		slog.Warn("failed to unmarshal SAML attribute_mapping", "saml_provider_id", out.ID, "error", err)
+	}
 	return &out, nil
 }
 
@@ -56,7 +59,9 @@ func (db *DB) GetSAMLProviderByID(ctx context.Context, id uuid.UUID) (*model.SAM
 		}
 		return nil, fmt.Errorf("getting SAML provider: %w", err)
 	}
-	_ = json.Unmarshal(attrBytes, &p.AttributeMapping)
+	if err := json.Unmarshal(attrBytes, &p.AttributeMapping); err != nil {
+		slog.Warn("failed to unmarshal SAML attribute_mapping", "saml_provider_id", p.ID, "error", err)
+	}
 	return &p, nil
 }
 
@@ -83,7 +88,9 @@ func (db *DB) ListSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*model.
 			&attrBytes, &p.Enabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scanning SAML provider: %w", err)
 		}
-		_ = json.Unmarshal(attrBytes, &p.AttributeMapping)
+		if unmarshalErr := json.Unmarshal(attrBytes, &p.AttributeMapping); unmarshalErr != nil {
+			slog.Warn("failed to unmarshal SAML attribute_mapping", "saml_provider_id", p.ID, "error", unmarshalErr)
+		}
 		providers = append(providers, &p)
 	}
 	if err := rows.Err(); err != nil {
@@ -115,7 +122,9 @@ func (db *DB) GetEnabledSAMLProviders(ctx context.Context, orgID uuid.UUID) ([]*
 			&attrBytes, &p.Enabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scanning SAML provider: %w", err)
 		}
-		_ = json.Unmarshal(attrBytes, &p.AttributeMapping)
+		if unmarshalErr := json.Unmarshal(attrBytes, &p.AttributeMapping); unmarshalErr != nil {
+			slog.Warn("failed to unmarshal SAML attribute_mapping", "saml_provider_id", p.ID, "error", unmarshalErr)
+		}
 		providers = append(providers, &p)
 	}
 	if err := rows.Err(); err != nil {
@@ -147,7 +156,9 @@ func (db *DB) UpdateSAMLProvider(ctx context.Context, id uuid.UUID, req *model.U
 	if err != nil {
 		return nil, fmt.Errorf("updating SAML provider: %w", err)
 	}
-	_ = json.Unmarshal(attrBytes, &p.AttributeMapping)
+	if err := json.Unmarshal(attrBytes, &p.AttributeMapping); err != nil {
+		slog.Warn("failed to unmarshal SAML attribute_mapping", "saml_provider_id", p.ID, "error", err)
+	}
 	return &p, nil
 }
 

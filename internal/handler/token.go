@@ -71,6 +71,8 @@ func (h *TokenHandler) Token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	if err := r.ParseForm(); err != nil {
 		h.writeOAuthError(w, http.StatusBadRequest, "invalid_request", "Invalid form data.")
 		return
@@ -408,6 +410,8 @@ func (h *TokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		apierror.Write(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method not allowed.")
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 
 	if err := r.ParseForm(); err != nil {
 		h.writeOAuthError(w, http.StatusBadRequest, "invalid_request", "Invalid form data.")
