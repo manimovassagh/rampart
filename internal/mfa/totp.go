@@ -53,26 +53,32 @@ func ProvisioningURI(secret, email, issuer string) string {
 }
 
 // ValidateCode checks a TOTP code against the secret, allowing for clock skew.
-func ValidateCode(secret, code string) bool {
+// It accepts the last used time step to prevent replay attacks within the same
+// TOTP window. On success it returns the matched time step; on failure it returns 0.
+func ValidateCode(secret, code string, lastUsedAt int64) (ok bool, timeStep int64) {
 	if len(code) != Digits {
-		return false
+		return false, 0
 	}
 
 	secretBytes, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ToUpper(secret))
 	if err != nil {
-		return false
+		return false, 0
 	}
 
 	now := time.Now().Unix()
 	counter := now / Period
 
 	for i := -int64(Skew); i <= int64(Skew); i++ {
-		expected := generateTOTP(secretBytes, counter+i)
+		step := counter + i
+		expected := generateTOTP(secretBytes, step)
 		if hmac.Equal([]byte(code), []byte(expected)) {
-			return true
+			if step <= lastUsedAt {
+				return false, 0
+			}
+			return true, step
 		}
 	}
-	return false
+	return false, 0
 }
 
 func generateTOTP(secret []byte, counter int64) string {

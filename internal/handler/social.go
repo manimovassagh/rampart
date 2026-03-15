@@ -82,6 +82,7 @@ type socialCookiePayload struct {
 	State         string `json:"state"`
 	CodeChallenge string `json:"code_challenge"`
 	ProviderState string `json:"provider_state"`
+	Timestamp     int64  `json:"timestamp"`
 }
 
 // InitiateLogin handles GET /oauth/social/{provider} — redirects the user to the social provider.
@@ -148,6 +149,7 @@ func (h *SocialHandler) InitiateLogin(w http.ResponseWriter, r *http.Request) {
 		State:         state,
 		CodeChallenge: codeChallenge,
 		ProviderState: providerState,
+		Timestamp:     time.Now().Unix(),
 	}
 
 	cookieValue, err := h.signCookiePayload(&payload)
@@ -457,6 +459,11 @@ func (h *SocialHandler) verifyCookiePayload(cookieValue string) (*socialCookiePa
 	var payload socialCookiePayload
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return nil, fmt.Errorf("unmarshaling payload: %w", err)
+	}
+
+	// Reject cookies older than 10 minutes to prevent replay attacks
+	if payload.Timestamp == 0 || time.Now().Unix()-payload.Timestamp >= socialCookieMaxAge {
+		return nil, fmt.Errorf("cookie expired")
 	}
 
 	return &payload, nil

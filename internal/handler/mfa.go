@@ -134,8 +134,8 @@ func (h *MFAHandler) VerifyTOTPSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate TOTP code
-	if !mfa.ValidateCode(device.Secret, req.Code) {
+	// Validate TOTP code (no replay check needed during enrollment — device is new)
+	if ok, _ := mfa.ValidateCode(device.Secret, req.Code, 0); !ok {
 		apierror.Write(w, http.StatusBadRequest, "invalid_code", "Invalid TOTP code. Please try again.")
 		return
 	}
@@ -215,7 +215,7 @@ func (h *MFAHandler) DisableTOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !mfa.ValidateCode(device.Secret, req.Code) {
+	if ok, _ := mfa.ValidateCode(device.Secret, req.Code, device.LastUsedAt); !ok {
 		apierror.Write(w, http.StatusBadRequest, "invalid_code", "Invalid TOTP code.")
 		return
 	}

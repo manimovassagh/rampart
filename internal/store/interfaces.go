@@ -197,6 +197,7 @@ type MFADeviceStore interface {
 	DisableMFA(ctx context.Context, userID uuid.UUID) error
 	StoreBackupCodes(ctx context.Context, userID uuid.UUID, codeHashes [][]byte) error
 	ConsumeBackupCode(ctx context.Context, userID uuid.UUID, codeHash []byte) (bool, error)
+	UpdateMFADeviceLastUsedAt(ctx context.Context, deviceID uuid.UUID, lastUsedAt int64) error
 }
 
 // ── Audit ───────────────────────────────────────────────────────────────

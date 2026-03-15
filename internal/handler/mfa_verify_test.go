@@ -87,6 +87,9 @@ func (m *mockMFAVerifyStore) StoreBackupCodes(_ context.Context, _ uuid.UUID, _ 
 func (m *mockMFAVerifyStore) ConsumeBackupCode(_ context.Context, _ uuid.UUID, _ []byte) (bool, error) {
 	return m.consumeBackupCode, m.consumeBackupErr
 }
+func (m *mockMFAVerifyStore) UpdateMFADeviceLastUsedAt(_ context.Context, _ uuid.UUID, _ int64) error {
+	return nil
+}
 
 // OrgSettingsReadWriter
 func (m *mockMFAVerifyStore) GetOrgSettings(_ context.Context, _ uuid.UUID) (*model.OrgSettings, error) {

@@ -173,6 +173,9 @@ func (m *mockWebAuthnStore) StoreBackupCodes(_ context.Context, _ uuid.UUID, _ [
 func (m *mockWebAuthnStore) ConsumeBackupCode(_ context.Context, _ uuid.UUID, _ []byte) (bool, error) {
 	return false, nil
 }
+func (m *mockWebAuthnStore) UpdateMFADeviceLastUsedAt(_ context.Context, _ uuid.UUID, _ int64) error {
+	return nil
+}
 
 func newWebAuthnAuthenticatedRequest(target string, body []byte, userID, orgID uuid.UUID) *http.Request { //nolint:unparam // body param used conditionally
 	var r *http.Request

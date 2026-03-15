@@ -132,6 +132,9 @@ func (m *mockLoginStore) GetVerifiedMFADevice(_ context.Context, _ uuid.UUID) (*
 func (m *mockLoginStore) ConsumeBackupCode(_ context.Context, _ uuid.UUID, _ []byte) (bool, error) {
 	return false, nil
 }
+func (m *mockLoginStore) UpdateMFADeviceLastUsedAt(_ context.Context, _ uuid.UUID, _ int64) error {
+	return nil
+}
 
 // ── stub methods to satisfy store.OrgReader ──
 
