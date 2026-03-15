@@ -101,6 +101,7 @@ func (h *AdminConsoleHandler) SocialProvidersPage(w http.ResponseWriter, r *http
 	h.render(w, r, "social_providers", &pageData{
 		Title:           "Social Providers",
 		ActiveNav:       navSocial,
+		Issuer:          h.issuer,
 		SocialProviders: providers,
 		Flash:           r.URL.Query().Get("flash"),
 		Error:           r.URL.Query().Get("error"),

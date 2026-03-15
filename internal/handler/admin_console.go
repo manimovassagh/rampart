@@ -363,6 +363,7 @@ type pageData struct {
 	GroupRoles      []*model.GroupRoleAssignment
 	UserGroups      []*model.Group
 	OIDC            *DiscoveryResponse
+	Issuer          string
 	SocialProviders []SocialProviderInfo
 	SearchUsers     []*model.User
 	Webhooks        []*model.Webhook
