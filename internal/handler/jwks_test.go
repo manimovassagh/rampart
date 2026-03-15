@@ -37,7 +37,7 @@ func TestJWKSReturnsPublicKey(t *testing.T) {
 	}
 
 	ct := w.Header().Get("Content-Type")
-	if ct != "application/json" {
+	if ct != contentTypeJSON {
 		t.Errorf("Content-Type = %q, want application/json", ct)
 	}
 
