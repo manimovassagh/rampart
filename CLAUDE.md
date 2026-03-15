@@ -13,10 +13,11 @@
 - For code changes: build + test + lint after every batch of edits
 - Minimum: 4-eyes (do + verify). For critical changes: 6-eyes (do + verify + re-verify)
 
-## CRITICAL: One PR at a Time
+## CRITICAL: One PR at a Time (Draft First)
 - Always create ONE pull request, wait for CI checks to pass, then merge it before opening the next one
 - Never have multiple open PRs at the same time — sequential, not parallel
-- Flow: branch → commit → push → create PR → check CI → merge → next PR
+- Always create PRs as DRAFT first (`gh pr create --draft`) so the user can monitor progress — only mark ready when CI passes
+- Flow: branch → commit → push → create DRAFT PR → check CI → merge → next PR
 
 ## Project
 Rampart is a Go-based IAM/OAuth 2.0 server with OIDC support.

@@ -235,7 +235,7 @@ func (h *TokenHandler) handleAuthorizationCode(w http.ResponseWriter, r *http.Re
 
 	// Store session
 	expiresAt := time.Now().Add(refreshTTL)
-	if _, err := h.sessions.Create(ctx, user.ID, authCode.ClientID, refreshToken, expiresAt); err != nil {
+	if _, err := h.sessions.Create(ctx, user.ID, authCode.ClientID, refreshToken, authCode.Scope, expiresAt); err != nil {
 		h.logger.Error("failed to create session", "error", err)
 		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
@@ -326,11 +326,12 @@ func (h *TokenHandler) handleRefreshToken(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	// Fetch user roles
-	roles, rErr := h.store.GetEffectiveUserRoles(ctx, user.ID)
-	if rErr != nil {
-		h.logger.Warn("failed to fetch user roles for refresh", "error", rErr)
-		roles = nil
+	// Fetch user roles — but only include them if the original scope warrants it.
+	// If the session was created with a restricted scope (e.g. "openid" only),
+	// don't grant all roles on refresh. This prevents scope escalation via refresh.
+	var roles []string
+	if sess.Scope == "" || strings.Contains(sess.Scope, "profile") || strings.Contains(sess.Scope, "offline_access") {
+		roles, _ = h.store.GetEffectiveUserRoles(ctx, user.ID)
 	}
 
 	// Determine audience: use session's client_id if available, fall back to issuer for legacy sessions.
