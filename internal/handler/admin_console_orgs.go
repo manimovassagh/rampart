@@ -21,6 +21,9 @@ import (
 // ListOrgsPage handles GET /admin/organizations
 func (h *AdminConsoleHandler) ListOrgsPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	adminOrgID := authUser.OrgID
+
 	search := r.URL.Query().Get("search")
 	page := queryInt(r, "page", 1)
 	limit := 20
@@ -33,8 +36,19 @@ func (h *AdminConsoleHandler) ListOrgsPage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	orgResponses := make([]*model.OrgResponse, len(orgs))
-	for i, o := range orgs {
+	// Filter to only show the admin's own organization (multi-tenant isolation)
+	var filtered []*model.Organization
+	for _, o := range orgs {
+		if o.ID == adminOrgID {
+			filtered = append(filtered, o)
+		}
+	}
+	if len(filtered) < len(orgs) {
+		total = len(filtered)
+	}
+
+	orgResponses := make([]*model.OrgResponse, len(filtered))
+	for i, o := range filtered {
 		count, _ := h.store.CountUsers(ctx, o.ID)
 		orgResponses[i] = o.ToOrgResponse(count)
 	}
@@ -118,6 +132,12 @@ func (h *AdminConsoleHandler) OrgDetailPage(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
+	authUser := middleware.GetAuthenticatedUser(ctx)
+	if orgID != authUser.OrgID {
+		middleware.SetFlash(w, "Organization not found.")
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
+		return
+	}
 
 	org, err := h.store.GetOrganizationByID(ctx, orgID)
 	if err != nil || org == nil {
@@ -143,6 +163,14 @@ func (h *AdminConsoleHandler) OrgDetailPage(w http.ResponseWriter, r *http.Reque
 func (h *AdminConsoleHandler) UpdateOrgAction(w http.ResponseWriter, r *http.Request) {
 	orgID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
+		return
+	}
+
+	// Verify the admin owns this organization
+	authUser := middleware.GetAuthenticatedUser(r.Context())
+	if orgID != authUser.OrgID {
+		middleware.SetFlash(w, "Organization not found.")
 		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
@@ -174,6 +202,14 @@ func (h *AdminConsoleHandler) UpdateOrgAction(w http.ResponseWriter, r *http.Req
 func (h *AdminConsoleHandler) UpdateOrgSettingsAction(w http.ResponseWriter, r *http.Request) {
 	orgID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
+		return
+	}
+
+	// Verify the admin owns this organization
+	authUser := middleware.GetAuthenticatedUser(r.Context())
+	if orgID != authUser.OrgID {
+		middleware.SetFlash(w, "Organization not found.")
 		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
@@ -252,6 +288,14 @@ func (h *AdminConsoleHandler) UpdateOrgSettingsAction(w http.ResponseWriter, r *
 func (h *AdminConsoleHandler) DeleteOrgAction(w http.ResponseWriter, r *http.Request) {
 	orgID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
+		return
+	}
+
+	// Verify the admin owns this organization
+	authUser := middleware.GetAuthenticatedUser(r.Context())
+	if orgID != authUser.OrgID {
+		middleware.SetFlash(w, "Organization not found.")
 		http.Redirect(w, r, pathAdminOrgs, http.StatusFound)
 		return
 	}
