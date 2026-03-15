@@ -8,7 +8,7 @@ const METRICS = [
   {value: '<1s', label: 'Startup'},
   {value: '~30MB', label: 'Memory'},
   {value: '1', label: 'Binary'},
-  {value: '8', label: 'SDK Adapters'},
+  {value: '15', label: 'SDK Adapters'},
 ];
 
 const FEATURES = [
@@ -98,7 +98,7 @@ const COMPARISON = {
     ['Multi-tenant', 'Native', 'Realms', 'No', 'Yes', 'Tenants'],
     ['CLI tool', 'Yes', 'kcadm.sh', 'Yes', 'Yes', 'No'],
     ['Database', 'PostgreSQL', 'Many DBs', 'PostgreSQL', 'CockroachDB', 'PostgreSQL'],
-    ['SDK adapters', '8 SDKs', 'Java-first', 'REST only', 'Go/gRPC', 'Python-first'],
+    ['SDK adapters', '15 SDKs', 'Java-first', 'REST only', 'Go/gRPC', 'Python-first'],
   ],
 };
 
@@ -110,12 +110,19 @@ const SDKS = [
   {name: 'Python', icon: '\uD83D\uDC0D'},
   {name: 'Spring Boot', icon: '\u2615'},
   {name: '.NET', icon: '\uD83D\uDFEA'},
+  {name: 'Ruby', icon: '\uD83D\uDC8E'},
+  {name: 'PHP', icon: '\uD83D\uDC18'},
+  {name: 'Rust', icon: '\u2699\uFE0F'},
   {name: 'Web / JS', icon: '\uD83C\uDF10'},
+  {name: 'Flutter', icon: '\uD83E\uDEBD'},
+  {name: 'React Native', icon: '\uD83D\uDCF1'},
+  {name: 'Swift/iOS', icon: '\uD83C\uDF4E'},
+  {name: 'Kotlin', icon: '\uD83E\uDD16'},
 ];
 
 function getRampartCellClass(rampart: string, others: string[]): string {
   const rampartLower = rampart.toLowerCase();
-  if (rampartLower === 'yes' || rampartLower.includes('<1') || rampartLower.includes('~30mb') || rampartLower.includes('native') || rampartLower.includes('8 sdk') || rampartLower.includes('5 theme') || rampartLower.includes('built-in')) {
+  if (rampartLower === 'yes' || rampartLower.includes('<1') || rampartLower.includes('~30mb') || rampartLower.includes('native') || rampartLower.includes('15 sdk') || rampartLower.includes('5 theme') || rampartLower.includes('built-in')) {
     return 'win';
   }
   return '';
