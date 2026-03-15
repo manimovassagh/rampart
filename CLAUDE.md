@@ -37,6 +37,9 @@ Rampart is a Go-based IAM/OAuth 2.0 server with OIDC support.
 - NEVER leave temporary files, screenshots, or build artifacts in the project root
 - The project root should only contain: go.mod, go.sum, Dockerfile, docker-compose*, README.md, CLAUDE.md, LICENSE, Makefile, .gitignore, and standard config files
 - Temp files go in /tmp, screenshots go in docs-site/static/img/
+- NEVER save .png, .jpg, .log, or binary files to the project root — they pollute the repo
+- After any operation that generates files (tests, builds, screenshots), verify no junk was left in root
+- Run `ls *.png *.log *.test 2>/dev/null` before committing to catch stray files
 
 ## CRITICAL: No Inline CSS — Use Tailwind or CSS Classes
 - NEVER use inline `style=""` attributes in HTML templates — they are blocked by CSP and are bad practice
@@ -69,6 +72,13 @@ Rampart is a Go-based IAM/OAuth 2.0 server with OIDC support.
 - One issue per finding — include reproduction steps, affected files, and recommended fix
 - Never leave findings only in conversation — they must be tracked in GitHub
 - After fixing an issue, ALWAYS close it on GitHub with `gh issue close <number>` and a comment describing the fix
+
+## CRITICAL: Security Best Practices Always
+- Always follow security best practices in ALL code — no exceptions
+- Never introduce OWASP Top 10 vulnerabilities (XSS, SQLi, CSRF, etc.)
+- Always use parameterized queries, proper escaping, constant-time comparison for secrets
+- Validate all input at system boundaries, enforce least privilege
+- When in doubt, choose the more secure option
 
 ## CRITICAL: E2E Tests Must Start from Logged-Out State
 - Always logout or clear browser storage before starting an E2E test
