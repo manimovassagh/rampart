@@ -1,3 +1,0 @@
-module Rampart {
-    header "/Users/mani/Documents/Projects/rampart/adapters/frontend/swift/.build/arm64-apple-macosx/debug/Rampart.build/include/Rampart-Swift.h"
-}
