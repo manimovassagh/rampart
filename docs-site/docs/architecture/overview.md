@@ -51,7 +51,6 @@ Rampart is a single-binary identity and access management (IAM) server built in 
                           |  - OAuth Clients      |
                           |  - Sessions           |
                           |  - Audit Events       |
-                          |  - Tokens             |
                           +-----------------------+
 ```
 
@@ -60,7 +59,7 @@ Rampart is a single-binary identity and access management (IAM) server built in 
 | Component | Responsibility |
 |-----------|---------------|
 | **HTTP Server** | chi-based router serving all endpoints, static assets, and middleware |
-| **OAuth 2.0 / OIDC Engine** | Authorization code + PKCE, client credentials, token refresh, device flow, JWKS |
+| **OAuth 2.0 / OIDC Engine** | Authorization code + PKCE, client credentials, token refresh, JWKS |
 | **Admin API** | CRUD for users, organizations, roles, clients; RBAC-protected |
 | **Account API** | Self-service profile, password change, MFA enrollment |
 | **Session Manager** | PostgreSQL-backed session creation, validation, revocation |
@@ -105,28 +104,31 @@ rampart/
 │   └── rampart/
 │       └── main.go              # Entry point, wires dependencies
 ├── internal/
-│   ├── auth/                    # OAuth 2.0/OIDC engine
-│   │   ├── authorize.go         # Authorization endpoint
-│   │   ├── token.go             # Token endpoint
-│   │   ├── jwks.go              # JWKS endpoint and key management
-│   │   └── pkce.go              # PKCE verification
-│   ├── admin/                   # Admin API handlers
-│   │   ├── users.go
-│   │   ├── organizations.go
-│   │   ├── roles.go
-│   │   └── clients.go
-│   ├── account/                 # Self-service account API
-│   ├── session/                 # Session management (PostgreSQL-backed)
+│   ├── apierror/                # Structured API error types
 │   ├── audit/                   # Audit event logging
-│   ├── middleware/              # Auth, CORS, rate limit, security headers
+│   ├── auth/                    # Password hashing (argon2id), credential utilities
+│   ├── cli/                     # CLI command definitions
+│   ├── cluster/                 # Leader election for HA background workers
+│   ├── config/                  # Environment-variable-based configuration loading
+│   ├── crypto/                  # Encryption at rest for secrets
+│   ├── database/                # PostgreSQL connection, migrations, data access (pgx)
+│   ├── email/                   # SMTP transactional email sender
+│   ├── handler/                 # HTTP handlers (OAuth, admin, login, MFA, SAML, SCIM, etc.)
+│   ├── logging/                 # Structured logging helpers (pretty, JSON, text)
+│   ├── metrics/                 # Prometheus metrics endpoint
+│   ├── mfa/                     # Multi-factor authentication (TOTP, WebAuthn)
+│   ├── middleware/              # Auth, CORS, rate limiting, security headers
 │   ├── model/                   # Domain types (User, Org, Role, etc.)
-│   ├── store/                   # PostgreSQL data access (pgx, no ORM)
-│   ├── config/                  # YAML config loading and validation
-│   └── crypto/                  # Password hashing, token signing utilities
-├── internal/templates/           # Go templates for admin dashboard (htmx + Tailwind)
-├── internal/templates/login/    # Go templates for login/consent UI (Tailwind)
+│   ├── oauth/                   # OAuth 2.0 / OIDC flow logic
+│   ├── plugin/                  # Plugin registry for event hooks and claim enrichers
+│   ├── server/                  # HTTP server setup and route registration
+│   ├── session/                 # Session management (PostgreSQL-backed)
+│   ├── signing/                 # RSA key pair loading, generation, and rotation
+│   ├── social/                  # Social login providers (Google, GitHub, Apple)
+│   ├── store/                   # Additional data access helpers
+│   ├── token/                   # JWT token issuance and validation
+│   └── webhook/                 # Webhook dispatch and delivery retry
 ├── migrations/                  # SQL migration files
-├── configs/                     # Example YAML configuration
 ├── docs/                        # API specs, architecture docs
 └── docs-site/                   # Docusaurus documentation site
 ```
@@ -136,7 +138,6 @@ rampart/
 - **`internal/`** prevents external packages from importing Rampart internals, keeping the public API surface minimal.
 - **No ORM.** All SQL is written explicitly using `pgx`. Queries are predictable, debuggable, and performant.
 - **No dependency injection framework.** Dependencies are wired manually in `main.go` using constructor functions.
-- **One concern per package.** The `auth` package handles OAuth/OIDC flows; it does not manage users or sessions directly.
 
 ## Design Principles
 
@@ -145,17 +146,17 @@ rampart/
 Rampart compiles to a single static binary with the admin and login UIs (built with htmx, Go templates, and Tailwind CSS) embedded via Go's `embed` package. No external file dependencies, no runtime installations, no containers required (though Docker is supported).
 
 ```bash
-# Deploy Rampart
-./rampart serve --config rampart.yaml
+# Deploy Rampart (configured via environment variables)
+./rampart
 ```
 
 ### Minimal Dependencies
 
 Every dependency is a supply chain risk, especially for an IAM product. Rampart uses the Go standard library wherever possible and limits third-party packages to well-audited, actively maintained libraries:
 
-- **chi** — HTTP router (lightweight, stdlib-compatible)
-- **pgx** — PostgreSQL driver (pure Go, high performance)
-- **golang-jwt** — JWT signing and verification
+- **chi** -- HTTP router (lightweight, stdlib-compatible)
+- **pgx** -- PostgreSQL driver (pure Go, high performance)
+- **golang-jwt** -- JWT signing and verification
 
 ### API-First
 

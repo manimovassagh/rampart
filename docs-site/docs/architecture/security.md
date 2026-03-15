@@ -20,21 +20,26 @@ Rampart is an identity and access management product. Security is not a feature 
 
 ### Hashing
 
-All passwords are hashed using **bcrypt** before storage. Plaintext passwords never touch disk or logs.
+All user passwords are hashed using **argon2id** before storage. Plaintext passwords never touch disk or logs.
 
-| Parameter | Default | Configurable |
-|-----------|---------|-------------|
-| Algorithm | bcrypt | No (bcrypt only; argon2id planned) |
-| Work factor (cost) | 12 | Yes (`security.password.bcrypt_cost`) |
-| Min password length | 8 | Yes (`security.password.min_length`) |
-| Max password length | 128 | Yes (`security.password.max_length`) |
+| Parameter | Default | Notes |
+|-----------|---------|-------|
+| Algorithm | argon2id | OWASP-recommended memory-hard KDF |
+| Time cost | 3 iterations | `argonTime` constant |
+| Memory cost | 64 MB | `argonMemory` constant |
+| Parallelism | 4 threads | `argonThreads` constant |
+| Key length | 32 bytes | `argonKeyLen` constant |
+| Salt length | 16 bytes | Cryptographically random per password |
+| Output format | PHC string | `$argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>` |
+
+OAuth client secrets use **bcrypt** for hashing, since they are high-entropy random strings that do not benefit from argon2id's memory-hardness.
 
 ### Password Policy
 
 Configurable per organization:
 
 - Minimum length (default: 8)
-- Maximum length (default: 128, to prevent bcrypt DoS via long inputs)
+- Maximum length (default: 128)
 - Complexity requirements (optional: uppercase, lowercase, digit, special character)
 - Breach database check via k-anonymity (optional, uses the HaveIBeenPwned Passwords API without sending the full hash)
 
@@ -43,7 +48,7 @@ Configurable per organization:
 - Passwords are hashed immediately on receipt, before any other processing.
 - Raw passwords are never written to logs, error messages, or debug output.
 - Password hashes are excluded from all API responses, including admin endpoints.
-- Client secrets for OAuth clients follow the same hashing and storage rules.
+- Client secrets for OAuth clients follow the same storage rules (bcrypt hashed).
 
 ## Token Security
 
@@ -54,7 +59,7 @@ Configurable per organization:
 | Format | JWT (RFC 7519) |
 | Signing algorithm | RS256 (RSA 2048-bit minimum) |
 | Default lifetime | 1 hour |
-| Configurable lifetime | Yes (`tokens.access_token_ttl`) |
+| Configurable lifetime | Yes (via `RAMPART_ACCESS_TOKEN_TTL` env var) |
 | Storage | Not stored server-side (stateless validation via signature) |
 
 Access tokens contain standard OIDC claims (`sub`, `iss`, `aud`, `exp`, `iat`, `scope`) and are signed with the server's private key. Relying parties validate tokens using the public key from the JWKS endpoint.
@@ -65,9 +70,9 @@ Access tokens contain standard OIDC claims (`sub`, `iss`, `aud`, `exp`, `iat`, `
 |----------|-------|
 | Format | Opaque random string (256-bit entropy) |
 | Default lifetime | 30 days |
-| Storage | SHA-256 hash stored in PostgreSQL |
+| Storage | SHA-256 hash stored in the `sessions` table (`refresh_token_hash` column) |
 | Rotation | New refresh token issued on each use (rotation enabled by default) |
-| Revocation | Immediate via database flag |
+| Revocation | Immediate via session deletion |
 
 Refresh token rotation mitigates the impact of token theft. When a refresh token is used, it is invalidated and a new one is issued. If a previously-used refresh token is presented, Rampart revokes the entire token family as a potential compromise indicator.
 
@@ -175,7 +180,7 @@ All responses include the following security headers:
 | Threat | Mitigation |
 |--------|-----------|
 | Credential stuffing | Rate limiting, account lockout, breach database check |
-| Password brute force | bcrypt (slow hashing), rate limiting, lockout |
+| Password brute force | argon2id (memory-hard hashing), rate limiting, lockout |
 | Phishing | Redirect URI exact matching, no open redirectors |
 | Session hijacking | HTTP-only + Secure cookies, session binding, TLS enforcement |
 | Session fixation | New session ID generated on authentication |
@@ -217,9 +222,9 @@ All security-relevant events are recorded in the `audit_events` table:
 
 | Event Type | Details Captured |
 |-----------|-----------------|
-| `user.login` | User ID, IP, user agent, organization |
+| `user.login` | Actor ID, IP, user agent, organization |
 | `user.login_failed` | Username attempted, IP, failure reason |
-| `user.logout` | User ID, session terminated |
+| `user.logout` | Actor ID, session terminated |
 | `user.created` | New user ID, created by (admin) |
 | `user.updated` | Changed fields (values redacted for sensitive fields) |
 | `user.deleted` | User ID, deleted by (admin) |

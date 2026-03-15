@@ -19,66 +19,63 @@ erDiagram
     roles ||--o{ user_roles : "granted to"
     users ||--o{ sessions : "creates"
     users ||--o{ audit_events : "triggers"
-    oauth_clients ||--o{ auth_codes : "issues"
-    users ||--o{ auth_codes : "authorized by"
-    oauth_clients ||--o{ refresh_tokens : "issues"
-    users ||--o{ refresh_tokens : "owns"
+    oauth_clients ||--o{ authorization_codes : "issues"
+    users ||--o{ authorization_codes : "authorized by"
 
     organizations {
         uuid id PK
         varchar name
         varchar slug UK
-        jsonb metadata
+        varchar display_name
+        boolean enabled
         timestamp created_at
         timestamp updated_at
     }
 
     users {
         uuid id PK
-        uuid organization_id FK
-        varchar email UK
+        uuid org_id FK
         varchar username UK
-        varchar password_hash
-        varchar first_name
-        varchar last_name
+        varchar email UK
         boolean email_verified
-        boolean active
-        jsonb metadata
+        varchar given_name
+        varchar family_name
+        varchar picture
+        varchar phone_number
+        boolean phone_number_verified
+        bytea password_hash
+        boolean enabled
+        boolean mfa_enabled
+        timestamp last_login_at
         timestamp created_at
         timestamp updated_at
-        timestamp last_login_at
     }
 
     roles {
         uuid id PK
-        uuid organization_id FK
+        uuid org_id FK
         varchar name
         varchar description
-        jsonb permissions
+        boolean builtin
         timestamp created_at
         timestamp updated_at
     }
 
     user_roles {
-        uuid id PK
         uuid user_id FK
         uuid role_id FK
-        timestamp granted_at
-        uuid granted_by FK
+        timestamp assigned_at
     }
 
     oauth_clients {
-        uuid id PK
-        uuid organization_id FK
-        varchar client_id UK
-        varchar client_secret_hash
-        varchar client_name
+        varchar id PK
+        uuid org_id FK
+        varchar name
+        varchar client_type
         text[] redirect_uris
-        text[] allowed_scopes
-        text[] grant_types
-        varchar token_endpoint_auth_method
-        boolean confidential
-        jsonb metadata
+        bytea client_secret_hash
+        varchar description
+        boolean enabled
         timestamp created_at
         timestamp updated_at
     }
@@ -86,45 +83,36 @@ erDiagram
     sessions {
         uuid id PK
         uuid user_id FK
-        varchar session_token UK
-        varchar ip_address
-        varchar user_agent
+        bytea refresh_token_hash
         timestamp expires_at
         timestamp created_at
     }
 
     audit_events {
         uuid id PK
-        uuid organization_id FK
-        uuid user_id FK
+        uuid org_id FK
         varchar event_type
+        uuid actor_id FK
+        varchar actor_name
+        varchar target_type
+        varchar target_id
+        varchar target_name
         varchar ip_address
         varchar user_agent
         jsonb details
         timestamp created_at
     }
 
-    auth_codes {
+    authorization_codes {
         uuid id PK
-        varchar code UK
-        uuid client_id FK
+        bytea code_hash UK
+        varchar client_id FK
         uuid user_id FK
-        text[] scopes
-        varchar redirect_uri
+        uuid org_id FK
+        text redirect_uri
         varchar code_challenge
-        varchar code_challenge_method
+        varchar scope
         boolean used
-        timestamp expires_at
-        timestamp created_at
-    }
-
-    refresh_tokens {
-        uuid id PK
-        varchar token_hash UK
-        uuid client_id FK
-        uuid user_id FK
-        text[] scopes
-        boolean revoked
         timestamp expires_at
         timestamp created_at
     }
@@ -139,9 +127,10 @@ The top-level tenant boundary. All users, roles, clients, and policies are scope
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | Primary key, generated server-side |
-| `name` | `varchar(255)` | Display name |
-| `slug` | `varchar(100)` | URL-safe identifier, unique across the instance |
-| `metadata` | `jsonb` | Extensible key-value data (theme, branding, config overrides) |
+| `name` | `varchar(255)` | Internal name |
+| `slug` | `varchar(255)` | URL-safe identifier, unique across the instance |
+| `display_name` | `varchar(255)` | Human-readable display name |
+| `enabled` | `boolean` | Soft disable without deletion (default: `true`) |
 | `created_at` | `timestamptz` | Row creation time |
 | `updated_at` | `timestamptz` | Last modification time |
 
@@ -152,78 +141,72 @@ User accounts scoped to an organization. Email and username are unique within an
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | Primary key |
-| `organization_id` | `uuid` | FK to `organizations.id` |
-| `email` | `varchar(320)` | RFC 5321 max length |
-| `username` | `varchar(100)` | Optional, unique per org |
-| `password_hash` | `varchar(255)` | bcrypt hash, never exposed via API |
-| `first_name` | `varchar(100)` | Optional |
-| `last_name` | `varchar(100)` | Optional |
+| `org_id` | `uuid` | FK to `organizations.id` |
+| `username` | `varchar(255)` | Unique per org |
+| `email` | `varchar(255)` | Unique per org |
 | `email_verified` | `boolean` | Defaults to `false` |
-| `active` | `boolean` | Soft disable without deletion |
-| `metadata` | `jsonb` | Custom attributes (department, employee_id, etc.) |
+| `given_name` | `varchar(255)` | Optional (OIDC standard claim) |
+| `family_name` | `varchar(255)` | Optional (OIDC standard claim) |
+| `picture` | `varchar(2048)` | Profile picture URL |
+| `phone_number` | `varchar(50)` | Optional |
+| `phone_number_verified` | `boolean` | Defaults to `false` |
+| `password_hash` | `bytea` | argon2id hash (PHC format), nullable for social-only accounts |
+| `enabled` | `boolean` | Soft disable without deletion (default: `true`) |
+| `mfa_enabled` | `boolean` | Whether MFA is active for this user (default: `false`) |
+| `last_login_at` | `timestamptz` | Updated on successful authentication |
 | `created_at` | `timestamptz` | Row creation time |
 | `updated_at` | `timestamptz` | Last modification time |
-| `last_login_at` | `timestamptz` | Updated on successful authentication |
 
 ### roles
 
-Named roles with a set of permissions, scoped to an organization. Permissions are stored as a JSONB array of permission strings.
+Named roles scoped to an organization. Supports a `builtin` flag for system-defined roles (e.g., `admin`, `member`) that cannot be deleted.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | Primary key |
-| `organization_id` | `uuid` | FK to `organizations.id` |
+| `org_id` | `uuid` | FK to `organizations.id` |
 | `name` | `varchar(100)` | Unique per organization |
 | `description` | `varchar(500)` | Human-readable description |
-| `permissions` | `jsonb` | Array of permission strings, e.g. `["users:read", "users:write"]` |
+| `builtin` | `boolean` | System-defined role (default: `false`) |
 | `created_at` | `timestamptz` | Row creation time |
 | `updated_at` | `timestamptz` | Last modification time |
 
 ### user_roles
 
-Join table between users and roles. Tracks who granted the role and when.
+Join table between users and roles. Uses a composite primary key on `(user_id, role_id)` to prevent duplicate assignments.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | `uuid` | Primary key |
-| `user_id` | `uuid` | FK to `users.id` |
-| `role_id` | `uuid` | FK to `roles.id` |
-| `granted_at` | `timestamptz` | When the role was assigned |
-| `granted_by` | `uuid` | FK to `users.id` (the admin who granted it) |
-
-Composite unique constraint on `(user_id, role_id)` prevents duplicate assignments.
+| `user_id` | `uuid` | FK to `users.id` (part of composite PK) |
+| `role_id` | `uuid` | FK to `roles.id` (part of composite PK) |
+| `assigned_at` | `timestamptz` | When the role was assigned (default: `now()`) |
 
 ### oauth_clients
 
-Registered OAuth 2.0 / OIDC clients (relying parties). Each client belongs to an organization.
+Registered OAuth 2.0 / OIDC clients (relying parties). Each client belongs to an organization. The `id` column serves as both the internal primary key and the public `client_id`.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | `uuid` | Internal primary key |
-| `organization_id` | `uuid` | FK to `organizations.id` |
-| `client_id` | `varchar(100)` | Public client identifier, globally unique |
-| `client_secret_hash` | `varchar(255)` | bcrypt hash of client secret (confidential clients only) |
-| `client_name` | `varchar(255)` | Display name |
+| `id` | `varchar(128)` | Primary key and public client identifier |
+| `org_id` | `uuid` | FK to `organizations.id` |
+| `name` | `varchar(255)` | Display name |
+| `client_type` | `varchar(20)` | `public` or `confidential` |
 | `redirect_uris` | `text[]` | Allowed redirect URIs (exact match, no wildcards) |
-| `allowed_scopes` | `text[]` | Scopes this client is allowed to request |
-| `grant_types` | `text[]` | Allowed grant types (authorization_code, client_credentials, etc.) |
-| `token_endpoint_auth_method` | `varchar(50)` | `client_secret_basic`, `client_secret_post`, or `none` |
-| `confidential` | `boolean` | Whether the client can keep a secret |
-| `metadata` | `jsonb` | Additional client configuration |
+| `client_secret_hash` | `bytea` | bcrypt hash of client secret (confidential clients only) |
+| `description` | `varchar(500)` | Optional description |
+| `enabled` | `boolean` | Soft disable without deletion (default: `true`) |
 | `created_at` | `timestamptz` | Row creation time |
 | `updated_at` | `timestamptz` | Last modification time |
 
 ### sessions
 
-Active user sessions. Session tokens are stored as hashes. Session data is stored in PostgreSQL for persistence and auditability.
+Active user sessions. Each session stores a hashed refresh token. Refresh tokens are not stored in a separate table; they are a column on the sessions table.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | Primary key |
 | `user_id` | `uuid` | FK to `users.id` |
-| `session_token` | `varchar(255)` | SHA-256 hash of the session token |
-| `ip_address` | `varchar(45)` | Client IP (IPv4 or IPv6) |
-| `user_agent` | `varchar(500)` | Client user agent string |
+| `refresh_token_hash` | `bytea` | SHA-256 hash of the refresh token |
 | `expires_at` | `timestamptz` | Session expiration |
 | `created_at` | `timestamptz` | Session creation time |
 
@@ -234,71 +217,49 @@ Append-only log of security-relevant events. This table is insert-only in normal
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | Primary key |
-| `organization_id` | `uuid` | FK to `organizations.id` |
-| `user_id` | `uuid` | FK to `users.id` (nullable for anonymous events) |
-| `event_type` | `varchar(100)` | Event category (e.g., `user.login`, `user.login_failed`, `role.assigned`) |
+| `org_id` | `uuid` | FK to `organizations.id` |
+| `event_type` | `varchar(50)` | Event category (e.g., `user.login`, `user.login_failed`, `role.assigned`) |
+| `actor_id` | `uuid` | FK to `users.id` (nullable for anonymous events) |
+| `actor_name` | `varchar(255)` | Display name of the actor at event time |
+| `target_type` | `varchar(50)` | Type of the affected entity (e.g., `user`, `role`, `client`) |
+| `target_id` | `varchar(255)` | ID of the affected entity |
+| `target_name` | `varchar(255)` | Display name of the affected entity |
 | `ip_address` | `varchar(45)` | Source IP address |
 | `user_agent` | `varchar(500)` | Client user agent |
 | `details` | `jsonb` | Event-specific payload (changed fields, error reasons, etc.) |
 | `created_at` | `timestamptz` | Event timestamp (immutable) |
 
-Indexed on `(organization_id, event_type, created_at)` for efficient filtering and time-range queries.
+Indexed on `(org_id, created_at DESC)` for efficient filtering and time-range queries, plus indexes on `event_type` and `actor_id`.
 
-### auth_codes
+### authorization_codes
 
 Short-lived authorization codes issued during the OAuth 2.0 authorization code flow. Codes are single-use and expire within minutes.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | Primary key |
-| `code` | `varchar(255)` | The authorization code (hashed) |
-| `client_id` | `uuid` | FK to `oauth_clients.id` |
+| `code_hash` | `bytea` | SHA-256 hash of the authorization code (unique) |
+| `client_id` | `varchar(128)` | FK to `oauth_clients.id` |
 | `user_id` | `uuid` | FK to `users.id` |
-| `scopes` | `text[]` | Granted scopes |
+| `org_id` | `uuid` | FK to `organizations.id` |
 | `redirect_uri` | `text` | The redirect URI used in the authorization request |
-| `code_challenge` | `varchar(255)` | PKCE code challenge |
-| `code_challenge_method` | `varchar(10)` | `S256` (plain is not supported) |
+| `code_challenge` | `varchar(128)` | PKCE code challenge |
+| `scope` | `varchar(512)` | Granted scopes (default: `openid`) |
 | `used` | `boolean` | Set to `true` on exchange; prevents replay |
 | `expires_at` | `timestamptz` | Typically 10 minutes from issuance |
 | `created_at` | `timestamptz` | Issuance time |
 
-### refresh_tokens
-
-Long-lived refresh tokens. Stored as hashes, never in plaintext. Support revocation for logout and security incident response.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` | Primary key |
-| `token_hash` | `varchar(255)` | SHA-256 hash of the refresh token |
-| `client_id` | `uuid` | FK to `oauth_clients.id` |
-| `user_id` | `uuid` | FK to `users.id` |
-| `scopes` | `text[]` | Scopes associated with this token |
-| `revoked` | `boolean` | Set to `true` on revocation |
-| `expires_at` | `timestamptz` | Token expiration (configurable, typically 30 days) |
-| `created_at` | `timestamptz` | Issuance time |
-
 ## JSONB Usage
 
-Several tables use `jsonb` columns for extensibility without schema migrations:
-
-- **`organizations.metadata`** — Theme configuration, branding assets, feature flags, custom settings per tenant.
-- **`users.metadata`** — Custom user attributes that vary by organization (employee ID, department, cost center). Avoids the EAV anti-pattern while keeping the schema stable.
-- **`roles.permissions`** — Permission arrays stored as JSONB for flexible, queryable permission models. Supports PostgreSQL's `@>` containment operator for efficient permission checks.
-- **`oauth_clients.metadata`** — Client-specific configuration overrides (token lifetimes, custom claims).
-- **`audit_events.details`** — Event-specific payloads that vary by event type. Keeps the audit table schema stable while supporting rich event data.
+The `audit_events.details` column uses `jsonb` for extensibility without schema migrations. Event-specific payloads vary by event type, and JSONB keeps the audit table schema stable while supporting rich event data.
 
 ### Querying JSONB
 
 ```sql
--- Find users with a specific department
-SELECT * FROM users
-WHERE organization_id = $1
-  AND metadata->>'department' = 'engineering';
-
--- Check if a role has a specific permission
-SELECT * FROM roles
-WHERE organization_id = $1
-  AND permissions @> '["users:write"]';
+-- Find audit events with a specific detail
+SELECT * FROM audit_events
+WHERE org_id = $1
+  AND details->>'reason' = 'brute_force';
 ```
 
 ## Indexing Strategy
@@ -307,16 +268,21 @@ Key indexes beyond primary keys:
 
 | Table | Index | Purpose |
 |-------|-------|---------|
-| `users` | `(organization_id, email)` UNIQUE | Email uniqueness per org |
-| `users` | `(organization_id, username)` UNIQUE | Username uniqueness per org |
-| `user_roles` | `(user_id, role_id)` UNIQUE | Prevent duplicate assignments |
-| `oauth_clients` | `(client_id)` UNIQUE | Global client ID lookup |
-| `sessions` | `(session_token)` UNIQUE | Fast session validation |
+| `users` | `(email, org_id)` UNIQUE | Email uniqueness per org |
+| `users` | `(username, org_id)` UNIQUE | Username uniqueness per org |
+| `users` | `(org_id)` | List users by organization |
+| `user_roles` | `(user_id, role_id)` PK | Composite primary key prevents duplicates |
+| `user_roles` | `(role_id)` | Reverse lookup: users with a given role |
+| `roles` | `(name, org_id)` UNIQUE | Role name uniqueness per org |
+| `oauth_clients` | `(org_id)` | List clients by organization |
+| `oauth_clients` | `(org_id, enabled)` | Filter active clients per org |
 | `sessions` | `(user_id)` | List user sessions |
-| `audit_events` | `(organization_id, event_type, created_at)` | Filtered audit queries |
-| `audit_events` | `(user_id, created_at)` | Per-user audit history |
-| `auth_codes` | `(code)` UNIQUE | Code exchange lookup |
-| `refresh_tokens` | `(token_hash)` UNIQUE | Token validation |
+| `sessions` | `(expires_at)` | Expired session cleanup |
+| `audit_events` | `(org_id, created_at DESC)` | Filtered audit queries |
+| `audit_events` | `(event_type)` | Filter by event type |
+| `audit_events` | `(actor_id)` | Per-user audit history |
+| `authorization_codes` | `(code_hash)` UNIQUE | Code exchange lookup |
+| `authorization_codes` | `(expires_at)` | Expired code cleanup |
 
 ## Data Lifecycle
 
@@ -324,6 +290,5 @@ Key indexes beyond primary keys:
 |-----------|-----------|---------|
 | Auth codes | 10 minutes | Background job purges expired codes |
 | Sessions | Configurable (default 24h) | Expired sessions cleaned by background job |
-| Refresh tokens | Configurable (default 30 days) | Revoked and expired tokens purged periodically |
 | Audit events | Configurable (default 90 days) | Archival or deletion based on retention policy |
-| User data | Until deletion | Soft-delete with configurable hard-delete grace period |
+| User data | Until deletion | Soft-delete via `enabled` flag |
