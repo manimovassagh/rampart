@@ -22,12 +22,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = issuer;
         options.MetadataAddress = $"{issuer}/.well-known/openid-configuration";
+        options.RequireHttpsMetadata = !issuer.StartsWith("http://");
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidIssuer = issuer,
             ValidateAudience = false,
             ValidateLifetime = true,
+            NameClaimType = "preferred_username",
+            RoleClaimType = "roles",
         };
 
         // Custom error responses matching the Express backend format.

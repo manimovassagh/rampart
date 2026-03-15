@@ -31,6 +31,7 @@ public static class RampartAuthentication
             {
                 options.Authority = issuer;
                 options.MetadataAddress = $"{issuer}/.well-known/openid-configuration";
+                options.RequireHttpsMetadata = !issuer.StartsWith("http://");
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
