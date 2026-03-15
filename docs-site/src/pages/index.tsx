@@ -106,7 +106,7 @@ const SDKS = [
   {name: 'Node.js', icon: '\uD83D\uDFE9'},
   {name: 'React', icon: '\u269B\uFE0F'},
   {name: 'Next.js', icon: '\u25B2'},
-  {name: 'Go', icon: '\uD83D\uDC39'},
+  {name: 'Go', icon: '\uD83D\uDC99'},
   {name: 'Python', icon: '\uD83D\uDC0D'},
   {name: 'Spring Boot', icon: '\u2615'},
   {name: '.NET', icon: '\uD83D\uDFEA'},
