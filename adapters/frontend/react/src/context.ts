@@ -34,7 +34,9 @@ export function RampartProvider({
   clientId,
   redirectUri,
   scope,
-  persist = true,
+  // WARNING: Enabling persist stores tokens in localStorage, which is vulnerable
+  // to XSS attacks. Only enable this if you understand the security implications.
+  persist = false,
   children,
 }: RampartProviderProps) {
   const [user, setUser] = useState<RampartUser | null>(null);

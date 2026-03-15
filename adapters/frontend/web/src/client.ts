@@ -139,7 +139,7 @@ export class RampartClient {
     const data = await res.json();
     const updated: RampartTokens = {
       access_token: data.access_token,
-      refresh_token: this.tokens.refresh_token,
+      refresh_token: data.refresh_token ?? this.tokens.refresh_token,
       token_type: data.token_type,
       expires_in: data.expires_in,
     };

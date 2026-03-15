@@ -64,7 +64,7 @@ public sealed class RequireRolesAttribute : Attribute, IAuthorizationFilter
             context.Result = new JsonResult(new
             {
                 error = "forbidden",
-                error_description = $"Missing required role(s): {string.Join(", ", missing)}",
+                error_description = "Insufficient permissions.",
                 status = 403
             })
             {
@@ -118,7 +118,7 @@ public static class RampartRolesMiddlewareExtensions
                 await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
                 {
                     error = "forbidden",
-                    error_description = $"Missing required role(s): {string.Join(", ", missing)}",
+                    error_description = "Insufficient permissions.",
                     status = 403
                 }));
                 return;
