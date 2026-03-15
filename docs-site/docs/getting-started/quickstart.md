@@ -63,10 +63,11 @@ Register a new user via the API:
 curl -X POST http://localhost:8080/register \
   -H "Content-Type: application/json" \
   -d '{
+    "username": "admin",
     "email": "admin@example.com",
     "password": "SecureP@ssw0rd!",
-    "first_name": "Admin",
-    "last_name": "User"
+    "given_name": "Admin",
+    "family_name": "User"
   }'
 ```
 
@@ -75,9 +76,10 @@ Expected response:
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
+  "username": "admin",
   "email": "admin@example.com",
-  "first_name": "Admin",
-  "last_name": "User",
+  "given_name": "Admin",
+  "family_name": "User",
   "created_at": "2026-03-05T10:00:00Z"
 }
 ```
@@ -88,10 +90,12 @@ Expected response:
 curl -X POST http://localhost:8080/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@example.com",
+    "identifier": "admin@example.com",
     "password": "SecureP@ssw0rd!"
   }'
 ```
+
+The `identifier` field accepts either an email address or a username.
 
 Expected response:
 
@@ -100,7 +104,7 @@ Expected response:
   "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
   "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...",
   "token_type": "Bearer",
-  "expires_in": 3600
+  "expires_in": 900
 }
 ```
 
@@ -122,10 +126,10 @@ Log in with the credentials you created in Step 4. The admin console provides a 
 
 ## Step 7: Use the CLI (Optional)
 
-If you have built the CLI tool (see [CLI documentation](./cli.md)), you can authenticate directly from the terminal:
+If you have built the CLI tool (`go build ./cmd/rampart-cli`), you can authenticate directly from the terminal:
 
 ```bash
-rampart-cli login --server http://localhost:8080
+rampart-cli login --issuer http://localhost:8080 --email admin@example.com --password 'SecureP@ssw0rd!'
 ```
 
 Check your identity:
@@ -133,6 +137,8 @@ Check your identity:
 ```bash
 rampart-cli whoami
 ```
+
+See the [CLI documentation](./cli.md) for the full command reference.
 
 ## Step 8: Explore the API
 
@@ -146,7 +152,7 @@ curl http://localhost:8080/me \
 List all users (requires admin role):
 
 ```bash
-curl http://localhost:8080/api/admin/users \
+curl http://localhost:8080/api/v1/admin/users \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -166,5 +172,6 @@ docker compose down -v
 
 - [Docker deployment guide](./docker.md) — production Docker configuration
 - [Configuration reference](./configuration.md) — environment variables and YAML config
+- [Social login](./social-login.md) — configure Google, GitHub, and Apple sign-in
 - [CLI tool](./cli.md) — full CLI command reference
 - [API overview](../api/overview.md) — REST API documentation
