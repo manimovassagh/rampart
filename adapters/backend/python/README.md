@@ -79,10 +79,10 @@ def me():
 ### FastAPI
 
 ```python
-from rampart.fastapi import rampart_auth, require_roles_from_claims
+from rampart.fastapi import rampart_auth, require_roles
 
 auth = rampart_auth("https://auth.example.com")
-check_admin = require_roles_from_claims("admin")
+check_admin = require_roles("admin")
 
 @app.get("/admin/users")
 async def list_users(claims: RampartClaims = Depends(auth)):
@@ -168,8 +168,6 @@ On authorization failure (missing roles), returns `403`:
 - `"Missing or invalid Authorization header"` -- no `Authorization: Bearer` header (Flask)
 - `"Token has expired"` -- the JWT expiration (`exp`) has passed
 - `"Invalid token: <reason>"` -- signature, issuer, or other validation failed
-- `"Authentication required before role check"` -- `require_roles` used without `rampart_auth`
-
 **403 error messages:**
 
 - `"Missing required roles: <role1>, <role2>"` -- the token lacks one or more required roles

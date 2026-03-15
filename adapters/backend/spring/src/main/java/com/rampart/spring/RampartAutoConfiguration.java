@@ -10,10 +10,12 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -48,7 +50,13 @@ public class RampartAutoConfiguration {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
 
         if (properties.getAudience() != null && !properties.getAudience().isBlank()) {
-            decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(properties.getIssuer()));
+            var issuerValidator = JwtValidators.createDefaultWithIssuer(properties.getIssuer());
+            var audienceValidator = new JwtClaimValidator<Collection<String>>(
+                    "aud", aud -> aud != null && aud.contains(properties.getAudience()));
+            var validators = new ArrayList<org.springframework.security.oauth2.core.OAuth2TokenValidator<org.springframework.security.oauth2.jwt.Jwt>>();
+            validators.add(issuerValidator);
+            validators.add(audienceValidator);
+            decoder.setJwtValidator(new org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator<>(validators));
         } else {
             decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(properties.getIssuer()));
         }

@@ -29,6 +29,7 @@ public static class RampartAuthentication
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                options.MapInboundClaims = false;
                 options.Authority = issuer;
                 options.MetadataAddress = $"{issuer}/.well-known/openid-configuration";
                 options.RequireHttpsMetadata = !issuer.StartsWith("http://");
@@ -93,7 +94,7 @@ public static class RampartAuthentication
                                         }
                                     }
                                 }
-                                catch
+                                catch (System.Text.Json.JsonException)
                                 {
                                     // Single role value, not an array
                                     identity.AddClaim(new Claim(ClaimTypes.Role, rolesClaim.Value));
