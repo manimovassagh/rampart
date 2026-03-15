@@ -48,7 +48,7 @@ const config: Config = {
     },
     announcementBar: {
       id: 'v3_release',
-      content: '🏰 Rampart v3.2.0 is here — 8 SDK adapters, social login, pentest-verified security — <a href="https://github.com/manimovassagh/rampart/releases">Download now</a>',
+      content: '🏰 Rampart v3.4.0 — 15 SDK adapters across every platform — <a href="https://github.com/manimovassagh/rampart/releases">Download now</a>',
       backgroundColor: '#8b5cf6',
       textColor: '#fff',
       isCloseable: true,
