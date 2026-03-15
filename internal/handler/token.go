@@ -3,11 +3,11 @@ package handler
 import (
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
-	"time"
-
 	"strings"
+	"time"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
 	"github.com/manimovassagh/rampart/internal/metrics"
@@ -258,15 +258,23 @@ func (h *TokenHandler) handleRefreshToken(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	// Look up session by refresh token
-	sess, err := h.sessions.FindByRefreshToken(ctx, refreshTokenValue)
+	// Rotate refresh token atomically: generate a new one and swap in a single
+	// UPDATE ... WHERE refresh_token_hash = old_hash. If the old token was
+	// already consumed (race / replay), this returns ErrTokenAlreadyRotated.
+	newRefreshToken, err := token.GenerateRefreshToken()
 	if err != nil {
-		h.logger.Error("failed to find session for refresh", "error", err)
+		h.logger.Error("failed to generate new refresh token", "error", err)
 		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}
-	if sess == nil {
-		h.writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "Invalid or expired refresh token.")
+	sess, err := h.sessions.RotateRefreshToken(ctx, refreshTokenValue, newRefreshToken)
+	if err != nil {
+		if errors.Is(err, session.ErrTokenAlreadyRotated) {
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "Invalid or expired refresh token.")
+			return
+		}
+		h.logger.Error("failed to rotate refresh token", "error", err)
+		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}
 
@@ -341,19 +349,6 @@ func (h *TokenHandler) handleRefreshToken(w http.ResponseWriter, r *http.Request
 	)
 	if err != nil {
 		h.logger.Error("failed to generate access token", "error", err)
-		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
-		return
-	}
-
-	// Rotate refresh token: generate a new one and invalidate the old
-	newRefreshToken, err := token.GenerateRefreshToken()
-	if err != nil {
-		h.logger.Error("failed to generate new refresh token", "error", err)
-		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
-		return
-	}
-	if err := h.sessions.RotateRefreshToken(ctx, sess.ID, newRefreshToken); err != nil {
-		h.logger.Error("failed to rotate refresh token", "error", err)
 		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
 	}

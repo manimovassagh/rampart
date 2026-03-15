@@ -191,7 +191,7 @@ func TestAuthFlowExtra_OAuthRefreshTokenGrant_MissingToken(t *testing.T) {
 }
 
 func TestAuthFlowExtra_OAuthRefreshTokenGrant_InvalidSession(t *testing.T) {
-	h := newTestTokenHandler(&mockTokenStore{}, &mockSessionStore{found: nil})
+	h := newTestTokenHandler(&mockTokenStore{}, &mockSessionStore{rotateErr: session.ErrTokenAlreadyRotated})
 
 	body := "grant_type=refresh_token&refresh_token=bogus"
 	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))
@@ -206,7 +206,7 @@ func TestAuthFlowExtra_OAuthRefreshTokenGrant_InvalidSession(t *testing.T) {
 }
 
 func TestAuthFlowExtra_OAuthRefreshTokenGrant_SessionFindError(t *testing.T) {
-	h := newTestTokenHandler(&mockTokenStore{}, &mockSessionStore{findErr: fmt.Errorf("db error")})
+	h := newTestTokenHandler(&mockTokenStore{}, &mockSessionStore{rotateErr: fmt.Errorf("db error")})
 
 	body := testRefreshBody
 	req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(body))

@@ -47,8 +47,10 @@ func TestWebhookCRUD(t *testing.T) {
 	if got.URL != created.URL {
 		t.Errorf("url: got %q, want %q", got.URL, created.URL)
 	}
-	if got.Secret != "s3cret" {
-		t.Errorf("secret: got %q, want %q", got.Secret, "s3cret")
+	// Secret is intentionally excluded from read queries for security.
+	// It should only be available at creation time.
+	if got.Secret != "" {
+		t.Errorf("secret should be empty on read, got %q", got.Secret)
 	}
 	if len(got.EventTypes) != 2 {
 		t.Errorf("event_types: expected 2, got %d", len(got.EventTypes))

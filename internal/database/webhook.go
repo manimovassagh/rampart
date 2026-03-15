@@ -31,16 +31,17 @@ func (db *DB) CreateWebhook(ctx context.Context, w *model.Webhook) (*model.Webho
 }
 
 // GetWebhookByID returns a webhook by its ID.
+// The secret is intentionally excluded — it is only returned at creation time.
 func (db *DB) GetWebhookByID(ctx context.Context, id uuid.UUID) (*model.Webhook, error) {
 	ctx, cancel := queryCtx(ctx)
 	defer cancel()
 
 	var wh model.Webhook
 	err := db.Pool.QueryRow(ctx,
-		`SELECT id, org_id, url, secret, description, event_types, enabled, created_at, updated_at
+		`SELECT id, org_id, url, description, event_types, enabled, created_at, updated_at
 		 FROM webhooks WHERE id = $1`,
 		id,
-	).Scan(&wh.ID, &wh.OrgID, &wh.URL, &wh.Secret, &wh.Description, &wh.EventTypes, &wh.Enabled, &wh.CreatedAt, &wh.UpdatedAt)
+	).Scan(&wh.ID, &wh.OrgID, &wh.URL, &wh.Description, &wh.EventTypes, &wh.Enabled, &wh.CreatedAt, &wh.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -62,7 +63,7 @@ func (db *DB) ListWebhooks(ctx context.Context, orgID uuid.UUID, limit, offset i
 	}
 
 	rows, err := db.Pool.Query(ctx,
-		`SELECT id, org_id, url, secret, description, event_types, enabled, created_at, updated_at
+		`SELECT id, org_id, url, description, event_types, enabled, created_at, updated_at
 		 FROM webhooks WHERE org_id = $1
 		 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 		orgID, limit, offset,
@@ -75,7 +76,7 @@ func (db *DB) ListWebhooks(ctx context.Context, orgID uuid.UUID, limit, offset i
 	var webhooks []*model.Webhook
 	for rows.Next() {
 		var wh model.Webhook
-		if err := rows.Scan(&wh.ID, &wh.OrgID, &wh.URL, &wh.Secret, &wh.Description, &wh.EventTypes, &wh.Enabled, &wh.CreatedAt, &wh.UpdatedAt); err != nil {
+		if err := rows.Scan(&wh.ID, &wh.OrgID, &wh.URL, &wh.Description, &wh.EventTypes, &wh.Enabled, &wh.CreatedAt, &wh.UpdatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scanning webhook: %w", err)
 		}
 		webhooks = append(webhooks, &wh)
@@ -95,9 +96,9 @@ func (db *DB) UpdateWebhook(ctx context.Context, id uuid.UUID, req *model.Update
 	err := db.Pool.QueryRow(ctx,
 		`UPDATE webhooks SET url = $2, description = $3, event_types = $4, enabled = $5, updated_at = now()
 		 WHERE id = $1
-		 RETURNING id, org_id, url, secret, description, event_types, enabled, created_at, updated_at`,
+		 RETURNING id, org_id, url, description, event_types, enabled, created_at, updated_at`,
 		id, req.URL, req.Description, req.EventTypes, req.Enabled,
-	).Scan(&wh.ID, &wh.OrgID, &wh.URL, &wh.Secret, &wh.Description, &wh.EventTypes, &wh.Enabled, &wh.CreatedAt, &wh.UpdatedAt)
+	).Scan(&wh.ID, &wh.OrgID, &wh.URL, &wh.Description, &wh.EventTypes, &wh.Enabled, &wh.CreatedAt, &wh.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("updating webhook: %w", err)
 	}
