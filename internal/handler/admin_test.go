@@ -1043,3 +1043,67 @@ func TestAdminListUsersWithPaginationLimits(t *testing.T) {
 		t.Errorf("limit = %d, want %d (clamped to max)", resp.Limit, maxPageLimit)
 	}
 }
+
+func TestAdminCreateUserInvalidGivenName(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAdminUserStore{}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: orgID}
+	body := []byte(`{"username":"newuser","email":"new@test.com","password":"Str0ng!Pass","given_name":"<script>","family_name":"User","enabled":true}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users", bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.CreateUser(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d; body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+}
+
+func TestAdminUpdateUserInvalidFamilyName(t *testing.T) {
+	user := newAdminTestUser()
+	store := &mockAdminUserStore{updatedUser: user}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Put("/api/v1/admin/users/{id}", h.UpdateUser)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
+	body := []byte(`{"username":"updated","email":"updated@test.com","given_name":"Up","family_name":"Da>ted","enabled":true}`)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+user.ID.String(), bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d; body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+}
+
+func TestAdminUpdateUserValidNames(t *testing.T) {
+	user := newAdminTestUser()
+	store := &mockAdminUserStore{updatedUser: user}
+	sessions := &mockAdminSessionStore{}
+	h := newTestAdminHandler(store, sessions)
+
+	r := chi.NewRouter()
+	r.Put("/api/v1/admin/users/{id}", h.UpdateUser)
+
+	authUser := &middleware.AuthenticatedUser{UserID: uuid.New(), OrgID: user.OrgID}
+	body := []byte(`{"username":"updated","email":"updated@test.com","given_name":"Valid","family_name":"Name","enabled":true}`)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+user.ID.String(), bytes.NewReader(body))
+	ctx := middleware.SetAuthenticatedUser(req.Context(), authUser)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d; body = %s", w.Code, http.StatusOK, w.Body.String())
+	}
+}

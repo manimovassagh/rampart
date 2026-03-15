@@ -683,6 +683,85 @@ func TestConsentDenialWithUnknownClient(t *testing.T) {
 	}
 }
 
+func TestAuthorizeGetRejectsUnknownScopes(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256&scope=openid+admin+superpower", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h.Authorize(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "invalid_scope") {
+		t.Error("expected invalid_scope error")
+	}
+	if !strings.Contains(body, "admin") {
+		t.Error("expected unknown scope 'admin' in error message")
+	}
+	if !strings.Contains(body, "superpower") {
+		t.Error("expected unknown scope 'superpower' in error message")
+	}
+}
+
+func TestAuthorizeGetAcceptsKnownScopes(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256&scope=openid+profile+email+offline_access", http.NoBody)
+	w := httptest.NewRecorder()
+
+	h.Authorize(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d (should render login page)", w.Code, http.StatusOK)
+	}
+}
+
+func TestAuthorizePostRejectsUnknownScopes(t *testing.T) {
+	orgID := uuid.New()
+	store := &mockAuthorizeStore{
+		oauthClient: newTestOAuthClient(orgID),
+	}
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+
+	form := url.Values{
+		"client_id":             {"test-client"},
+		"redirect_uri":          {"http://localhost:3002/callback"},
+		"scope":                 {"openid dangerous_scope"},
+		"state":                 {"abc"},
+		"code_challenge":        {"xyz"},
+		"code_challenge_method": {"S256"},
+		"identifier":            {"admin"},
+		"password":              {"secret"},
+	}
+
+	req := newPostRequestWithCSRF(t, "/oauth/authorize", form)
+	w := httptest.NewRecorder()
+
+	h.Authorize(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "invalid_scope") {
+		t.Error("expected invalid_scope error")
+	}
+	if !strings.Contains(body, "dangerous_scope") {
+		t.Error("expected unknown scope 'dangerous_scope' in error message")
+	}
+}
+
 func TestAuthorizeGetMissingState(t *testing.T) {
 	orgID := uuid.New()
 	store := &mockAuthorizeStore{

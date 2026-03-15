@@ -257,7 +257,7 @@ func TestValidateScopeToken_InvalidCharacters(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestValidateScopes_AllKnown(t *testing.T) {
-	parsed, unknown := ValidateScopes("openid profile email offline")
+	parsed, unknown := ValidateScopes("openid profile email offline_access")
 	if len(unknown) != 0 {
 		t.Errorf("expected no unknown scopes, got %v", unknown)
 	}

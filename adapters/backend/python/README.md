@@ -114,6 +114,38 @@ Verified tokens return a `RampartClaims` dataclass:
 | `family_name`        | `str | None`   | Last name                      |
 | `roles`              | `list[str]`    | Assigned roles                 |
 
+## Error Responses
+
+On authentication failure, both FastAPI and Flask return a `401` JSON response:
+
+```json
+{
+  "detail": "Token has expired"
+}
+```
+
+On authorization failure (missing roles), returns `403`:
+
+```json
+{
+  "detail": "Missing required roles: admin, editor"
+}
+```
+
+**401 error messages:**
+
+- `"Missing or invalid Authorization header"` — no `Authorization: Bearer` header (Flask)
+- `"Token has expired"` — the JWT expiration (`exp`) has passed
+- `"Invalid token: <reason>"` — signature, issuer, or other validation failed
+- `"Authentication required before role check"` — `require_roles` used without `rampart_auth`
+
+**403 error messages:**
+
+- `"Missing required roles: <role1>, <role2>"` — the token lacks one or more required roles
+
+> **Note:** FastAPI uses `HTTPException` which returns `{"detail": "..."}`.
+> Flask returns the same shape via `jsonify({"detail": "..."})` for consistency.
+
 ## Configuration Options
 
 ```python

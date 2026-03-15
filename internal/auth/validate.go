@@ -20,6 +20,7 @@ const (
 	minUsernameLen = 3
 	maxUsernameLen = 64
 	maxEmailLen    = 254
+	maxNameLen     = 255
 )
 
 var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$`)
@@ -137,6 +138,28 @@ func ValidateUsername(username string) *FieldError {
 		return &FieldError{
 			Field:   "username",
 			Message: "username must start and end with a letter or digit and can contain dots, hyphens, or underscores",
+		}
+	}
+	return nil
+}
+
+// ValidateName checks that a name field (given_name or family_name) is within
+// length limits and does not contain HTML-unsafe characters. Returns nil for
+// empty strings because names are optional.
+func ValidateName(field, name string) *FieldError {
+	if name == "" {
+		return nil
+	}
+	if len(name) > maxNameLen {
+		return &FieldError{
+			Field:   field,
+			Message: fmt.Sprintf("%s must be %d characters or fewer", field, maxNameLen),
+		}
+	}
+	if strings.ContainsAny(name, "<>&") {
+		return &FieldError{
+			Field:   field,
+			Message: fmt.Sprintf("%s contains invalid characters", field),
 		}
 	}
 	return nil

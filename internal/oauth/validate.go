@@ -22,10 +22,10 @@ var SupportedResponseTypes = map[string]bool{
 
 // KnownScopes are the scopes recognized by the server.
 var KnownScopes = map[string]bool{
-	"openid":  true,
-	"profile": true,
-	"email":   true,
-	"offline": true,
+	"openid":         true,
+	"profile":        true,
+	"email":          true,
+	"offline_access": true,
 }
 
 // codeVerifierCharRegexp matches only unreserved characters per RFC 7636 §4.1:

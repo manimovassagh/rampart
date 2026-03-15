@@ -75,7 +75,7 @@ func (h *AdminConsoleHandler) CreateUserAction(w http.ResponseWriter, r *http.Re
 	authUser := middleware.GetAuthenticatedUser(ctx)
 	orgID := authUser.OrgID
 
-	username := strings.TrimSpace(r.FormValue("username"))
+	username := strings.ToLower(strings.TrimSpace(r.FormValue("username")))
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	password := r.FormValue("password")
 	givenName := strings.TrimSpace(r.FormValue("given_name"))
@@ -208,7 +208,7 @@ func (h *AdminConsoleHandler) UpdateUserAction(w http.ResponseWriter, r *http.Re
 	}
 
 	req := &model.UpdateUserRequest{
-		Username:      strings.TrimSpace(r.FormValue("username")),
+		Username:      strings.ToLower(strings.TrimSpace(r.FormValue("username"))),
 		Email:         strings.ToLower(strings.TrimSpace(r.FormValue("email"))),
 		GivenName:     strings.TrimSpace(r.FormValue("given_name")),
 		FamilyName:    strings.TrimSpace(r.FormValue("family_name")),
