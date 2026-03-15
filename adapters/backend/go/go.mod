@@ -1,6 +1,6 @@
 module github.com/manimovassagh/rampart/adapters/backend/go
 
-go 1.23
+go 1.26.1
 
 require github.com/lestrrat-go/jwx/v2 v2.1.4
 
