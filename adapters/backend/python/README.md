@@ -1,6 +1,26 @@
 # Rampart Python Middleware
 
-JWT verification middleware for [Rampart](https://github.com/manimovassagh/rampart) IAM server. Supports **FastAPI** and **Flask**.
+[![PyPI version](https://img.shields.io/pypi/v/rampart-python.svg)](https://pypi.org/project/rampart-python/)
+[![Python versions](https://img.shields.io/pypi/pyversions/rampart-python.svg)](https://pypi.org/project/rampart-python/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/manimovassagh/rampart/blob/main/adapters/backend/python/LICENSE)
+
+JWT verification middleware for [Rampart](https://github.com/manimovassagh/rampart) IAM server. Supports **FastAPI** and **Flask** out of the box, or use the core library directly with any framework.
+
+## Features
+
+- **JWT verification** -- validates RS256-signed tokens against Rampart's JWKS endpoint
+- **FastAPI integration** -- dependency-injection-based auth via `Depends()`
+- **Flask integration** -- decorator-based auth with `@rampart_auth`
+- **Role-based access control (RBAC)** -- enforce required roles with a single function call
+- **JWKS caching** -- automatic key caching with configurable TTL to minimize network calls
+- **Typed claims** -- verified tokens return a `RampartClaims` dataclass with full type hints
+- **Framework-agnostic core** -- use `RampartAuth` directly for custom integrations
+- **Consistent error responses** -- `401`/`403` JSON errors across both frameworks
+
+## Requirements
+
+- Python 3.9 or later
+- A running [Rampart](https://github.com/manimovassagh/rampart) IAM server (for JWKS/token verification)
 
 ## Installation
 
@@ -9,15 +29,15 @@ JWT verification middleware for [Rampart](https://github.com/manimovassagh/rampa
 pip install rampart-python
 
 # With FastAPI support
-pip install rampart-python[fastapi]
+pip install "rampart-python[fastapi]"
 
 # With Flask support
-pip install rampart-python[flask]
+pip install "rampart-python[flask]"
 ```
 
-## FastAPI
+## Quick Start
 
-### Basic Authentication
+### FastAPI
 
 ```python
 from fastapi import Depends, FastAPI
@@ -36,23 +56,7 @@ async def me(claims: RampartClaims = Depends(auth)):
     }
 ```
 
-### Role-Based Access Control
-
-```python
-from rampart.fastapi import rampart_auth, require_roles_from_claims
-
-auth = rampart_auth("https://auth.example.com")
-check_admin = require_roles_from_claims("admin")
-
-@app.get("/admin/users")
-async def list_users(claims: RampartClaims = Depends(auth)):
-    check_admin(claims)  # Raises 403 if "admin" role is missing
-    return {"users": ["..."]}
-```
-
-## Flask
-
-### Basic Authentication
+### Flask
 
 ```python
 from flask import Flask, g
@@ -70,7 +74,23 @@ def me():
     }
 ```
 
-### Role-Based Access Control
+## Role-Based Access Control
+
+### FastAPI
+
+```python
+from rampart.fastapi import rampart_auth, require_roles_from_claims
+
+auth = rampart_auth("https://auth.example.com")
+check_admin = require_roles_from_claims("admin")
+
+@app.get("/admin/users")
+async def list_users(claims: RampartClaims = Depends(auth)):
+    check_admin(claims)  # Raises 403 if "admin" role is missing
+    return {"users": ["..."]}
+```
+
+### Flask
 
 ```python
 from rampart.flask import rampart_auth, require_roles
@@ -94,6 +114,17 @@ print(claims.sub)       # "user-123"
 print(claims.email)     # "user@example.com"
 print(claims.roles)     # ["admin", "user"]
 print(claims.org_id)    # "org-456"
+```
+
+## Configuration Options
+
+```python
+RampartAuth(
+    issuer="https://auth.example.com",  # Required: Rampart server URL
+    audience="my-api",                   # Optional: expected audience claim
+    jwks_cache_ttl=300,                  # JWKS cache lifetime in seconds (default: 300)
+    algorithms=["RS256"],                # Allowed JWT algorithms (default: ["RS256"])
+)
 ```
 
 ## Claims
@@ -134,28 +165,17 @@ On authorization failure (missing roles), returns `403`:
 
 **401 error messages:**
 
-- `"Missing or invalid Authorization header"` — no `Authorization: Bearer` header (Flask)
-- `"Token has expired"` — the JWT expiration (`exp`) has passed
-- `"Invalid token: <reason>"` — signature, issuer, or other validation failed
-- `"Authentication required before role check"` — `require_roles` used without `rampart_auth`
+- `"Missing or invalid Authorization header"` -- no `Authorization: Bearer` header (Flask)
+- `"Token has expired"` -- the JWT expiration (`exp`) has passed
+- `"Invalid token: <reason>"` -- signature, issuer, or other validation failed
+- `"Authentication required before role check"` -- `require_roles` used without `rampart_auth`
 
 **403 error messages:**
 
-- `"Missing required roles: <role1>, <role2>"` — the token lacks one or more required roles
+- `"Missing required roles: <role1>, <role2>"` -- the token lacks one or more required roles
 
 > **Note:** FastAPI uses `HTTPException` which returns `{"detail": "..."}`.
 > Flask returns the same shape via `jsonify({"detail": "..."})` for consistency.
-
-## Configuration Options
-
-```python
-RampartAuth(
-    issuer="https://auth.example.com",  # Required: Rampart server URL
-    audience="my-api",                   # Optional: expected audience claim
-    jwks_cache_ttl=300,                  # JWKS cache lifetime in seconds (default: 300)
-    algorithms=["RS256"],                # Allowed JWT algorithms (default: ["RS256"])
-)
-```
 
 ## Running Tests
 
@@ -163,3 +183,13 @@ RampartAuth(
 pip install -e ".[dev]"
 pytest tests/
 ```
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/manimovassagh/rampart/blob/main/adapters/backend/python/LICENSE) file for details.
+
+## Links
+
+- [Rampart IAM Server](https://github.com/manimovassagh/rampart)
+- [PyPI Package](https://pypi.org/project/rampart-python/)
+- [Issue Tracker](https://github.com/manimovassagh/rampart/issues)

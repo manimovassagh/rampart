@@ -1,6 +1,19 @@
 # @rampart-auth/web
 
-Browser authentication SDK for [Rampart](https://github.com/manimovassagh/rampart). Implements the OAuth 2.0 Authorization Code flow with PKCE using the Web Crypto API — no backend proxy required.
+[![npm version](https://img.shields.io/npm/v/@rampart-auth/web.svg)](https://www.npmjs.com/package/@rampart-auth/web)
+[![license](https://img.shields.io/npm/l/@rampart-auth/web.svg)](https://github.com/manimovassagh/rampart/blob/main/adapters/frontend/web/LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+
+Browser authentication SDK for [Rampart](https://github.com/manimovassagh/rampart). Implements the OAuth 2.0 Authorization Code flow with PKCE using the Web Crypto API -- no backend proxy required.
+
+## Features
+
+- **OAuth 2.0 Authorization Code + PKCE** -- secure browser-based auth without a backend proxy
+- **Built on the Web Crypto API** -- no Node.js polyfills required
+- **Automatic token refresh** with silent retry on 401 responses via `authFetch`
+- **Token lifecycle callbacks** (`onTokenChange`) for custom persistence strategies
+- **Full TypeScript support** with exported types for tokens, users, and errors
+- **Framework-agnostic** -- works with any SPA, or use as the foundation for framework adapters like `@rampart-auth/react`
 
 ## Install
 

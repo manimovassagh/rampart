@@ -161,7 +161,7 @@ func (h *AdminConsoleHandler) refreshSocialProvider(provider string, cfg *model.
 	}
 
 	switch provider {
-	case "google":
+	case "google": //nolint:goconst // matches external provider name
 		secret := cfg.ClientSecret
 		if secret == "" {
 			if existing, ok := h.socialRegistry.Get(provider); ok {
@@ -174,7 +174,7 @@ func (h *AdminConsoleHandler) refreshSocialProvider(provider string, cfg *model.
 			ClientID:     cfg.ClientID,
 			ClientSecret: secret,
 		})
-	case "github":
+	case "github": //nolint:goconst // matches external provider name
 		secret := cfg.ClientSecret
 		if secret == "" {
 			if existing, ok := h.socialRegistry.Get(provider); ok {

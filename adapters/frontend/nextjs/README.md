@@ -1,6 +1,19 @@
 # @rampart-auth/nextjs
 
-Rampart authentication adapter for Next.js App Router. Provides Edge Middleware auth guards, server-side JWT validation, and client-side session hooks.
+[![npm version](https://img.shields.io/npm/v/@rampart-auth/nextjs.svg)](https://www.npmjs.com/package/@rampart-auth/nextjs)
+[![license](https://img.shields.io/npm/l/@rampart-auth/nextjs.svg)](https://github.com/manimovassagh/rampart/blob/main/adapters/frontend/nextjs/LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+
+[Rampart](https://github.com/manimovassagh/rampart) authentication adapter for Next.js App Router. Provides Edge Middleware auth guards, server-side JWT validation, and client-side session hooks.
+
+## Features
+
+- **Edge Middleware auth guard** -- intercepts requests at the edge, validates JWTs, and redirects unauthenticated users
+- **Server-side JWT validation** via `getServerAuth` for Server Components and Route Handlers
+- **Client-side session hook** (`useRampartSession`) -- fetches validated claims from a session API endpoint
+- **SPA / PKCE flow support** -- re-exports [`@rampart-auth/react`](https://www.npmjs.com/package/@rampart-auth/react) hooks (`useAuth`, `<ProtectedRoute>`, `<RampartProvider>`)
+- **Clean sub-path exports** -- `@rampart-auth/nextjs/middleware`, `/server`, and `/client`
+- **Full TypeScript support** with exported types for claims, middleware config, and server auth
 
 ## Install
 
@@ -327,3 +340,7 @@ npm run build   # uses tsup
 npm run lint    # type-check with tsc --noEmit
 npm run test    # vitest
 ```
+
+## License
+
+MIT
