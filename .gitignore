@@ -77,3 +77,4 @@ firebase-debug.log
 internal/handler/static/node_modules/
 adapters/backend/rust/target/
 adapters/frontend/swift/.build/
+adapters/backend/rust/Cargo.lock
