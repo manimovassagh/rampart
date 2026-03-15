@@ -1,6 +1,6 @@
 {
   "name": "@rampart-auth/react",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Rampart authentication hooks and components for React",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -45,7 +45,7 @@
     "directory": "adapters/frontend/react"
   },
   "dependencies": {
-    "@rampart-auth/web": "^1.0.0"
+    "@rampart-auth/web": "^1.1.0"
   },
   "peerDependencies": {
     "react": ">=18"
