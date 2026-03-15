@@ -1,0 +1,36 @@
+[package]
+name = "rampart-rust"
+version = "0.1.0"
+edition = "2021"
+description = "Rust adapter for Rampart IAM — JWT verification middleware for Actix-web and Axum"
+license = "MIT"
+repository = "https://github.com/manimovassagh/rampart"
+keywords = ["auth", "jwt", "iam", "oauth2", "oidc"]
+
+[features]
+default = ["actix", "axum"]
+actix = ["dep:actix-web", "dep:actix-service", "dep:actix-utils"]
+axum = ["dep:axum", "dep:axum-core", "dep:tower-layer", "dep:tower-service"]
+
+[dependencies]
+jsonwebtoken = "9"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["sync", "time"] }
+thiserror = "2"
+tracing = "0.1"
+
+# Actix-web support (optional)
+actix-web = { version = "4", optional = true }
+actix-service = { version = "2", optional = true }
+actix-utils = { version = "3", optional = true }
+
+# Axum support (optional)
+axum = { version = "0.7", optional = true }
+axum-core = { version = "0.4", optional = true }
+tower-layer = { version = "0.3", optional = true }
+tower-service = { version = "0.3", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
