@@ -112,12 +112,21 @@ const (
 )
 
 // StaticHandler returns an http.Handler that serves embedded static assets (CSS, JS).
+// Directory listing is disabled — only specific files are served.
 func StaticHandler() http.Handler {
 	sub, err := fs.Sub(staticFS, "static")
 	if err != nil {
 		panic("failed to create static sub-filesystem: " + err.Error())
 	}
-	return http.FileServer(http.FS(sub))
+	fileServer := http.FileServer(http.FS(sub))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Block directory listing by rejecting paths that end with "/"
+		if r.URL.Path == "" || r.URL.Path[len(r.URL.Path)-1] == '/' {
+			http.NotFound(w, r)
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 }
 
 // AdminConsoleStore defines the database operations required by AdminConsoleHandler.
