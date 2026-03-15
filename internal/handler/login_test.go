@@ -234,7 +234,7 @@ type mockSessionStore struct {
 	deleteErr error
 }
 
-func (m *mockSessionStore) Create(_ context.Context, userID uuid.UUID, clientID, _ string, expiresAt time.Time) (*session.Session, error) {
+func (m *mockSessionStore) Create(_ context.Context, userID uuid.UUID, clientID, _, scope string, expiresAt time.Time) (*session.Session, error) {
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
@@ -245,6 +245,7 @@ func (m *mockSessionStore) Create(_ context.Context, userID uuid.UUID, clientID,
 		ID:        uuid.New(),
 		UserID:    userID,
 		ClientID:  clientID,
+		Scope:     scope,
 		ExpiresAt: expiresAt,
 		CreatedAt: time.Now(),
 	}, nil

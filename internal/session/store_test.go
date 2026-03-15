@@ -28,7 +28,7 @@ func newMockStore() *mockStore {
 	}
 }
 
-func (m *mockStore) Create(ctx context.Context, userID uuid.UUID, clientID, refreshToken string, expiresAt time.Time) (*Session, error) {
+func (m *mockStore) Create(ctx context.Context, userID uuid.UUID, clientID, refreshToken, scope string, expiresAt time.Time) (*Session, error) {
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
@@ -37,6 +37,7 @@ func (m *mockStore) Create(ctx context.Context, userID uuid.UUID, clientID, refr
 		UserID:           userID,
 		ClientID:         clientID,
 		RefreshTokenHash: HashToken(refreshToken),
+		Scope:            scope,
 		ExpiresAt:        expiresAt,
 		CreatedAt:        time.Now().UTC(),
 	}
@@ -144,7 +145,7 @@ func TestCreateSession(t *testing.T) {
 	token := "refresh-token-123"
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	sess, err := store.Create(ctx, userID, "", token, expiresAt)
+	sess, err := store.Create(ctx, userID, "", token, "", expiresAt)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -167,7 +168,7 @@ func TestCreateSessionError(t *testing.T) {
 	store.createErr = errors.New("db connection failed")
 	ctx := context.Background()
 
-	sess, err := store.Create(ctx, uuid.New(), "", "token", time.Now().Add(time.Hour))
+	sess, err := store.Create(ctx, uuid.New(), "", "token", "", time.Now().Add(time.Hour))
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -183,7 +184,7 @@ func TestFindByRefreshToken(t *testing.T) {
 	token := "find-me-token"
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	_, err := store.Create(ctx, userID, "", token, expiresAt)
+	_, err := store.Create(ctx, userID, "", token, "", expiresAt)
 	if err != nil {
 		t.Fatalf("unexpected error creating session: %v", err)
 	}
@@ -220,7 +221,7 @@ func TestFindByRefreshTokenExpired(t *testing.T) {
 	token := "expired-token"
 	expiresAt := time.Now().Add(-1 * time.Hour) // already expired
 
-	sess, err := store.Create(ctx, userID, "", token, expiresAt)
+	sess, err := store.Create(ctx, userID, "", token, "", expiresAt)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -254,7 +255,7 @@ func TestDeleteSession(t *testing.T) {
 	userID := uuid.New()
 	token := "delete-me"
 
-	sess, err := store.Create(ctx, userID, "", token, time.Now().Add(time.Hour))
+	sess, err := store.Create(ctx, userID, "", token, "", time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -290,14 +291,14 @@ func TestDeleteByUserID(t *testing.T) {
 	userID := uuid.New()
 
 	for i := 0; i < 3; i++ {
-		_, err := store.Create(ctx, userID, "", fmt.Sprintf("token-%d", i), time.Now().Add(time.Hour))
+		_, err := store.Create(ctx, userID, "", fmt.Sprintf("token-%d", i), "", time.Now().Add(time.Hour))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}
 
 	otherUserID := uuid.New()
-	_, err := store.Create(ctx, otherUserID, "", "other-token", time.Now().Add(time.Hour))
+	_, err := store.Create(ctx, otherUserID, "", "other-token", "", time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -522,12 +523,12 @@ func TestMultipleSessionsSameUser(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
 
-	sess1, err := store.Create(ctx, userID, "", "token-1", time.Now().Add(time.Hour))
+	sess1, err := store.Create(ctx, userID, "", "token-1", "", time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	sess2, err := store.Create(ctx, userID, "", "token-2", time.Now().Add(time.Hour))
+	sess2, err := store.Create(ctx, userID, "", "token-2", "", time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

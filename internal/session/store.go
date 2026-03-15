@@ -18,6 +18,7 @@ type Session struct {
 	UserID           uuid.UUID
 	ClientID         string
 	RefreshTokenHash []byte
+	Scope            string
 	ExpiresAt        time.Time
 	CreatedAt        time.Time
 }
@@ -38,7 +39,7 @@ var ErrTokenAlreadyRotated = errors.New("refresh token already rotated")
 
 // Store defines operations for managing sessions.
 type Store interface {
-	Create(ctx context.Context, userID uuid.UUID, clientID string, refreshToken string, expiresAt time.Time) (*Session, error)
+	Create(ctx context.Context, userID uuid.UUID, clientID string, refreshToken string, scope string, expiresAt time.Time) (*Session, error)
 	FindByRefreshToken(ctx context.Context, refreshToken string) (*Session, error)
 	RotateRefreshToken(ctx context.Context, oldRefreshToken, newRefreshToken string) (*Session, error)
 	Delete(ctx context.Context, sessionID uuid.UUID) error
@@ -62,17 +63,17 @@ func HashToken(token string) []byte {
 }
 
 // Create inserts a new session with a hashed refresh token.
-func (s *PGStore) Create(ctx context.Context, userID uuid.UUID, clientID, refreshToken string, expiresAt time.Time) (*Session, error) {
+func (s *PGStore) Create(ctx context.Context, userID uuid.UUID, clientID, refreshToken, scope string, expiresAt time.Time) (*Session, error) {
 	hash := HashToken(refreshToken)
 
 	query := `
-		INSERT INTO sessions (user_id, client_id, refresh_token_hash, expires_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, user_id, client_id, refresh_token_hash, expires_at, created_at`
+		INSERT INTO sessions (user_id, client_id, refresh_token_hash, scope, expires_at)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, user_id, client_id, refresh_token_hash, scope, expires_at, created_at`
 
 	var sess Session
-	err := s.pool.QueryRow(ctx, query, userID, clientID, hash, expiresAt).Scan(
-		&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.ExpiresAt, &sess.CreatedAt,
+	err := s.pool.QueryRow(ctx, query, userID, clientID, hash, scope, expiresAt).Scan(
+		&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.Scope, &sess.ExpiresAt, &sess.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("creating session: %w", err)
@@ -85,13 +86,13 @@ func (s *PGStore) FindByRefreshToken(ctx context.Context, refreshToken string) (
 	hash := HashToken(refreshToken)
 
 	query := `
-		SELECT id, user_id, client_id, refresh_token_hash, expires_at, created_at
+		SELECT id, user_id, client_id, refresh_token_hash, scope, expires_at, created_at
 		FROM sessions
 		WHERE refresh_token_hash = $1 AND expires_at > now()`
 
 	var sess Session
 	err := s.pool.QueryRow(ctx, query, hash).Scan(
-		&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.ExpiresAt, &sess.CreatedAt,
+		&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.Scope, &sess.ExpiresAt, &sess.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -113,11 +114,11 @@ func (s *PGStore) RotateRefreshToken(ctx context.Context, oldRefreshToken, newRe
 	query := `
 		UPDATE sessions SET refresh_token_hash = $1
 		WHERE refresh_token_hash = $2 AND expires_at > now()
-		RETURNING id, user_id, client_id, refresh_token_hash, expires_at, created_at`
+		RETURNING id, user_id, client_id, refresh_token_hash, scope, expires_at, created_at`
 
 	var sess Session
 	err := s.pool.QueryRow(ctx, query, newHash, oldHash).Scan(
-		&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.ExpiresAt, &sess.CreatedAt,
+		&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.Scope, &sess.ExpiresAt, &sess.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -149,7 +150,7 @@ func (s *PGStore) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
 // ListByUserID returns all active sessions for a user.
 func (s *PGStore) ListByUserID(ctx context.Context, userID uuid.UUID) ([]*Session, error) {
 	query := `
-		SELECT id, user_id, client_id, refresh_token_hash, expires_at, created_at
+		SELECT id, user_id, client_id, refresh_token_hash, scope, expires_at, created_at
 		FROM sessions
 		WHERE user_id = $1 AND expires_at > now()
 		ORDER BY created_at DESC`
@@ -163,7 +164,7 @@ func (s *PGStore) ListByUserID(ctx context.Context, userID uuid.UUID) ([]*Sessio
 	var sessions []*Session
 	for rows.Next() {
 		var sess Session
-		if err := rows.Scan(&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.ExpiresAt, &sess.CreatedAt); err != nil {
+		if err := rows.Scan(&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.Scope, &sess.ExpiresAt, &sess.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scanning session row: %w", err)
 		}
 		sessions = append(sessions, &sess)
