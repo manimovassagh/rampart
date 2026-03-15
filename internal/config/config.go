@@ -184,8 +184,10 @@ func Load() (*Config, error) {
 		cfg.RefreshTokenTTL = time.Duration(secs) * time.Second
 	}
 
-	// Security
-	if v := os.Getenv("RAMPART_HSTS_ENABLED"); strings.EqualFold(v, "true") || v == "1" {
+	// Security — auto-enable HSTS when issuer uses HTTPS, unless explicitly disabled
+	if v := os.Getenv("RAMPART_HSTS_ENABLED"); v != "" {
+		cfg.HSTSEnabled = strings.EqualFold(v, "true") || v == "1"
+	} else if strings.HasPrefix(cfg.Issuer, "https://") {
 		cfg.HSTSEnabled = true
 	}
 
