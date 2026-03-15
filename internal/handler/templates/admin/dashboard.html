@@ -1,88 +1,8 @@
 {{define "content"}}
-<style>
-    .dash { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
-    .dash .mono { font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace; }
-
-    /* ── Grid layouts ───────────────────────────── */
-    .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .grid-charts { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
-    @media (max-width: 900px) {
-        .grid4 { grid-template-columns: repeat(2, 1fr); }
-        .grid-charts { grid-template-columns: 1fr; }
-    }
-
-    /* ── Stat Cards ─────────────────────────────── */
-    .stat-card {
-        position: relative; display: block; overflow: hidden;
-        border-radius: 10px; padding: 20px 22px;
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(51, 65, 85, 0.6);
-        text-decoration: none; transition: all 0.25s ease;
-    }
-    .stat-card:hover {
-        border-color: rgba(139, 92, 246, 0.35);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
-    }
-    .stat-card .label { font-size: 0.7rem; font-weight: 500; color: #94a3b8; margin-bottom: 6px; }
-    .stat-card .value { font-size: 1.75rem; font-weight: 700; color: #f8fafc; line-height: 1; letter-spacing: -0.02em; }
-    .stat-card .sparkline { position: absolute; bottom: 0; left: 0; right: 0; opacity: 0.15; }
-
-    /* ── Mini Cards ─────────────────────────────── */
-    .mini-card {
-        display: block; border-radius: 8px; padding: 14px 18px;
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
-        border: 1px solid rgba(51, 65, 85, 0.4);
-        text-decoration: none; transition: all 0.2s ease;
-    }
-    .mini-card:hover { border-color: rgba(139, 92, 246, 0.3); }
-    .mini-card .mc-label { font-size: 0.68rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-    .mini-card .mc-value { font-size: 1.25rem; font-weight: 700; color: #e2e8f0; margin-top: 4px; }
-
-    /* ── Panels ──────────────────────────────────── */
-    .panel {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(51, 65, 85, 0.6);
-        border-radius: 10px; padding: 24px;
-    }
-    .panel-title { font-size: 0.8rem; font-weight: 600; color: #f8fafc; margin-bottom: 18px; }
-
-    /* ── Bar animation (first load only) ───────── */
-    .bar-grow { animation: grow 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards; transform-origin: bottom; }
-    @keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-
-    /* ── Donut (first load only) ────────────────── */
-    .donut-seg { animation: donutIn 1s ease forwards; opacity: 0; }
-    @keyframes donutIn { from { opacity: 0; } to { opacity: 1; } }
-
-    /* ── Fade entrance (first load only) ───────── */
-    .fade-in { animation: fadeIn 0.5s ease forwards; opacity: 0; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* After SSE connects, disable animations so live updates are seamless */
-    .sse-live .fade-in { animation: none !important; opacity: 1 !important; }
-    .sse-live .bar-grow { animation: none !important; transform: scaleY(1) !important; }
-    .sse-live .donut-seg { animation: none !important; opacity: 1 !important; }
-
-    /* ── SSE status indicator ───────────────────── */
-    .sse-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-    .sse-dot.connected { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
-    .sse-dot.disconnected { background: #ef4444; }
-    .sse-status { font-size: 0.65rem; color: #64748b; display: flex; align-items: center; margin-top: 8px; }
-
-    /* ── Legend dot ──────────────────────────────── */
-    .ldot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; flex-shrink: 0; }
-    .legend-row { display: flex; align-items: center; margin-bottom: 10px; }
-    .legend-name { font-size: 0.85rem; color: #cbd5e1; text-transform: capitalize; min-width: 60px; }
-    .legend-val { font-size: 0.75rem; color: #64748b; margin-left: 8px; }
-    .donut-wrap { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 8px 0; }
-</style>
-
 <div class="dash" id="dash-root">
     <div id="dash-content">
         <!-- Primary Stat Cards -->
-        <div class="grid2 fade-in" style="animation-delay: 0s">
+        <div class="grid2 fade-in fade-delay-0">
             <a href="/admin/users" class="stat-card">
                 <p class="label">Total Users</p>
                 <p class="value mono">{{.Stats.TotalUsers}}</p>
@@ -106,7 +26,7 @@
         </div>
 
         <!-- Secondary Stats -->
-        <div class="grid4 fade-in" style="animation-delay: 0.1s; margin-top: 12px;">
+        <div class="grid4 fade-in fade-delay-1 dash-mt-12">
             <a href="/admin/organizations" class="mini-card">
                 <span class="mc-label">Orgs</span>
                 <p class="mc-value mono">{{.Stats.TotalOrganizations}}</p>
@@ -126,13 +46,13 @@
         </div>
 
         <!-- Charts Row -->
-        <div class="grid-charts fade-in" style="animation-delay: 0.2s; margin-top: 12px;">
+        <div class="grid-charts fade-in fade-delay-2 dash-mt-12">
             <!-- Bar Chart -->
             <div class="panel">
                 <p class="panel-title">Logins &mdash; Last 7 Days</p>
                 {{if .Stats.LoginCounts}}
                 {{$max := maxCount .Stats.LoginCounts}}
-                <svg viewBox="0 0 480 170" style="width: 100%; display: block;" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 480 170" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stop-color="#8b5cf6"/>
@@ -151,7 +71,7 @@
                     <!-- Bars -->
                     {{range $i, $d := .Stats.LoginCounts}}
                     {{$h := barHeight $d.Count $max 115}}
-                    <rect class="bar-grow" style="animation-delay: {{multiply $i 70}}ms"
+                    <rect class="bar-grow"
                           x="{{add (multiply $i 54) 46}}" y="{{subtract 130 $h}}"
                           width="34" height="{{$h}}"
                           rx="4" fill="url(#bg)" opacity="{{if eq $d.Count 0}}0.15{{else}}0.85{{end}}">
@@ -168,7 +88,7 @@
                     {{end}}
                 </svg>
                 {{else}}
-                <p style="color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0;">No login data yet</p>
+                <p class="empty-msg">No login data yet</p>
                 {{end}}
             </div>
 
@@ -181,7 +101,7 @@
                     <svg width="130" height="130" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" stroke-width="12"/>
                         {{range $i, $rc := $.Stats.RoleCounts}}
-                        <circle class="donut-seg" style="animation-delay: {{multiply $i 150}}ms"
+                        <circle class="donut-seg"
                                 cx="50" cy="50" r="40" fill="none"
                                 stroke="{{roleColor $i}}" stroke-width="12"
                                 stroke-dasharray="{{donutDash $rc.Count $total 251.3}} 251.3"
@@ -194,7 +114,7 @@
                     <div>
                         {{range $i, $rc := $.Stats.RoleCounts}}
                         <div class="legend-row">
-                            <span class="ldot" style="background: {{roleColor $i}}"></span>
+                            <span class="ldot ldot-{{$i}}"></span>
                             <span class="legend-name">{{$rc.Role}}</span>
                             <span class="legend-val mono">{{$rc.Count}} ({{pct $rc.Count $total}}%)</span>
                         </div>
@@ -202,7 +122,7 @@
                     </div>
                 </div>
                 {{else}}
-                <p style="color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0;">No roles assigned</p>
+                <p class="empty-msg">No roles assigned</p>
                 {{end}}
             </div>
         </div>

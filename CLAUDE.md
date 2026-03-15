@@ -27,9 +27,20 @@ Rampart is a Go-based IAM/OAuth 2.0 server with OIDC support.
 - `golangci-lint run` — lint
 - `docker compose up -d --build` — run full stack (postgres + rampart)
 
+## CRITICAL: Always Verify Visually
+- Always check work visually (like a human would) before claiming it's done
+- Use Playwright browser to verify UI changes, README rendering, etc.
+- Never assume something looks right — open it and check
+
+## CRITICAL: Keep Project Root Clean
+- NEVER leave temporary files, screenshots, or build artifacts in the project root
+- The project root should only contain: go.mod, go.sum, Dockerfile, docker-compose*, README.md, CLAUDE.md, LICENSE, Makefile, .gitignore, and standard config files
+- Temp files go in /tmp, screenshots go in docs-site/static/img/
+
 ## Key Directories
 - `cmd/rampart/` — main entry point
 - `internal/` — core packages (handler, middleware, model, token, oauth, session, store)
 - `migrations/` — SQL migrations
-- `cookbook/` — Sample apps (React, Express, Go, FastAPI, Spring Boot)
+- `cookbook/` — Sample apps (React, Express, Go, FastAPI, Spring Boot, .NET)
+- `adapters/` — SDK packages (Node, Go, Python, Spring, .NET, React, Web, Next.js)
 - `.github/workflows/` — CI/CD pipelines

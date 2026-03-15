@@ -87,8 +87,8 @@ Eight adapters covering every major stack. Drop-in middleware and client librari
 | **Node.js** | `@rampart-auth/node` | [![npm](https://img.shields.io/npm/v/@rampart-auth/node?logo=npm&label=npm)](https://www.npmjs.com/package/@rampart-auth/node) |
 | **Go** | `github.com/manimovassagh/rampart/adapters/backend/go` | [![Go](https://img.shields.io/badge/go-module-00ADD8?logo=go&logoColor=white)](https://pkg.go.dev/github.com/manimovassagh/rampart/adapters/backend/go) |
 | **Python** | `rampart-python` | [![PyPI](https://img.shields.io/pypi/v/rampart-python?logo=pypi&label=PyPI)](https://pypi.org/project/rampart-python/) |
-| **Spring Boot** | `rampart-spring-boot-starter` | [![Maven](https://img.shields.io/badge/maven-central-C71A36?logo=apachemaven&logoColor=white)](https://central.sonatype.com/artifact/io.rampart/rampart-spring-boot-starter) |
-| **.NET** | `Rampart.AspNetCore` | [![NuGet](https://img.shields.io/nuget/v/Rampart.AspNetCore?logo=nuget&label=NuGet)](https://www.nuget.org/packages/Rampart.AspNetCore) |
+| **Spring Boot** | `rampart-spring-boot-starter` | [![Maven](https://img.shields.io/badge/Maven_Central-0.1.0-C71A36?logo=apachemaven&logoColor=white)](https://central.sonatype.com/artifact/io.github.manimovassagh/rampart-spring-boot-starter) |
+| **.NET** | `Rampart.AspNetCore` | [![NuGet](https://img.shields.io/badge/NuGet-0.1.0-004880?logo=nuget&logoColor=white)](https://www.nuget.org/packages/Rampart.AspNetCore) |
 
 ### Frontend
 
