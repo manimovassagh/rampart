@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -34,10 +35,18 @@ import java.util.stream.Collectors;
 @EnableConfigurationProperties(RampartProperties.class)
 public class RampartAutoConfiguration {
 
+    private static final Logger log = Logger.getLogger(RampartAutoConfiguration.class.getName());
+
     private final RampartProperties properties;
 
     public RampartAutoConfiguration(RampartProperties properties) {
         this.properties = properties;
+
+        if (properties.getIssuer() != null && properties.getIssuer().startsWith("http://")) {
+            log.warning("Rampart issuer is using HTTP (not HTTPS). "
+                    + "JWKS fetching over plain HTTP is insecure and should only be used in development. "
+                    + "Use HTTPS in production to prevent token forgery via MITM attacks.");
+        }
     }
 
     /**
