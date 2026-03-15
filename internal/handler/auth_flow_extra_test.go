@@ -44,8 +44,8 @@ func TestAuthFlowExtra_LoginLockedAccount(t *testing.T) {
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
 	}
-	if !strings.Contains(w.Body.String(), "temporarily locked") {
-		t.Errorf("expected locked message, got %s", w.Body.String())
+	if !strings.Contains(w.Body.String(), "Invalid credentials.") {
+		t.Errorf("expected invalid credentials message, got %s", w.Body.String())
 	}
 }
 
@@ -68,8 +68,8 @@ func TestAuthFlowExtra_LoginSSOOnlyAccount(t *testing.T) {
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
 	}
-	if !strings.Contains(w.Body.String(), "SSO") {
-		t.Errorf("expected SSO message, got %s", w.Body.String())
+	if !strings.Contains(w.Body.String(), "Invalid credentials.") {
+		t.Errorf("expected invalid credentials message, got %s", w.Body.String())
 	}
 }
 

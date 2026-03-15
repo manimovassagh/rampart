@@ -125,7 +125,7 @@ func (g *GoogleProvider) exchangeToken(ctx context.Context, client *http.Client,
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("reading token response: %w", err)
 	}
@@ -154,7 +154,7 @@ func (g *GoogleProvider) fetchUserInfo(ctx context.Context, client *http.Client,
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("reading userinfo response: %w", err)
 	}

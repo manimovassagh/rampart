@@ -38,36 +38,24 @@ func (db *DB) ConsumeSAMLRequest(ctx context.Context, requestID string, provider
 	return tag.RowsAffected() > 0, nil
 }
 
-// StoreSAMLAssertionID records a consumed assertion ID to prevent replay.
-func (db *DB) StoreSAMLAssertionID(ctx context.Context, assertionID string, providerID uuid.UUID, expiresAt time.Time) error {
+// ConsumeOrRecordSAMLAssertion atomically attempts to record a SAML assertion ID.
+// It returns (true, nil) if the assertion was already consumed (replay detected),
+// or (false, nil) if the assertion was successfully recorded for the first time.
+// This avoids the TOCTOU race of separate check-then-insert calls.
+func (db *DB) ConsumeOrRecordSAMLAssertion(ctx context.Context, assertionID string, providerID uuid.UUID, expiresAt time.Time) (bool, error) {
 	ctx, cancel := queryCtx(ctx)
 	defer cancel()
 
-	_, err := db.Pool.Exec(ctx,
+	tag, err := db.Pool.Exec(ctx,
 		`INSERT INTO saml_consumed_assertions (assertion_id, provider_id, expires_at) VALUES ($1, $2, $3)
 		 ON CONFLICT (assertion_id, provider_id) DO NOTHING`,
 		assertionID, providerID, expiresAt,
 	)
 	if err != nil {
-		return fmt.Errorf("storing SAML assertion ID: %w", err)
+		return false, fmt.Errorf("consuming SAML assertion: %w", err)
 	}
-	return nil
-}
-
-// IsSAMLAssertionConsumed checks whether an assertion ID has already been used.
-func (db *DB) IsSAMLAssertionConsumed(ctx context.Context, assertionID string, providerID uuid.UUID) (bool, error) {
-	ctx, cancel := queryCtx(ctx)
-	defer cancel()
-
-	var exists bool
-	err := db.Pool.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM saml_consumed_assertions WHERE assertion_id = $1 AND provider_id = $2)`,
-		assertionID, providerID,
-	).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("checking SAML assertion: %w", err)
-	}
-	return exists, nil
+	// If no rows were inserted, the assertion was already consumed (replay).
+	return tag.RowsAffected() == 0, nil
 }
 
 // DeleteExpiredSAMLRequests removes expired SAML request and assertion records.

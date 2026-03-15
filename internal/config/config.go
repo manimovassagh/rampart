@@ -86,6 +86,12 @@ type Config struct {
 	// If empty, the /metrics endpoint is disabled entirely (secure by default).
 	MetricsToken string
 
+	// TrustedProxies is a comma-separated list of CIDR ranges or IPs whose
+	// X-Forwarded-For / X-Real-IP headers are trusted. When empty (default),
+	// proxy headers are ignored and r.RemoteAddr from the TCP connection is
+	// used for rate limiting. Examples: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+	TrustedProxies []string
+
 	// Social login providers
 	GoogleClientID     string
 	GoogleClientSecret string
@@ -240,6 +246,14 @@ func Load() (*Config, error) {
 		default:
 			return nil, fmt.Errorf("invalid RAMPART_SECURE_COOKIES %q (valid: true, false)", v)
 		}
+	}
+
+	if v := os.Getenv("RAMPART_TRUSTED_PROXIES"); v != "" {
+		parts := strings.Split(v, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		cfg.TrustedProxies = parts
 	}
 
 	cfg.EncryptionKey = os.Getenv("RAMPART_ENCRYPTION_KEY")

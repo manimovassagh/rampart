@@ -81,11 +81,12 @@ type AuthorizeHandler struct {
 	logger         *slog.Logger
 	audit          *audit.Logger
 	socialRegistry *social.Registry
+	hmacKey        []byte
 }
 
 // NewAuthorizeHandler creates a new authorization endpoint handler.
-func NewAuthorizeHandler(s AuthorizeStore, logger *slog.Logger, auditLogger *audit.Logger, socialRegistry *social.Registry) *AuthorizeHandler {
-	return &AuthorizeHandler{store: s, logger: logger, audit: auditLogger, socialRegistry: socialRegistry}
+func NewAuthorizeHandler(s AuthorizeStore, logger *slog.Logger, auditLogger *audit.Logger, socialRegistry *social.Registry, hmacKey []byte) *AuthorizeHandler {
+	return &AuthorizeHandler{store: s, logger: logger, audit: auditLogger, socialRegistry: socialRegistry, hmacKey: hmacKey}
 }
 
 type loginPageData struct {
@@ -387,7 +388,7 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			middleware.SetOAuthCSRFCookie(w, consentCSRF)
-			middleware.SetConsentUserCookie(w, user.ID)
+			middleware.SetConsentUserCookie(w, user.ID, h.hmacKey)
 			h.renderConsentPage(w, client, scope, state, codeChallenge, nonce, redirectURI, consentCSRF)
 			return
 		}
@@ -579,7 +580,7 @@ func (h *AuthorizeHandler) Consent(w http.ResponseWriter, r *http.Request) {
 
 	// Read user_id from server-set HttpOnly cookie — NOT from the form.
 	// This prevents user_id forgery via hidden form field manipulation.
-	userID := middleware.GetConsentUserID(r)
+	userID := middleware.GetConsentUserID(r, h.hmacKey)
 	if userID == uuid.Nil {
 		h.renderError(w, http.StatusBadRequest, "Invalid or expired consent session.")
 		return

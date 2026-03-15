@@ -135,9 +135,16 @@ func newTestOAuthClient(orgID uuid.UUID) *model.OAuthClient {
 	}
 }
 
+// signedConsentCookie creates an HMAC-signed consent cookie for testing.
+func signedConsentCookie(userID uuid.UUID, hmacKey []byte) *http.Cookie {
+	rec := httptest.NewRecorder()
+	middleware.SetConsentUserCookie(rec, userID, hmacKey)
+	return rec.Result().Cookies()[0]
+}
+
 func TestAuthorizeGetMissingParams(t *testing.T) {
 	store := &mockAuthorizeStore{}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize", http.NoBody)
 	w := httptest.NewRecorder()
@@ -154,7 +161,7 @@ func TestAuthorizeGetMissingParams(t *testing.T) {
 
 func TestAuthorizeGetUnknownClient(t *testing.T) {
 	store := &mockAuthorizeStore{oauthClient: nil}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=unknown&redirect_uri=http://evil.com/cb&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()
@@ -176,7 +183,7 @@ func TestAuthorizeGetDisabledClient(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: disabledClient,
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()
@@ -196,7 +203,7 @@ func TestAuthorizeGetInvalidRedirectURI(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://evil.com/cb&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()
@@ -216,7 +223,7 @@ func TestAuthorizeGetMissingPKCE(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc", http.NoBody)
 	w := httptest.NewRecorder()
@@ -236,7 +243,7 @@ func TestAuthorizeGetRendersLoginPage(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc123&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()
@@ -280,7 +287,7 @@ func TestAuthorizePostBadCredentials(t *testing.T) {
 		emailUser:    nil,
 		usernameUser: nil,
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":             {"test-client"},
@@ -323,7 +330,7 @@ func TestAuthorizePostValidCredentialsRedirects(t *testing.T) {
 		oauthClient: newTestOAuthClient(orgID),
 		emailUser:   user,
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":             {"test-client"},
@@ -364,7 +371,7 @@ func TestAuthorizeGetRendersCSRFToken(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc123&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()
@@ -405,7 +412,7 @@ func TestAuthorizePostMissingCSRFToken(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":             {"test-client"},
@@ -438,7 +445,7 @@ func TestAuthorizePostMismatchedCSRFToken(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":             {"test-client"},
@@ -471,7 +478,7 @@ func TestAuthorizePostReRenderIncludesCSRFToken(t *testing.T) {
 		emailUser:    nil,
 		usernameUser: nil,
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":             {"test-client"},
@@ -521,7 +528,7 @@ func TestConsentRejectsWithoutConsentCookie(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":    {"test-client"},
@@ -549,7 +556,7 @@ func TestConsentRejectsForgedUserID(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":    {"test-client"},
@@ -590,7 +597,7 @@ func TestConsentAcceptsValidCookie(t *testing.T) {
 		oauthClient: newTestOAuthClient(orgID),
 		emailUser:   user,
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":      {"test-client"},
@@ -602,8 +609,8 @@ func TestConsentAcceptsValidCookie(t *testing.T) {
 	}
 
 	req := newPostRequestWithCSRF(t, "/oauth/consent", form)
-	// Add the consent user cookie (simulating server-side flow)
-	req.AddCookie(&http.Cookie{Name: "rampart_consent_uid", Value: userID.String()})
+	// Add the HMAC-signed consent user cookie (simulating server-side flow)
+	req.AddCookie(signedConsentCookie(userID, []byte("test-hmac-key")))
 	w := httptest.NewRecorder()
 
 	h.Consent(w, req)
@@ -627,7 +634,7 @@ func TestConsentDenialWithInvalidRedirectURI(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":    {"test-client"},
@@ -638,7 +645,7 @@ func TestConsentDenialWithInvalidRedirectURI(t *testing.T) {
 	}
 
 	req := newPostRequestWithCSRF(t, "/oauth/consent", form)
-	req.AddCookie(&http.Cookie{Name: "rampart_consent_uid", Value: userID.String()})
+	req.AddCookie(signedConsentCookie(userID, []byte("test-hmac-key")))
 	w := httptest.NewRecorder()
 
 	h.Consent(w, req)
@@ -659,7 +666,7 @@ func TestConsentDenialWithUnknownClient(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: nil, // client not found
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":    {"unknown-client"},
@@ -670,7 +677,7 @@ func TestConsentDenialWithUnknownClient(t *testing.T) {
 	}
 
 	req := newPostRequestWithCSRF(t, "/oauth/consent", form)
-	req.AddCookie(&http.Cookie{Name: "rampart_consent_uid", Value: uuid.New().String()})
+	req.AddCookie(signedConsentCookie(uuid.New(), []byte("test-hmac-key")))
 	w := httptest.NewRecorder()
 
 	h.Consent(w, req)
@@ -688,7 +695,7 @@ func TestAuthorizeGetRejectsUnknownScopes(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256&scope=openid+admin+superpower", http.NoBody)
 	w := httptest.NewRecorder()
@@ -715,7 +722,7 @@ func TestAuthorizeGetAcceptsKnownScopes(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256&scope=openid+profile+email+offline_access", http.NoBody)
 	w := httptest.NewRecorder()
@@ -732,7 +739,7 @@ func TestAuthorizePostRejectsUnknownScopes(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	form := url.Values{
 		"client_id":             {"test-client"},
@@ -767,7 +774,7 @@ func TestAuthorizeGetMissingState(t *testing.T) {
 	store := &mockAuthorizeStore{
 		oauthClient: newTestOAuthClient(orgID),
 	}
-	h := NewAuthorizeHandler(store, noopLogger(), nil, nil)
+	h := NewAuthorizeHandler(store, noopLogger(), nil, nil, []byte("test-hmac-key"))
 
 	req := httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=test-client&redirect_uri=http://localhost:3002/callback&response_type=code&code_challenge=xyz&code_challenge_method=S256", http.NoBody)
 	w := httptest.NewRecorder()

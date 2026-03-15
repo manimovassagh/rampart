@@ -98,7 +98,7 @@ func run(_ *slog.Logger) error {
 		return err
 	}
 
-	router := server.NewRouter(logger, cfg.AllowedOrigins, cfg.HSTSEnabled)
+	router := server.NewRouter(logger, cfg.AllowedOrigins, cfg.HSTSEnabled, cfg.TrustedProxies)
 	healthHandler := handler.NewHealthHandler(db)
 	server.RegisterHealthRoutes(router, healthHandler.Liveness, healthHandler.Readiness)
 	server.RegisterMetricsRoutes(router, cfg.MetricsToken)
@@ -243,8 +243,14 @@ func run(_ *slog.Logger) error {
 		}
 	}
 
+	// Generate HMAC key early so all handlers that need cookie signing can use it.
+	hmacKey, err := middleware.GenerateHMACKey()
+	if err != nil {
+		return err
+	}
+
 	// OAuth 2.0 Authorization Code + PKCE endpoints
-	authorizeHandler := handler.NewAuthorizeHandler(db, logger, auditLogger, socialRegistry)
+	authorizeHandler := handler.NewAuthorizeHandler(db, logger, auditLogger, socialRegistry, hmacKey)
 	tokenHandler := handler.NewTokenHandler(db, sessionStore, logger, kp.PrivateKey, kp.KID, cfg.Issuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	server.RegisterOAuthRoutes(router, authorizeHandler.Authorize, authorizeHandler.Consent, tokenHandler.Token, tokenHandler.Revoke, tokenRL)
 
@@ -253,11 +259,7 @@ func run(_ *slog.Logger) error {
 	jwksHandler := handler.JWKSHandler(kp, logger)
 	server.RegisterOIDCRoutes(router, discoveryHandler, jwksHandler)
 
-	// Admin Console (SSR) — generate HMAC key early so social handler can use it too
-	hmacKey, err := middleware.GenerateHMACKey()
-	if err != nil {
-		return err
-	}
+	// Admin Console (SSR)
 	adminLoginHandler := handler.NewAdminLoginHandler(
 		db, sessionStore, logger, auditLogger,
 		kp.PrivateKey, kp.PublicKey, kp.KID, cfg.Issuer,

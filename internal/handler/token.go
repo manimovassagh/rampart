@@ -220,7 +220,7 @@ func (h *TokenHandler) handleAuthorizationCode(w http.ResponseWriter, r *http.Re
 
 	// Store session
 	expiresAt := time.Now().Add(refreshTTL)
-	if _, err := h.sessions.Create(ctx, user.ID, refreshToken, expiresAt); err != nil {
+	if _, err := h.sessions.Create(ctx, user.ID, authCode.ClientID, refreshToken, expiresAt); err != nil {
 		h.logger.Error("failed to create session", "error", err)
 		h.writeOAuthError(w, http.StatusInternalServerError, oauthServerError, msgInternalServer)
 		return
@@ -284,9 +284,15 @@ func (h *TokenHandler) handleRefreshToken(w http.ResponseWriter, r *http.Request
 		roles = nil
 	}
 
+	// Determine audience: use session's client_id if available, fall back to issuer for legacy sessions.
+	audience := sess.ClientID
+	if audience == "" {
+		audience = h.issuer
+	}
+
 	// Generate new access token
 	accessToken, err := token.GenerateAccessToken(
-		h.privateKey, h.kid, h.issuer, h.issuer, accessTTL,
+		h.privateKey, h.kid, h.issuer, audience, accessTTL,
 		user.ID, user.OrgID,
 		user.Username, user.Email, user.EmailVerified,
 		user.GivenName, user.FamilyName,

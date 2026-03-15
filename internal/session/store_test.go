@@ -28,13 +28,14 @@ func newMockStore() *mockStore {
 	}
 }
 
-func (m *mockStore) Create(ctx context.Context, userID uuid.UUID, refreshToken string, expiresAt time.Time) (*Session, error) {
+func (m *mockStore) Create(ctx context.Context, userID uuid.UUID, clientID, refreshToken string, expiresAt time.Time) (*Session, error) {
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
 	sess := &Session{
 		ID:               uuid.New(),
 		UserID:           userID,
+		ClientID:         clientID,
 		RefreshTokenHash: HashToken(refreshToken),
 		ExpiresAt:        expiresAt,
 		CreatedAt:        time.Now().UTC(),
@@ -138,7 +139,7 @@ func TestCreateSession(t *testing.T) {
 	token := "refresh-token-123"
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	sess, err := store.Create(ctx, userID, token, expiresAt)
+	sess, err := store.Create(ctx, userID, "", token, expiresAt)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -161,7 +162,7 @@ func TestCreateSessionError(t *testing.T) {
 	store.createErr = errors.New("db connection failed")
 	ctx := context.Background()
 
-	sess, err := store.Create(ctx, uuid.New(), "token", time.Now().Add(time.Hour))
+	sess, err := store.Create(ctx, uuid.New(), "", "token", time.Now().Add(time.Hour))
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -177,7 +178,7 @@ func TestFindByRefreshToken(t *testing.T) {
 	token := "find-me-token"
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	_, err := store.Create(ctx, userID, token, expiresAt)
+	_, err := store.Create(ctx, userID, "", token, expiresAt)
 	if err != nil {
 		t.Fatalf("unexpected error creating session: %v", err)
 	}
@@ -214,7 +215,7 @@ func TestFindByRefreshTokenExpired(t *testing.T) {
 	token := "expired-token"
 	expiresAt := time.Now().Add(-1 * time.Hour) // already expired
 
-	sess, err := store.Create(ctx, userID, token, expiresAt)
+	sess, err := store.Create(ctx, userID, "", token, expiresAt)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -248,7 +249,7 @@ func TestDeleteSession(t *testing.T) {
 	userID := uuid.New()
 	token := "delete-me"
 
-	sess, err := store.Create(ctx, userID, token, time.Now().Add(time.Hour))
+	sess, err := store.Create(ctx, userID, "", token, time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -284,14 +285,14 @@ func TestDeleteByUserID(t *testing.T) {
 	userID := uuid.New()
 
 	for i := 0; i < 3; i++ {
-		_, err := store.Create(ctx, userID, fmt.Sprintf("token-%d", i), time.Now().Add(time.Hour))
+		_, err := store.Create(ctx, userID, "", fmt.Sprintf("token-%d", i), time.Now().Add(time.Hour))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}
 
 	otherUserID := uuid.New()
-	_, err := store.Create(ctx, otherUserID, "other-token", time.Now().Add(time.Hour))
+	_, err := store.Create(ctx, otherUserID, "", "other-token", time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -340,12 +341,13 @@ func TestSQLQueriesWellFormed(t *testing.T) {
 	}{
 		{
 			name:  "Create INSERT",
-			query: "INSERT INTO sessions (user_id, refresh_token_hash, expires_at) VALUES ($1, $2, $3) RETURNING id, user_id, refresh_token_hash, expires_at, created_at",
+			query: "INSERT INTO sessions (user_id, client_id, refresh_token_hash, expires_at) VALUES ($1, $2, $3, $4) RETURNING id, user_id, client_id, refresh_token_hash, expires_at, created_at",
 			contains: []string{
 				"INSERT INTO sessions",
-				"VALUES ($1, $2, $3)",
+				"VALUES ($1, $2, $3, $4)",
 				"RETURNING",
 				"user_id",
+				"client_id",
 				"refresh_token_hash",
 				"expires_at",
 				"created_at",
@@ -353,7 +355,7 @@ func TestSQLQueriesWellFormed(t *testing.T) {
 		},
 		{
 			name:  "FindByRefreshToken SELECT",
-			query: "SELECT id, user_id, refresh_token_hash, expires_at, created_at FROM sessions WHERE refresh_token_hash = $1 AND expires_at > now()",
+			query: "SELECT id, user_id, client_id, refresh_token_hash, expires_at, created_at FROM sessions WHERE refresh_token_hash = $1 AND expires_at > now()",
 			contains: []string{
 				"SELECT",
 				"FROM sessions",
@@ -379,7 +381,7 @@ func TestSQLQueriesWellFormed(t *testing.T) {
 		},
 		{
 			name:  "ListByUserID",
-			query: "SELECT id, user_id, refresh_token_hash, expires_at, created_at FROM sessions WHERE user_id = $1 AND expires_at > now() ORDER BY created_at DESC",
+			query: "SELECT id, user_id, client_id, refresh_token_hash, expires_at, created_at FROM sessions WHERE user_id = $1 AND expires_at > now() ORDER BY created_at DESC",
 			contains: []string{
 				"SELECT",
 				"FROM sessions",
@@ -515,12 +517,12 @@ func TestMultipleSessionsSameUser(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
 
-	sess1, err := store.Create(ctx, userID, "token-1", time.Now().Add(time.Hour))
+	sess1, err := store.Create(ctx, userID, "", "token-1", time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	sess2, err := store.Create(ctx, userID, "token-2", time.Now().Add(time.Hour))
+	sess2, err := store.Create(ctx, userID, "", "token-2", time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

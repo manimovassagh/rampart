@@ -136,7 +136,7 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if existing != nil {
-		apierror.Conflict(w, "A user with this email already exists.")
+		apierror.Conflict(w, "Registration failed. Please try again or use a different email/username.")
 		return
 	}
 
@@ -148,7 +148,7 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if existing != nil {
-		apierror.Conflict(w, "A user with this username already exists.")
+		apierror.Conflict(w, "Registration failed. Please try again or use a different email/username.")
 		return
 	}
 

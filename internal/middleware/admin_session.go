@@ -252,12 +252,13 @@ func SetOAuthCSRFCookie(w http.ResponseWriter, csrfToken string) {
 
 const oauthConsentUserCookie = "rampart_consent_uid"
 
-// SetConsentUserCookie stores the authenticated user's ID in an HttpOnly cookie
-// during the consent flow. This prevents user_id forgery via hidden form fields.
-func SetConsentUserCookie(w http.ResponseWriter, userID uuid.UUID) {
+// SetConsentUserCookie stores the authenticated user's ID in an HMAC-signed
+// HttpOnly cookie during the consent flow. This prevents user_id forgery.
+func SetConsentUserCookie(w http.ResponseWriter, userID uuid.UUID, hmacKey []byte) {
+	signed := signCookie(userID.String(), hmacKey)
 	http.SetCookie(w, &http.Cookie{
 		Name:     oauthConsentUserCookie,
-		Value:    userID.String(),
+		Value:    signed,
 		Path:     "/oauth/",
 		MaxAge:   600, // 10 minutes
 		HttpOnly: true,
@@ -266,14 +267,19 @@ func SetConsentUserCookie(w http.ResponseWriter, userID uuid.UUID) {
 	})
 }
 
-// GetConsentUserID reads the authenticated user's ID from the consent cookie.
-// Returns uuid.Nil if the cookie is missing or invalid.
-func GetConsentUserID(r *http.Request) uuid.UUID {
+// GetConsentUserID reads and verifies the HMAC-signed consent cookie.
+// Returns uuid.Nil if the cookie is missing, the signature is invalid, or the
+// value is not a valid UUID.
+func GetConsentUserID(r *http.Request, hmacKey []byte) uuid.UUID {
 	cookie, err := r.Cookie(oauthConsentUserCookie)
 	if err != nil || cookie.Value == "" {
 		return uuid.Nil
 	}
-	id, err := uuid.Parse(cookie.Value)
+	value, ok := verifySignedCookie(cookie.Value, hmacKey)
+	if !ok {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(value)
 	if err != nil {
 		return uuid.Nil
 	}

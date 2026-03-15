@@ -57,7 +57,7 @@ func (c *Client) do(method, path string, body, result any) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return fmt.Errorf("reading response: %w", err)
 	}
