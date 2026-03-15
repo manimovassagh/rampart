@@ -56,3 +56,51 @@ r.Get("/protected", handler)
 - **`NewMiddleware(cfg Config) func(http.Handler) http.Handler`** — JWT verification middleware
 - **`ClaimsFromContext(ctx context.Context) (*Claims, bool)`** — extract verified claims from context
 - **`RequireRoles(roles ...string) func(http.Handler) http.Handler`** — role-based access control (use after auth middleware)
+
+## Claims
+
+Available via `ClaimsFromContext(r.Context())` after successful verification:
+
+| Field              | Type       | Description                 |
+|--------------------|------------|-----------------------------|
+| `Sub`              | `string`   | User ID (UUID)              |
+| `Iss`              | `string`   | Issuer URL                  |
+| `Iat`              | `float64`  | Issued at (Unix timestamp)  |
+| `Exp`              | `float64`  | Expires at (Unix timestamp) |
+| `OrgID`            | `string`   | Organization ID (UUID)      |
+| `PreferredUsername` | `string`  | Username                    |
+| `Email`            | `string`   | Email address               |
+| `EmailVerified`    | `bool`     | Whether email is verified   |
+| `GivenName`        | `string`   | First name (omitempty)      |
+| `FamilyName`       | `string`   | Last name (omitempty)       |
+| `Roles`            | `[]string` | Assigned roles (omitempty)  |
+
+## Error Responses
+
+On failure the middleware returns a JSON response matching Rampart's error format:
+
+**401 Unauthorized** — returned by `NewMiddleware`:
+
+```json
+{
+  "error": "unauthorized",
+  "error_description": "Missing authorization header.",
+  "status": 401
+}
+```
+
+Error messages:
+- `"Missing authorization header."` — no `Authorization` header
+- `"Invalid authorization header format."` — not a `Bearer` token
+- `"Failed to fetch JWKS."` — could not retrieve the key set from the issuer
+- `"Invalid or expired access token."` — signature, issuer, or expiry check failed
+
+**403 Forbidden** — returned by `RequireRoles`:
+
+```json
+{
+  "error": "forbidden",
+  "error_description": "Missing required role(s): admin",
+  "status": 403
+}
+```

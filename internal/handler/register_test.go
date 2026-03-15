@@ -422,3 +422,83 @@ func TestRegisterEmailNormalization(t *testing.T) {
 		t.Errorf("email = %q, want john@example.com (normalized)", resp.Email)
 	}
 }
+
+func TestRegisterInvalidGivenName(t *testing.T) {
+	store := &mockUserStore{defaultOrgID: uuid.New()}
+	h := newTestRegisterHandler(store)
+
+	body := []byte(`{
+		"username": "johndoe",
+		"email": "john@example.com",
+		"password": "Str0ng!Pass",
+		"given_name": "<script>alert(1)</script>",
+		"family_name": "Doe"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d; body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+
+	var ve apierror.ValidationError
+	if err := json.NewDecoder(w.Body).Decode(&ve); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if ve.Code != "validation_error" {
+		t.Errorf("code = %q, want validation_error", ve.Code)
+	}
+	found := false
+	for _, f := range ve.Fields {
+		if f.Field == "given_name" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected field error for given_name")
+	}
+}
+
+func TestRegisterInvalidFamilyName(t *testing.T) {
+	store := &mockUserStore{defaultOrgID: uuid.New()}
+	h := newTestRegisterHandler(store)
+
+	body := []byte(`{
+		"username": "johndoe",
+		"email": "john@example.com",
+		"password": "Str0ng!Pass",
+		"given_name": "John",
+		"family_name": "Doe&Sons"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Register(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d; body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+}
+
+func TestRegisterEmptyNamesAllowed(t *testing.T) {
+	store := &mockUserStore{defaultOrgID: uuid.New()}
+	h := newTestRegisterHandler(store)
+
+	body := []byte(`{
+		"username": "johndoe",
+		"email": "john@example.com",
+		"password": "Str0ng!Pass",
+		"given_name": "",
+		"family_name": ""
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h.Register(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("status = %d, want %d; body = %s", w.Code, http.StatusCreated, w.Body.String())
+	}
+}

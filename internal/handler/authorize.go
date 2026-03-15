@@ -177,6 +177,12 @@ func (h *AuthorizeHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		scope = scopeOpenID
 	}
 
+	// Validate requested scopes against the server-side allowed list.
+	if _, unknown := oauth.ValidateScopes(scope); len(unknown) > 0 {
+		h.renderError(w, http.StatusBadRequest, "invalid_scope: unknown scope(s): "+strings.Join(unknown, ", "))
+		return
+	}
+
 	csrfToken, err := middleware.GenerateCSRFToken()
 	if err != nil {
 		h.logger.Error("failed to generate CSRF token", "error", err)
@@ -257,6 +263,12 @@ func (h *AuthorizeHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	if !database.ValidateRedirectURI(client, redirectURI) {
 		h.renderError(w, http.StatusBadRequest, "Invalid redirect_uri.")
+		return
+	}
+
+	// Validate requested scopes against the server-side allowed list.
+	if _, unknown := oauth.ValidateScopes(scope); len(unknown) > 0 {
+		h.renderError(w, http.StatusBadRequest, "invalid_scope: unknown scope(s): "+strings.Join(unknown, ", "))
 		return
 	}
 
@@ -476,10 +488,10 @@ type scopeDetail struct {
 
 // knownScopes maps scope strings to human-readable descriptions.
 var knownScopes = map[string]scopeDetail{
-	"openid":  {Label: "Verify your identity", Description: "Confirm who you are"},
-	"profile": {Label: "View your profile", Description: "Name, username, and avatar"},
-	"email":   {Label: "View your email address", Description: "Your verified email"},
-	"offline": {Label: "Access your data when you're not using the app", Description: "Refresh tokens for long-lived access"},
+	"openid":         {Label: "Verify your identity", Description: "Confirm who you are"},
+	"profile":        {Label: "View your profile", Description: "Name, username, and avatar"},
+	"email":          {Label: "View your email address", Description: "Your verified email"},
+	"offline_access": {Label: "Access your data when you're not using the app", Description: "Refresh tokens for long-lived access"},
 }
 
 var consentTemplate = template.Must(template.ParseFS(consentFS, "templates/consent/consent.html"))

@@ -164,7 +164,7 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
-	req.Username = strings.TrimSpace(req.Username)
+	req.Username = strings.ToLower(strings.TrimSpace(req.Username))
 	req.GivenName = strings.TrimSpace(req.GivenName)
 	req.FamilyName = strings.TrimSpace(req.FamilyName)
 
@@ -199,6 +199,12 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		fieldErrors = append(fieldErrors, *fe)
 	}
 	if fe := auth.ValidateUsername(req.Username); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidateName("given_name", req.GivenName); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidateName("family_name", req.FamilyName); fe != nil {
 		fieldErrors = append(fieldErrors, *fe)
 	}
 	if len(fieldErrors) > 0 {
@@ -306,10 +312,27 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Username = strings.TrimSpace(req.Username)
+	req.Username = strings.ToLower(strings.TrimSpace(req.Username))
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.GivenName = strings.TrimSpace(req.GivenName)
 	req.FamilyName = strings.TrimSpace(req.FamilyName)
+
+	// Validate name fields.
+	var fieldErrors []auth.FieldError
+	if fe := auth.ValidateName("given_name", req.GivenName); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidateName("family_name", req.FamilyName); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if len(fieldErrors) > 0 {
+		apiFieldErrors := make([]apierror.FieldError, len(fieldErrors))
+		for i, fe := range fieldErrors {
+			apiFieldErrors[i] = apierror.FieldError{Field: fe.Field, Message: fe.Message}
+		}
+		apierror.WriteValidation(w, apiFieldErrors)
+		return
+	}
 
 	ctx := r.Context()
 	authUserUpdate := middleware.GetAuthenticatedUser(ctx)

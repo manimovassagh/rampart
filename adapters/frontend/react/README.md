@@ -148,9 +148,51 @@ import { ProtectedRoute } from "@rampart-auth/react";
 </ProtectedRoute>
 ```
 
+## Error Handling
+
+Errors from the underlying `@rampart-auth/web` client bubble up as `RampartError` objects. These are thrown by `loginWithRedirect`, `handleCallback`, `authFetch`, and other async methods on `useAuth()`.
+
+```ts
+import type { RampartError } from "@rampart-auth/react";
+
+interface RampartError {
+  error: string;              // OAuth error code (e.g. "invalid_grant", "state_mismatch")
+  error_description: string;  // Human-readable explanation
+  status: number;             // HTTP status code (0 for client-side errors)
+}
+```
+
+Catch errors in your components:
+
+```tsx
+import type { RampartError } from "@rampart-auth/react";
+
+function CallbackPage() {
+  const { handleCallback } = useAuth();
+  const [error, setError] = useState<RampartError | null>(null);
+
+  useEffect(() => {
+    handleCallback().catch((err: RampartError) => setError(err));
+  }, [handleCallback]);
+
+  if (error) return <p>Login failed: {error.error_description}</p>;
+  return <p>Processing login...</p>;
+}
+```
+
+## Troubleshooting
+
+**`redirect_uri_mismatch`** -- The `redirectUri` passed to `RampartProvider` must exactly match the redirect URI registered for the client in Rampart, including scheme, host, port, and path. A trailing slash difference is enough to cause this error.
+
+**`state_mismatch`** -- PKCE state validation failed. The state parameter stored in `sessionStorage` did not match the one returned by the server. This can happen if the user opens the callback URL in a different tab or if `sessionStorage` was cleared between the redirect and the callback. Try clearing `sessionStorage` and logging in again.
+
+**Token not persisting across page reloads** -- The `persist` prop on `RampartProvider` defaults to `true`, which stores tokens in `localStorage` under the key `rampart_tokens`. If you set `persist={false}`, tokens live only in memory and are lost on refresh. Verify the prop is not explicitly set to `false`.
+
+**401 on API calls** -- The access token may have expired. `authFetch` automatically attaches the Bearer token to outgoing requests but does not auto-refresh on a 401. Call `getAccessToken()` to inspect the current token, and use the `refresh_token` grant (via the underlying `RampartClient.refresh()` method) to obtain a new one when needed.
+
 ## TypeScript
 
-The package ships with full type definitions. `RampartUser`, `RampartTokens`, and other `@rampart-auth/web` types are re-exported from `@rampart-auth/react` for convenience.
+The package ships with full type definitions. `RampartUser`, `RampartTokens`, `RampartError`, and other `@rampart-auth/web` types are re-exported from `@rampart-auth/react` for convenience.
 
 ## License
 

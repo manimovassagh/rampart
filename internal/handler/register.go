@@ -67,7 +67,7 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Normalize inputs.
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
-	req.Username = strings.TrimSpace(req.Username)
+	req.Username = strings.ToLower(strings.TrimSpace(req.Username))
 	req.GivenName = strings.TrimSpace(req.GivenName)
 	req.FamilyName = strings.TrimSpace(req.FamilyName)
 	req.OrgSlug = strings.ToLower(strings.TrimSpace(req.OrgSlug))
@@ -111,6 +111,12 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 		fieldErrors = append(fieldErrors, *fe)
 	}
 	if fe := auth.ValidateUsername(req.Username); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidateName("given_name", req.GivenName); fe != nil {
+		fieldErrors = append(fieldErrors, *fe)
+	}
+	if fe := auth.ValidateName("family_name", req.FamilyName); fe != nil {
 		fieldErrors = append(fieldErrors, *fe)
 	}
 	if len(fieldErrors) > 0 {

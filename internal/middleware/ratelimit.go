@@ -12,6 +12,12 @@ import (
 const (
 	rateLimitCleanupInterval = 5 * time.Minute
 	rateLimitEntryTTL        = 2 * time.Minute
+
+	// minResponseDuration prevents timing side-channels on rate-limited
+	// responses.  Handlers already pad their own responses to this floor;
+	// the rate limiter must do the same so that a 429 is indistinguishable
+	// (by timing) from a normal auth error.
+	minResponseDuration = 250 * time.Millisecond
 )
 
 // rateLimitEntry tracks request timestamps for a single IP.
@@ -128,7 +134,14 @@ func (rl *RateLimiter) Middleware() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := clientIP(r)
 			if !rl.Allow(ip) {
+				start := time.Now()
 				writeRateLimitError(w)
+				// Pad response time so a 429 is indistinguishable (by timing)
+				// from a normal authentication error, preventing user enumeration
+				// via timing side-channel.
+				if elapsed := time.Since(start); elapsed < minResponseDuration {
+					time.Sleep(minResponseDuration - elapsed)
+				}
 				return
 			}
 			next.ServeHTTP(w, r)

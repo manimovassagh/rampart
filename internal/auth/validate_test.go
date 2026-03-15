@@ -129,6 +129,58 @@ func TestValidateUsernameInvalid(t *testing.T) {
 	}
 }
 
+func TestValidateNameValid(t *testing.T) {
+	cases := []string{
+		"", // empty is allowed (optional)
+		"John",
+		"Mary Jane",
+		"O'Brien",
+		"Müller",
+		strings.Repeat("a", 255), // exactly at limit
+	}
+	for _, name := range cases {
+		if fe := ValidateName("given_name", name); fe != nil {
+			t.Errorf("ValidateName(%q) = %q, want nil", name, fe.Message)
+		}
+	}
+}
+
+func TestValidateNameInvalid(t *testing.T) {
+	cases := []struct {
+		name    string
+		wantMsg string
+	}{
+		{strings.Repeat("a", 256), "255 characters or fewer"},
+		{"<script>alert(1)</script>", "invalid characters"},
+		{"John>Doe", "invalid characters"},
+		{"A&B", "invalid characters"},
+	}
+	for _, tc := range cases {
+		fe := ValidateName("given_name", tc.name)
+		if fe == nil {
+			t.Errorf("ValidateName(%q) = nil, want error containing %q", tc.name, tc.wantMsg)
+			continue
+		}
+		if fe.Field != "given_name" {
+			t.Errorf("ValidateName(%q).Field = %q, want given_name", tc.name, fe.Field)
+		}
+		if !strings.Contains(fe.Message, tc.wantMsg) {
+			t.Errorf("ValidateName(%q).Message = %q, want containing %q", tc.name, fe.Message, tc.wantMsg)
+		}
+	}
+}
+
+func TestValidateNameFieldParam(t *testing.T) {
+	// Verify the field parameter is used correctly
+	fe := ValidateName("family_name", "<bad>")
+	if fe == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if fe.Field != "family_name" {
+		t.Errorf("Field = %q, want family_name", fe.Field)
+	}
+}
+
 func TestValidateRegistrationAllValid(t *testing.T) {
 	errs := ValidateRegistration("user@example.com", "Str0ng!Pass", "johndoe")
 	if len(errs) != 0 {
