@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useAuth, ProtectedRoute } from "@rampart/react";
+import { useAuth, ProtectedRoute } from "@rampart-auth/react";
 import { Navbar } from "./components/Navbar";
 import { Landing } from "./pages/Landing";
 import { Dashboard } from "./pages/Dashboard";

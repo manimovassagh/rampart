@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@rampart/react";
+import { useAuth } from "@rampart-auth/react";
 
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
