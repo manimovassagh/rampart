@@ -230,6 +230,7 @@ type mockSessionStore struct {
 	createErr error
 	found     *session.Session
 	findErr   error
+	rotateErr error
 	deleteErr error
 }
 
@@ -253,8 +254,19 @@ func (m *mockSessionStore) FindByRefreshToken(_ context.Context, _ string) (*ses
 	return m.found, m.findErr
 }
 
-func (m *mockSessionStore) RotateRefreshToken(_ context.Context, _ uuid.UUID, _ string) error {
-	return nil
+func (m *mockSessionStore) RotateRefreshToken(_ context.Context, _, _ string) (*session.Session, error) {
+	if m.rotateErr != nil {
+		return nil, m.rotateErr
+	}
+	if m.found != nil {
+		return m.found, nil
+	}
+	return &session.Session{
+		ID:        uuid.New(),
+		UserID:    uuid.New(),
+		ExpiresAt: time.Now().Add(time.Hour),
+		CreatedAt: time.Now(),
+	}, nil
 }
 
 func (m *mockSessionStore) Delete(_ context.Context, _ uuid.UUID) error {
@@ -528,7 +540,7 @@ func TestRefreshSuccess(t *testing.T) {
 
 func TestRefreshInvalidToken(t *testing.T) {
 	store := &mockLoginStore{}
-	sessions := &mockSessionStore{}
+	sessions := &mockSessionStore{rotateErr: session.ErrTokenAlreadyRotated}
 	h := newTestLoginHandler(store, sessions)
 
 	body := []byte(`{"refresh_token": "invalid-token"}`)
@@ -672,7 +684,7 @@ func TestRefreshInvalidJSON(t *testing.T) {
 
 func TestRefreshFindSessionError(t *testing.T) {
 	store := &mockLoginStore{}
-	sessions := &mockSessionStore{findErr: fmt.Errorf("session store error")}
+	sessions := &mockSessionStore{rotateErr: fmt.Errorf("session store error")}
 	h := newTestLoginHandler(store, sessions)
 
 	body := []byte(`{"refresh_token": "some-token"}`)

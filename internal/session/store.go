@@ -32,11 +32,15 @@ type WithUser struct {
 	CreatedAt time.Time
 }
 
+// ErrTokenAlreadyRotated is returned when a refresh token has already been
+// consumed by a concurrent request (race condition / replay detected).
+var ErrTokenAlreadyRotated = errors.New("refresh token already rotated")
+
 // Store defines operations for managing sessions.
 type Store interface {
 	Create(ctx context.Context, userID uuid.UUID, clientID string, refreshToken string, expiresAt time.Time) (*Session, error)
 	FindByRefreshToken(ctx context.Context, refreshToken string) (*Session, error)
-	RotateRefreshToken(ctx context.Context, sessionID uuid.UUID, newRefreshToken string) error
+	RotateRefreshToken(ctx context.Context, oldRefreshToken, newRefreshToken string) (*Session, error)
 	Delete(ctx context.Context, sessionID uuid.UUID) error
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
 }
@@ -98,17 +102,30 @@ func (s *PGStore) FindByRefreshToken(ctx context.Context, refreshToken string) (
 	return &sess, nil
 }
 
-// RotateRefreshToken atomically replaces the refresh token hash for a session.
-func (s *PGStore) RotateRefreshToken(ctx context.Context, sessionID uuid.UUID, newRefreshToken string) error {
-	hash := HashToken(newRefreshToken)
-	_, err := s.pool.Exec(ctx,
-		"UPDATE sessions SET refresh_token_hash = $1 WHERE id = $2",
-		hash, sessionID,
+// RotateRefreshToken atomically replaces the refresh token hash using the old
+// token hash as the WHERE condition. This prevents race conditions where two
+// concurrent requests try to rotate the same token. If 0 rows are affected
+// the token was already consumed and ErrTokenAlreadyRotated is returned.
+func (s *PGStore) RotateRefreshToken(ctx context.Context, oldRefreshToken, newRefreshToken string) (*Session, error) {
+	oldHash := HashToken(oldRefreshToken)
+	newHash := HashToken(newRefreshToken)
+
+	query := `
+		UPDATE sessions SET refresh_token_hash = $1
+		WHERE refresh_token_hash = $2 AND expires_at > now()
+		RETURNING id, user_id, client_id, refresh_token_hash, expires_at, created_at`
+
+	var sess Session
+	err := s.pool.QueryRow(ctx, query, newHash, oldHash).Scan(
+		&sess.ID, &sess.UserID, &sess.ClientID, &sess.RefreshTokenHash, &sess.ExpiresAt, &sess.CreatedAt,
 	)
 	if err != nil {
-		return fmt.Errorf("rotating refresh token: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrTokenAlreadyRotated
+		}
+		return nil, fmt.Errorf("rotating refresh token: %w", err)
 	}
-	return nil
+	return &sess, nil
 }
 
 // Delete removes a session by ID.

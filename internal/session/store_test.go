@@ -58,11 +58,16 @@ func (m *mockStore) FindByRefreshToken(ctx context.Context, refreshToken string)
 	return nil, nil
 }
 
-func (m *mockStore) RotateRefreshToken(_ context.Context, sessionID uuid.UUID, newRefreshToken string) error {
-	if sess, ok := m.sessions[sessionID]; ok {
-		sess.RefreshTokenHash = HashToken(newRefreshToken)
+func (m *mockStore) RotateRefreshToken(_ context.Context, oldRefreshToken, newRefreshToken string) (*Session, error) {
+	oldHash := HashToken(oldRefreshToken)
+	now := time.Now()
+	for _, sess := range m.sessions {
+		if bytes.Equal(sess.RefreshTokenHash, oldHash) && sess.ExpiresAt.After(now) {
+			sess.RefreshTokenHash = HashToken(newRefreshToken)
+			return sess, nil
+		}
 	}
-	return nil
+	return nil, ErrTokenAlreadyRotated
 }
 
 func (m *mockStore) Delete(ctx context.Context, sessionID uuid.UUID) error {

@@ -271,11 +271,18 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin/", http.StatusFound)
 }
 
-// Logout clears the admin session and redirects to login.
+// Logout clears the admin session cookie and invalidates the server-side
+// session so the refresh token cannot be reused after logout.
 func (h *AdminLoginHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	// Best-effort audit: extract user from the session context before clearing
+	// Best-effort audit + server-side session invalidation
 	if authUser := middleware.GetAuthenticatedUser(r.Context()); authUser != nil {
 		h.audit.LogSimple(r.Context(), r, authUser.OrgID, model.EventSessionRevoked, &authUser.UserID, authUser.PreferredUsername, "session", "", "admin_logout")
+
+		// Delete all database sessions for this admin user so refresh tokens
+		// issued during the admin login are invalidated server-side.
+		if err := h.sessions.DeleteByUserID(r.Context(), authUser.UserID); err != nil {
+			h.logger.Warn("failed to delete admin sessions on logout", "error", err, "user_id", authUser.UserID)
+		}
 	}
 	middleware.ClearAdminSession(w)
 	metrics.ActiveSessions.Dec()

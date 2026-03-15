@@ -91,6 +91,9 @@ func run(_ *slog.Logger) error {
 		db.Encryptor = enc
 		logger.Info("encryption at rest enabled for social tokens and secrets")
 	} else {
+		if strings.HasPrefix(cfg.Issuer, "https://") {
+			return fmt.Errorf("RAMPART_ENCRYPTION_KEY is required when issuer uses HTTPS (production mode). Generate one with: openssl rand -hex 32")
+		}
 		logger.Warn("ENCRYPTION AT REST IS DISABLED — sensitive data will be stored in plaintext. Set RAMPART_ENCRYPTION_KEY for production use.")
 	}
 
