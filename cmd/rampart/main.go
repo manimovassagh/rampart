@@ -98,6 +98,11 @@ func run(_ *slog.Logger) error {
 		return err
 	}
 
+	// Security warnings for common misconfigurations
+	if strings.Contains(cfg.DatabaseURL, "sslmode=disable") {
+		logger.Warn("DATABASE SSL IS DISABLED — connections to PostgreSQL are unencrypted. Set sslmode=verify-full for production use.")
+	}
+
 	router := server.NewRouter(logger, cfg.AllowedOrigins, cfg.HSTSEnabled, cfg.TrustedProxies)
 	healthHandler := handler.NewHealthHandler(db)
 	server.RegisterHealthRoutes(router, healthHandler.Liveness, healthHandler.Readiness)
