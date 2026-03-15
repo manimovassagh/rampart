@@ -18,6 +18,8 @@ Rampart provides official SDK adapters as thin wrappers around its standard OAut
 | [`rampart-go`](./go.md) | Go (net/http, chi, gin, fiber) | Go microservices and APIs |
 | [`rampart-python`](./python.md) | Python (FastAPI, Flask) | Python APIs and web apps |
 | [`rampart-spring-boot`](./spring-boot.md) | Java (Spring Boot) | Enterprise Java applications |
+| [`Rampart.AspNetCore`](./dotnet.md) | .NET / ASP.NET Core | .NET APIs and web apps |
+| [`@rampart-auth/web`](./web.md) | JavaScript (Browser) | Framework-agnostic SPAs with PKCE |
 
 ## Compatibility Matrix
 
@@ -29,6 +31,8 @@ Rampart provides official SDK adapters as thin wrappers around its standard OAut
 | `rampart-go` | Go 1.21+ | v0.1+ | Yes | N/A | Yes | Yes |
 | `rampart-python` | Python 3.10+ | v0.1+ | Yes | N/A | Yes | Yes |
 | `rampart-spring-boot` | Java 17+ / Spring Boot 3.x | v0.1+ | Yes | N/A | Yes | Yes |
+| `Rampart.AspNetCore` | .NET 8.0+ | v0.1+ | Yes | N/A | Yes | Yes |
+| `@rampart-auth/web` | Modern browsers (ES2020+) | v0.1+ | Yes | Yes | Yes | N/A |
 
 ## Common Configuration
 
@@ -142,3 +146,5 @@ Pick the adapter for your stack and follow the integration guide:
 - [Go](./go.md)
 - [Python](./python.md)
 - [Spring Boot](./spring-boot.md)
+- [.NET / ASP.NET Core](./dotnet.md)
+- [Web / JavaScript](./web.md)

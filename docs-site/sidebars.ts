@@ -51,6 +51,8 @@ const sidebars: SidebarsConfig = {
         'sdks/go',
         'sdks/python',
         'sdks/spring-boot',
+        'sdks/dotnet',
+        'sdks/web',
       ],
     },
     {
