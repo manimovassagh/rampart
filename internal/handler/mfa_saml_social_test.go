@@ -888,27 +888,26 @@ func TestMfaSamlSocial_WebAuthnDeleteCredentialStoreError(t *testing.T) {
 
 // mockSAMLStore implements SAMLStore for testing.
 type mockSAMLStore struct {
-	samlProvider        *model.SAMLProvider
-	samlProviderErr     error
-	samlProviders       []*model.SAMLProvider
-	samlProvidersErr    error
-	orgIDBySlug         uuid.UUID
-	orgIDBySlugErr      error
-	storeSAMLReqErr     error
-	consumeSAMLReq      bool
-	consumeSAMLReqErr   error
-	assertionConsumed   bool
-	assertionConsumedEr error
-	storeAssertionErr   error
-	userByEmail         *model.User
-	userByEmailErr      error
-	createdUser         *model.User
-	createUserErr       error
-	orgSettings         *model.OrgSettings
-	orgSettingsErr      error
-	effectiveRoles      []string
-	effectiveRolesErr   error
-	updateLastLoginErr  error
+	samlProvider         *model.SAMLProvider
+	samlProviderErr      error
+	samlProviders        []*model.SAMLProvider
+	samlProvidersErr     error
+	orgIDBySlug          uuid.UUID
+	orgIDBySlugErr       error
+	storeSAMLReqErr      error
+	consumeSAMLReq       bool
+	consumeSAMLReqErr    error
+	assertionConsumed    bool
+	assertionConsumedErr error
+	userByEmail          *model.User
+	userByEmailErr       error
+	createdUser          *model.User
+	createUserErr        error
+	orgSettings          *model.OrgSettings
+	orgSettingsErr       error
+	effectiveRoles       []string
+	effectiveRolesErr    error
+	updateLastLoginErr   error
 }
 
 func (m *mockSAMLStore) GetSAMLProviderByID(_ context.Context, _ uuid.UUID) (*model.SAMLProvider, error) {
@@ -935,11 +934,8 @@ func (m *mockSAMLStore) StoreSAMLRequest(_ context.Context, _ string, _ uuid.UUI
 func (m *mockSAMLStore) ConsumeSAMLRequest(_ context.Context, _ string, _ uuid.UUID) (bool, error) {
 	return m.consumeSAMLReq, m.consumeSAMLReqErr
 }
-func (m *mockSAMLStore) StoreSAMLAssertionID(_ context.Context, _ string, _ uuid.UUID, _ time.Time) error {
-	return m.storeAssertionErr
-}
-func (m *mockSAMLStore) IsSAMLAssertionConsumed(_ context.Context, _ string, _ uuid.UUID) (bool, error) {
-	return m.assertionConsumed, m.assertionConsumedEr
+func (m *mockSAMLStore) ConsumeOrRecordSAMLAssertion(_ context.Context, _ string, _ uuid.UUID, _ time.Time) (bool, error) {
+	return m.assertionConsumed, m.assertionConsumedErr
 }
 func (m *mockSAMLStore) DeleteExpiredSAMLRequests(_ context.Context) (int64, error) {
 	return 0, nil

@@ -9,7 +9,7 @@ services:
       - "${RAMPART_PORT:-8080}:8080"
     environment:
       RAMPART_PORT: "8080"
-      RAMPART_DB_URL: "postgres://${POSTGRES_USER:-rampart}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-rampart}?sslmode=disable"
+      RAMPART_DB_URL: "postgres://${POSTGRES_USER:-rampart}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env or environment}@postgres:5432/${POSTGRES_DB:-rampart}?sslmode=disable"
       RAMPART_LOG_LEVEL: "${RAMPART_LOG_LEVEL:-info}"
       RAMPART_ALLOWED_ORIGINS: "${RAMPART_ALLOWED_ORIGINS:-}"
       RAMPART_SIGNING_KEY_PATH: "/data/rampart-signing-key.pem"
@@ -49,7 +49,7 @@ services:
     image: postgres:16.6-alpine
     environment:
       POSTGRES_USER: "${POSTGRES_USER:-rampart}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-changeme}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env or environment}"
       POSTGRES_DB: "${POSTGRES_DB:-rampart}"
     ports:
       - "127.0.0.1:5432:5432"

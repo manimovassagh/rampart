@@ -255,7 +255,7 @@ func (h *AdminLoginHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expiresAt := time.Now().Add(refreshTTL)
-	if _, err := h.sessions.Create(ctx, user.ID, refreshToken, expiresAt); err != nil {
+	if _, err := h.sessions.Create(ctx, user.ID, "", refreshToken, expiresAt); err != nil {
 		h.logger.Error("failed to create session", "error", err)
 		http.Error(w, msgInternalServer, http.StatusInternalServerError)
 		return

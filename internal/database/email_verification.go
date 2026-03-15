@@ -15,22 +15,31 @@ import (
 // The plaintext token is NOT stored — only its SHA-256 hash.
 // Any existing unused tokens for the user are invalidated.
 func (db *DB) CreateEmailVerificationToken(ctx context.Context, userID uuid.UUID, tokenPlaintext string, expiresAt time.Time) error {
-	ctx, cancel := queryCtx(ctx)
+	ctx, cancel := txCtx(ctx)
 	defer cancel()
 
 	hash := sha256.Sum256([]byte(tokenPlaintext))
 
-	// Invalidate any existing unused tokens for this user
-	_, _ = db.Pool.Exec(ctx, `UPDATE email_verification_tokens SET used = true WHERE user_id = $1 AND used = false`, userID)
+	tx, err := db.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback best-effort on deferred cleanup
 
-	_, err := db.Pool.Exec(ctx,
+	// Invalidate any existing unused tokens for this user
+	_, err = tx.Exec(ctx, `UPDATE email_verification_tokens SET used = true WHERE user_id = $1 AND used = false`, userID)
+	if err != nil {
+		return fmt.Errorf("invalidating old verification tokens: %w", err)
+	}
+
+	_, err = tx.Exec(ctx,
 		`INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
 		userID, hash[:], expiresAt,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting email verification token: %w", err)
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // ConsumeEmailVerificationToken validates and consumes an email verification token.

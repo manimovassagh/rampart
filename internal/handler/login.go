@@ -197,7 +197,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if user.IsLocked() {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "account_locked"})
 		metrics.AuthTotal.WithLabelValues("failure").Inc()
-		apierror.Unauthorized(w, "Account is temporarily locked. Please try again later.")
+		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
 	}
 
@@ -205,7 +205,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if len(user.PasswordHash) == 0 {
 		h.audit.Log(ctx, r, orgID, model.EventUserLoginFailed, &user.ID, user.Username, "user", user.ID.String(), user.Username, map[string]any{"reason": "sso_only_account"})
 		metrics.AuthTotal.WithLabelValues("failure").Inc()
-		apierror.Unauthorized(w, "This account uses SSO. Please sign in with your identity provider.")
+		apierror.Unauthorized(w, invalidCredentialsMsg)
 		return
 	}
 
@@ -334,7 +334,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expiresAt := time.Now().Add(refreshTTL)
-	if _, err := h.sessions.Create(ctx, user.ID, refreshToken, expiresAt); err != nil {
+	if _, err := h.sessions.Create(ctx, user.ID, "", refreshToken, expiresAt); err != nil {
 		h.logger.Error("failed to create session", "error", err)
 		apierror.InternalError(w)
 		return

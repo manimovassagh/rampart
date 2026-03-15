@@ -211,25 +211,20 @@ func (h *SAMLHandler) ACS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check for assertion replay — reject if this assertion ID was already consumed.
+	// Atomically check and record assertion ID to prevent replay (no TOCTOU race).
 	assertionID := assertion.ID
 	if assertionID != "" {
-		consumed, aErr := h.store.IsSAMLAssertionConsumed(ctx, assertionID, providerID)
+		assertionExpiry := time.Now().Add(10 * time.Minute)
+		alreadyConsumed, aErr := h.store.ConsumeOrRecordSAMLAssertion(ctx, assertionID, providerID, assertionExpiry)
 		if aErr != nil {
-			h.logger.Error("failed to check SAML assertion replay", "error", aErr)
+			h.logger.Error("failed to record SAML assertion", "error", aErr)
 			apierror.InternalError(w)
 			return
 		}
-		if consumed {
+		if alreadyConsumed {
 			h.logger.Warn("SAML assertion replay detected", "assertion_id", assertionID, "provider", provider.Name)
 			apierror.Write(w, http.StatusForbidden, "saml_error", "SAML assertion has already been consumed.")
 			return
-		}
-		// Record this assertion ID with a 10-minute expiry window.
-		assertionExpiry := time.Now().Add(10 * time.Minute)
-		if sErr := h.store.StoreSAMLAssertionID(ctx, assertionID, providerID, assertionExpiry); sErr != nil {
-			h.logger.Error("failed to record SAML assertion ID", "error", sErr)
-			// Non-fatal — continue processing but log the failure
 		}
 	}
 
@@ -324,7 +319,7 @@ func (h *SAMLHandler) ACS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expiresAt := time.Now().Add(refreshTTL)
-	if _, err := h.sessions.Create(ctx, user.ID, refreshToken, expiresAt); err != nil {
+	if _, err := h.sessions.Create(ctx, user.ID, "", refreshToken, expiresAt); err != nil {
 		h.logger.Error("failed to create session", "error", err)
 		apierror.InternalError(w)
 		return

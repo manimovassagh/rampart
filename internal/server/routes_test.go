@@ -117,7 +117,7 @@ func apiTestLogger() *slog.Logger {
 
 func setupTestServer(db *mockDB) *httptest.Server {
 	logger := apiTestLogger()
-	router := NewRouter(logger, []string{"*"}, false)
+	router := NewRouter(logger, []string{"*"}, false, nil)
 
 	healthH := handler.NewHealthHandler(db)
 	RegisterHealthRoutes(router, healthH.Liveness, healthH.Readiness)

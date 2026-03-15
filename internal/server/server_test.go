@@ -57,7 +57,7 @@ func init() {
 
 func TestNewRouterMiddlewareChain(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	r := NewRouter(logger, []string{"http://localhost:3000"}, false)
+	r := NewRouter(logger, []string{"http://localhost:3000"}, false, nil)
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -82,7 +82,7 @@ func TestNewRouterMiddlewareChain(t *testing.T) {
 
 func TestNewRouterNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	r := NewRouter(logger, []string{"http://localhost:3000"}, false)
+	r := NewRouter(logger, []string{"http://localhost:3000"}, false, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/nonexistent", http.NoBody)
 	w := httptest.NewRecorder()
@@ -95,7 +95,7 @@ func TestNewRouterNotFound(t *testing.T) {
 
 func TestNewServer(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	r := NewRouter(logger, []string{"http://localhost:3000"}, false)
+	r := NewRouter(logger, []string{"http://localhost:3000"}, false, nil)
 	s := New(":0", r, logger)
 
 	if s.httpServer.ReadTimeout != readTimeout {
@@ -111,7 +111,7 @@ func TestNewServer(t *testing.T) {
 
 func TestServerStartAndShutdown(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"http://localhost:3000"}, false)
+	r := NewRouter(logger, []string{"http://localhost:3000"}, false, nil)
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"status":"alive"}`))
@@ -143,7 +143,7 @@ func TestServerStartAndShutdown(t *testing.T) {
 
 func TestNewRouterCORSHeaders(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"http://localhost:3000"}, false)
+	r := NewRouter(logger, []string{"http://localhost:3000"}, false, nil)
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -165,7 +165,7 @@ func TestNewRouterCORSHeaders(t *testing.T) {
 
 func TestNewRouterReadyzEndpoint(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"http://localhost:3000"}, false)
+	r := NewRouter(logger, []string{"http://localhost:3000"}, false, nil)
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -184,7 +184,7 @@ func TestNewRouterReadyzEndpoint(t *testing.T) {
 
 func TestNewServerAddr(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, nil, false)
+	r := NewRouter(logger, nil, false, nil)
 	s := New(":9090", r, logger)
 
 	if s.httpServer.Addr != ":9090" {
@@ -200,7 +200,7 @@ func TestNewServerAddr(t *testing.T) {
 
 func TestNewRouterMultipleOrigins(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"http://localhost:3000", "http://localhost:5173"}, false)
+	r := NewRouter(logger, []string{"http://localhost:3000", "http://localhost:5173"}, false, nil)
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -222,7 +222,7 @@ func TestNewRouterMultipleOrigins(t *testing.T) {
 
 func TestRegisterAuthRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	called := false
 	RegisterAuthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
@@ -244,7 +244,7 @@ func TestRegisterAuthRoutes(t *testing.T) {
 
 func TestRegisterLoginRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	routes := map[string]bool{}
 	loginH := func(w http.ResponseWriter, _ *http.Request) {
@@ -285,7 +285,7 @@ func TestRegisterLoginRoutes(t *testing.T) {
 
 func TestRegisterOAuthRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	authorizeCall := 0
 	tokenCall := 0
@@ -350,7 +350,7 @@ func TestRegisterOAuthRoutes(t *testing.T) {
 
 func TestRegisterOIDCRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	discoveryCall := 0
 	jwksCall := 0
@@ -380,7 +380,7 @@ func TestRegisterOIDCRoutes(t *testing.T) {
 
 func TestRegisterHealthRoutesWrongMethod(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	RegisterHealthRoutes(r, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -399,7 +399,7 @@ func TestRegisterHealthRoutesWrongMethod(t *testing.T) {
 
 func TestServerShutdownWithoutStart(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, nil, false)
+	r := NewRouter(logger, nil, false, nil)
 	s := New(":0", r, logger)
 
 	// Shutdown without Start should not error — the underlying http.Server.Shutdown handles it
@@ -425,7 +425,7 @@ func TestTimeoutConstants(t *testing.T) {
 
 func TestRegisterProtectedRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	RegisterProtectedRoutes(r, testPubKey, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -475,7 +475,7 @@ func (s *stubAdminEndpoints) RevokeSessions(w http.ResponseWriter, _ *http.Reque
 
 func TestRegisterAdminRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	RegisterAdminRoutes(r, testPubKey, &stubAdminEndpoints{})
 
@@ -533,7 +533,7 @@ func (s *stubOrgEndpoints) UpdateOrgSettings(w http.ResponseWriter, _ *http.Requ
 
 func TestRegisterOrgRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	RegisterOrgRoutes(r, testPubKey, &stubOrgEndpoints{})
 
@@ -563,7 +563,7 @@ func TestRegisterOrgRoutes(t *testing.T) {
 
 func TestRegisterExportImportRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	RegisterExportImportRoutes(r, testPubKey,
 		func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) },
@@ -809,7 +809,7 @@ func (s *stubAdminConsoleEndpoints) CompliancePage(w http.ResponseWriter, _ *htt
 
 func TestRegisterAdminConsoleRoutes(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	r := NewRouter(logger, []string{"*"}, false)
+	r := NewRouter(logger, []string{"*"}, false, nil)
 
 	hmacKey := []byte("test-hmac-key-for-csrf-testing-only")
 	staticHandler := http.FileServer(http.Dir(t.TempDir()))

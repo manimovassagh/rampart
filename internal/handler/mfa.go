@@ -103,6 +103,8 @@ func (h *MFAHandler) EnrollTOTP(w http.ResponseWriter, r *http.Request) {
 // VerifyTOTPSetup handles POST /mfa/totp/verify-setup.
 // Verifies the TOTP code to complete enrollment and returns backup codes.
 func (h *MFAHandler) VerifyTOTPSetup(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	claims := middleware.GetAuthenticatedUser(r.Context())
 	if claims == nil {
 		apierror.Write(w, http.StatusUnauthorized, "unauthorized", "Authentication required.")
@@ -183,6 +185,8 @@ func (h *MFAHandler) VerifyTOTPSetup(w http.ResponseWriter, r *http.Request) {
 // DisableTOTP handles POST /mfa/totp/disable.
 // Requires a valid TOTP code or backup code to disable MFA.
 func (h *MFAHandler) DisableTOTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	claims := middleware.GetAuthenticatedUser(r.Context())
 	if claims == nil {
 		apierror.Write(w, http.StatusUnauthorized, "unauthorized", "Authentication required.")

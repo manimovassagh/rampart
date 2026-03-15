@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
 	"github.com/manimovassagh/rampart/internal/apierror"
@@ -15,13 +14,13 @@ import (
 )
 
 // NewRouter creates and configures the chi router with middleware chain.
-// Middleware order: RequestID → RealIP → Recovery → SecurityHeaders → CORS → Logging
-func NewRouter(logger *slog.Logger, allowedOrigins []string, hstsEnabled bool) *chi.Mux {
+// Middleware order: RequestID → TrustedRealIP → Recovery → SecurityHeaders → CORS → Logging
+func NewRouter(logger *slog.Logger, allowedOrigins []string, hstsEnabled bool, trustedProxies []string) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware chain — order matters
 	r.Use(middleware.RequestID)
-	r.Use(chimw.RealIP)
+	r.Use(middleware.TrustedRealIP(trustedProxies))
 	r.Use(middleware.Recovery(logger))
 	r.Use(middleware.SecurityHeaders(middleware.SecurityHeadersConfig{
 		HSTSEnabled: hstsEnabled,

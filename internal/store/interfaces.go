@@ -295,8 +295,7 @@ type SAMLProviderStore interface {
 type SAMLRequestStore interface {
 	StoreSAMLRequest(ctx context.Context, requestID string, providerID uuid.UUID, expiresAt time.Time) error
 	ConsumeSAMLRequest(ctx context.Context, requestID string, providerID uuid.UUID) (bool, error)
-	StoreSAMLAssertionID(ctx context.Context, assertionID string, providerID uuid.UUID, expiresAt time.Time) error
-	IsSAMLAssertionConsumed(ctx context.Context, assertionID string, providerID uuid.UUID) (bool, error)
+	ConsumeOrRecordSAMLAssertion(ctx context.Context, assertionID string, providerID uuid.UUID, expiresAt time.Time) (bool, error)
 	DeleteExpiredSAMLRequests(ctx context.Context) (int64, error)
 }
 

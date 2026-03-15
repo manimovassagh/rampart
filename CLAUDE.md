@@ -62,6 +62,13 @@ Rampart is a Go-based IAM/OAuth 2.0 server with OIDC support.
 - `adapters/` — SDK packages (Node, Go, Python, Spring, .NET, React, Web, Next.js)
 - `.github/workflows/` — CI/CD pipelines
 
+## CRITICAL: Security Findings Go to GitHub Issues
+- After any security audit, pentest, or vulnerability discovery, ALWAYS file findings as GitHub issues
+- Use labels: `security`, and severity labels (`critical`, `high`, `medium`, `low`)
+- One issue per finding — include reproduction steps, affected files, and recommended fix
+- Never leave findings only in conversation — they must be tracked in GitHub
+- After fixing an issue, ALWAYS close it on GitHub with `gh issue close <number>` and a comment describing the fix
+
 ## CRITICAL: E2E Tests Must Start from Logged-Out State
 - Always logout or clear browser storage before starting an E2E test
 - Every test must begin with "Not signed in" on the landing page

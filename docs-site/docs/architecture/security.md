@@ -8,6 +8,20 @@ description: Security design, threat model, and hardening measures in the Rampar
 
 Rampart is an identity and access management product. Security is not a feature of Rampart — it is the product. Every design decision, default configuration, and code path is evaluated through a security lens.
 
+## Continuous Security Assurance
+
+Rampart undergoes **continuous penetration testing and security auditing** across every component of the system. Our security process includes:
+
+- **Core server pentesting** — authentication bypass, OAuth flow attacks, session management, injection testing, race conditions, IDOR, and access control verification against the live server.
+- **Source code audits** — systematic review of all Go source code for dangerous function usage, concurrency safety, cryptographic correctness, input validation, and error handling.
+- **Adapter and SDK security reviews** — all 15 adapters (Node.js, Go, Python, Spring, .NET, React, Web, Next.js, and more) are audited for token handling, XSS exposure, CSRF protection, and dependency vulnerabilities.
+- **Infrastructure security** — Docker container hardening, compose configuration, secret management, and deployment security reviews.
+- **CI/CD pipeline audits** — GitHub Actions workflow security, action pinning, secret scoping, and supply chain verification.
+- **Dependency scanning** — automated CVE scanning across Go, npm, PyPI, Maven, NuGet, crates.io, and Composer ecosystems.
+- **Protocol compliance** — OIDC, OAuth 2.0, SAML 2.0, and SCIM 2.0 specification compliance verification.
+
+Every finding is tracked, triaged, and resolved transparently via [GitHub Issues](https://github.com/manimovassagh/rampart/issues?q=label%3Asecurity). We believe security is a process, not a checkbox.
+
 ## Security Principles
 
 1. **Defense in depth.** No single control prevents all attacks. Multiple overlapping layers protect against failures in any one mechanism.

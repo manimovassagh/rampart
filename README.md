@@ -179,13 +179,28 @@ No Redis. No message brokers. No external caches. One binary, one database.
 
 ## Security
 
+Rampart is **continuously pentested and security-audited** to stay ahead of emerging threats. We run automated and manual security assessments on every release, covering the core server, all 15 adapters, cookbook samples, CI/CD pipelines, and deployment configurations.
+
+**Security-first design:**
+
 - PKCE mandatory on all public OAuth clients
 - Refresh token rotation with automatic reuse detection
 - Per-endpoint rate limiting (login, register, token)
 - HSTS, secure cookies, and CSRF protection
-- Encryption at rest for secrets and signing keys
+- Encryption at rest for secrets and signing keys (AES-256-GCM)
+- Argon2id password hashing with OWASP-recommended parameters
+- Constant-time comparison for all security-critical operations
+- HMAC-signed webhook payloads with SSRF-safe delivery
+
+**Continuous security assurance:**
+
 - Automated security scanning via gosec and govulncheck in CI
-- HMAC-signed webhook payloads
+- Regular penetration testing across authentication, OAuth flows, session management, and access control
+- Source code audits covering injection, race conditions, cryptography, and protocol compliance
+- Adapter and SDK security reviews for all supported languages
+- Supply chain dependency scanning across Go, Node.js, Python, Java, .NET, Rust, and PHP
+
+We believe security is not a feature -- it's a process. Every finding is tracked, triaged, and resolved transparently via [GitHub Issues](https://github.com/manimovassagh/rampart/issues?q=label%3Asecurity).
 
 Report vulnerabilities to **security@rampart.dev** or open a [GitHub Security Advisory](https://github.com/manimovassagh/rampart/security/advisories).
 
