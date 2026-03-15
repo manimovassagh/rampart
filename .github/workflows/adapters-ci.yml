@@ -32,7 +32,7 @@ jobs:
       - name: Build & Test
         working-directory: adapters/backend/node
         run: |
-          npm ci
+          npm install
           npm run build
           npm test
 
@@ -98,7 +98,7 @@ jobs:
       - name: Build
         working-directory: adapters/frontend/react
         run: |
-          npm ci
+          npm install
           npm run build
 
   web-adapter:
@@ -112,7 +112,7 @@ jobs:
       - name: Build
         working-directory: adapters/frontend/web
         run: |
-          npm ci
+          npm install
           npm run build
 
   nextjs-adapter:
@@ -126,7 +126,7 @@ jobs:
       - name: Build
         working-directory: adapters/frontend/nextjs
         run: |
-          npm ci
+          npm install
           npm run build
 
   # Final status check — branch protection can require just this one job
