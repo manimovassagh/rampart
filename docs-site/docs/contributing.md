@@ -34,11 +34,14 @@ cd rampart
 # Install Go dependencies
 go mod download
 
-# Build the server
-go build -o rampart ./cmd/rampart
+# Rebuild admin console CSS (required before first build)
+make admin-css
 
-# Run tests
-go test ./...
+# Build the server (rebuilds CSS automatically, outputs to bin/rampart)
+make build
+
+# Run all quality gates (formatting, vet, lint, tests, security)
+make check
 ```
 
 ### Database Setup
@@ -48,31 +51,20 @@ go test ./...
 createdb rampart
 
 # Apply migrations
-./rampart migrate up --config configs/dev.yaml
+./bin/rampart migrate up --config configs/dev.yaml
 
 # (Optional) Seed development data
-./rampart seed --config configs/dev.yaml
-```
-
-### Frontend Development
-
-```bash
-# Admin dashboard
-cd client
-pnpm install
-pnpm dev          # Starts Vite dev server with HMR
-
-# Login UI
-cd login-ui
-pnpm install
-pnpm dev
+./bin/rampart seed --config configs/dev.yaml
 ```
 
 ### Running the Server
 
 ```bash
-# Development mode with hot reload (using air or similar)
-./rampart serve --config configs/dev.yaml
+# Build and run the server
+make run
+
+# Or run directly after building
+./bin/rampart serve --config configs/dev.yaml
 
 # The server starts on http://localhost:8080 by default
 # Admin UI: http://localhost:8080/admin
@@ -117,6 +109,7 @@ golangci-lint run ./...
 - The admin UI and login UI use htmx with Go server-side templates, styled with Tailwind CSS.
 - Follow the existing template conventions in the `internal/` handler and template directories.
 - Keep JavaScript minimal — prefer htmx attributes for interactivity.
+- When modifying admin CSS, use `make admin-css` to rebuild or `make admin-css-watch` for live development.
 
 ## Testing Requirements
 
@@ -155,28 +148,76 @@ func TestValidateEmail(t *testing.T) {
 
 - **Test names** describe the scenario: `TestLoginFlow_InvalidPassword_ReturnsUnauthorized`.
 - Use the standard `testing` package. Avoid testify or other assertion libraries unless already in use.
-- Tests must be runnable with `go test ./...` — no external setup scripts.
+- Tests must be runnable with `go test -race -count=1 ./...` — no external setup scripts.
 - Do not skip tests without a documented reason.
 
 ### Running Tests
 
 ```bash
-# All tests
-go test ./...
+# All tests (with race detection and cache bypass — matches CI)
+go test -race -count=1 ./...
 
-# With race detection (required in CI)
-go test -race ./...
+# Or use Make (equivalent to the above)
+make test
 
-# With coverage
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
+# With coverage report
+make test-cover
+
+# Enforce coverage threshold
+make test-threshold
 
 # Specific package
-go test ./internal/auth/...
+go test -race -count=1 ./internal/handler/...
 
-# Frontend tests
-cd client && pnpm test
+# Run all quality gates (the canonical CI command)
+make check
 ```
+
+## Cookbook (Sample Apps)
+
+The `cookbook/` directory contains complete sample applications demonstrating how to integrate with Rampart:
+
+| Directory | Description |
+|-----------|-------------|
+| `cookbook/react-app` | React frontend using OIDC/OAuth 2.0 |
+| `cookbook/express-backend` | Express.js backend with token validation |
+| `cookbook/fastapi-backend` | FastAPI (Python) backend integration |
+| `cookbook/go-backend` | Go backend integration |
+| `cookbook/spring-backend` | Spring Boot (Java) backend integration |
+| `cookbook/dotnet-backend` | .NET backend integration |
+| `cookbook/web-frontend` | Vanilla web frontend example |
+
+These are useful references when developing new features or testing changes to Rampart's auth flows.
+
+## Adapter Development
+
+The `adapters/` directory contains official client libraries (SDKs) for integrating applications with Rampart. Adapters are published as packages for their respective ecosystems.
+
+### Backend Adapters
+
+| Directory | Language/Framework | Package |
+|-----------|--------------------|---------|
+| `adapters/backend/node` | Node.js | npm |
+| `adapters/backend/python` | Python | PyPI |
+| `adapters/backend/go` | Go | Go module |
+| `adapters/backend/dotnet` | .NET | NuGet |
+| `adapters/backend/spring` | Spring Boot | Maven |
+
+### Frontend Adapters
+
+| Directory | Framework | Package |
+|-----------|-----------|---------|
+| `adapters/frontend/react` | React | npm |
+| `adapters/frontend/nextjs` | Next.js | npm |
+| `adapters/frontend/web` | Vanilla JS | npm |
+
+### Testing Adapters
+
+Adapters have their own CI pipeline defined in `.github/workflows/adapters-ci.yml`, which runs automatically when files under `adapters/` are changed. When developing an adapter:
+
+1. Follow the conventions of the existing adapters in the same language.
+2. Include unit tests in the adapter package.
+3. Ensure your changes pass the adapters CI pipeline before submitting a PR.
 
 ## Pull Request Process
 
@@ -226,10 +267,11 @@ Commit messages should be clear and concise. Write them as a human developer wou
 3. **Ensure all CI checks pass:**
    - `golangci-lint`
    - `go vet`
-   - `go test -race ./...`
+   - `go test -race -count=1 ./...`
    - `govulncheck`
    - `gosec`
    - Build succeeds
+   - Or simply run `make check` locally before pushing.
 4. **Wait for review.** All PRs must be reviewed and approved by the project owner before merging. Do not self-merge.
 
 ### PR Guidelines
@@ -277,6 +319,7 @@ If you are looking for ways to contribute, these areas are particularly valuable
 - **Security review** — reviewing auth flows, crypto usage, and input validation.
 - **Performance** — profiling and optimizing hot paths.
 - **Frontend** — improving the admin dashboard and login UI.
+- **Adapters** — developing and improving client SDKs in `adapters/`.
 - **Integrations** — testing Rampart with different OAuth 2.0/OIDC client libraries and frameworks.
 
 Check the [GitHub issues](https://github.com/manimovassagh/rampart/issues) for issues labeled `good first issue` or `help wanted`.

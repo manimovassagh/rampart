@@ -1,86 +1,27 @@
 ---
 sidebar_position: 3
 title: Configuration
-description: Complete configuration reference for Rampart — environment variables, YAML config, database settings, signing keys, CORS, and logging.
+description: Complete configuration reference for Rampart — environment variables, database settings, signing keys, CORS, rate limiting, SMTP, and social login.
 ---
 
 # Configuration
 
-Rampart supports configuration through environment variables and YAML configuration files. Environment variables take precedence over YAML values, allowing you to use YAML for defaults and override specific settings per environment.
-
-## Configuration File
-
-By default, Rampart looks for a configuration file at `./rampart.yaml`. You can specify a different path with the `RAMPART_CONFIG` environment variable:
-
-```bash
-RAMPART_CONFIG=/etc/rampart/config.yaml ./rampart
-```
-
-### Example YAML Configuration
-
-```yaml
-server:
-  port: 8080
-  issuer: https://auth.example.com
-
-database:
-  url: postgres://rampart:secret@localhost:5432/rampart?sslmode=require
-  max_open_conns: 25
-  max_idle_conns: 5
-  conn_max_lifetime: 5m
-
-signing:
-  key_path: /data/keys/signing.pem
-  algorithm: RS256
-
-tokens:
-  access_token_ttl: 1h
-  refresh_token_ttl: 168h  # 7 days
-  id_token_ttl: 1h
-
-sessions:
-  ttl: 24h
-
-cors:
-  allowed_origins:
-    - https://app.example.com
-    - https://admin.example.com
-  allowed_methods:
-    - GET
-    - POST
-    - PUT
-    - DELETE
-    - OPTIONS
-  allowed_headers:
-    - Authorization
-    - Content-Type
-  max_age: 3600
-
-logging:
-  level: info
-  format: json
-```
+Rampart is configured entirely through environment variables. All variables are prefixed with `RAMPART_` (except social login providers which use `RAMPART_GOOGLE_*`, `RAMPART_GITHUB_*`, and `RAMPART_APPLE_*`).
 
 ## Environment Variables Reference
 
-All environment variables are prefixed with `RAMPART_`.
-
 ### Server
 
-| Variable | YAML Path | Description | Default |
-|----------|-----------|-------------|---------|
-| `RAMPART_PORT` | `server.port` | HTTP listen port | `8080` |
-| `RAMPART_ISSUER` | `server.issuer` | Public base URL for OIDC Discovery and JWT `iss` | `http://localhost:8080` |
-| `RAMPART_CONFIG` | — | Path to YAML configuration file | `./rampart.yaml` |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_PORT` | HTTP listen port | `8080` |
+| `RAMPART_ISSUER` | Public base URL for OIDC Discovery and JWT `iss` claim | `http://localhost:8080` |
 
 ### Database
 
-| Variable | YAML Path | Description | Default |
-|----------|-----------|-------------|---------|
-| `RAMPART_DB_URL` | `database.url` | PostgreSQL connection string | (required) |
-| `RAMPART_DB_MAX_OPEN_CONNS` | `database.max_open_conns` | Maximum open database connections | `25` |
-| `RAMPART_DB_MAX_IDLE_CONNS` | `database.max_idle_conns` | Maximum idle database connections | `5` |
-| `RAMPART_DB_CONN_MAX_LIFETIME` | `database.conn_max_lifetime` | Maximum connection lifetime | `5m` |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_DB_URL` | PostgreSQL connection string | (required) |
 
 The database connection string follows the standard PostgreSQL URI format:
 
@@ -92,62 +33,93 @@ Supported `sslmode` values: `disable`, `require`, `verify-ca`, `verify-full`. Us
 
 ### Signing Keys
 
-| Variable | YAML Path | Description | Default |
-|----------|-----------|-------------|---------|
-| `RAMPART_SIGNING_KEY_PATH` | `signing.key_path` | Path to RSA private key (PEM format) | Auto-generated |
-| `RAMPART_SIGNING_ALGORITHM` | `signing.algorithm` | JWT signing algorithm | `RS256` |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_SIGNING_KEY_PATH` | Path to RSA private key (PEM format) | `rampart-signing-key.pem` |
 
-If no signing key is provided, Rampart generates a 2048-bit RSA key pair on first startup and persists it to the configured path. In production, you should generate and manage your own keys:
+If the signing key file does not exist at the configured path, Rampart generates a 2048-bit RSA key pair on first startup and persists it there. In production, you should generate and manage your own keys:
 
 ```bash
-openssl genrsa -out signing.pem 2048
-openssl rsa -in signing.pem -pubout -out signing-pub.pem
+openssl genrsa -out rampart-signing-key.pem 2048
+openssl rsa -in rampart-signing-key.pem -pubout -out rampart-signing-key-pub.pem
 ```
 
 ### Tokens
 
-| Variable | YAML Path | Description | Default |
-|----------|-----------|-------------|---------|
-| `RAMPART_ACCESS_TOKEN_TTL` | `tokens.access_token_ttl` | Access token lifetime | `1h` |
-| `RAMPART_REFRESH_TOKEN_TTL` | `tokens.refresh_token_ttl` | Refresh token lifetime | `168h` (7 days) |
-| `RAMPART_ID_TOKEN_TTL` | `tokens.id_token_ttl` | OIDC ID token lifetime | `1h` |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_ACCESS_TOKEN_TTL` | Access token lifetime in seconds | `900` (15 minutes) |
+| `RAMPART_REFRESH_TOKEN_TTL` | Refresh token lifetime in seconds | `604800` (7 days) |
 
-### Sessions
-
-| Variable | YAML Path | Description | Default |
-|----------|-----------|-------------|---------|
-| `RAMPART_SESSION_TTL` | `sessions.ttl` | Session time-to-live | `24h` |
+Both values are integers representing seconds.
 
 ### CORS
 
-| Variable | YAML Path | Description | Default |
-|----------|-----------|-------------|---------|
-| `RAMPART_ALLOWED_ORIGINS` | `cors.allowed_origins` | Comma-separated allowed origins | `*` |
-| `RAMPART_CORS_METHODS` | `cors.allowed_methods` | Comma-separated allowed HTTP methods | `GET,POST,PUT,DELETE,OPTIONS` |
-| `RAMPART_CORS_HEADERS` | `cors.allowed_headers` | Comma-separated allowed headers | `Authorization,Content-Type` |
-| `RAMPART_CORS_MAX_AGE` | `cors.max_age` | Preflight cache duration in seconds | `3600` |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_ALLOWED_ORIGINS` | Comma-separated allowed origins | (none) |
+
+### Security
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_HSTS_ENABLED` | Enable HTTP Strict Transport Security header | Auto-enabled when `RAMPART_ISSUER` starts with `https://` |
+| `RAMPART_SECURE_COOKIES` | Set the `Secure` flag on all cookies (requires HTTPS) | `false` |
+| `RAMPART_ENCRYPTION_KEY` | Hex-encoded 32-byte key for encrypting secrets at rest | (none — secrets stored in plaintext) |
+| `RAMPART_METRICS_TOKEN` | Bearer token required to access `/metrics` endpoint | (none — endpoint disabled) |
+
+### Rate Limiting
+
+Per-IP rate limits in requests per minute for authentication endpoints.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_RATE_LIMIT_LOGIN` | Login endpoint rate limit (req/min per IP) | `10` |
+| `RAMPART_RATE_LIMIT_REGISTER` | Registration endpoint rate limit (req/min per IP) | `5` |
+| `RAMPART_RATE_LIMIT_TOKEN` | Token endpoint rate limit (req/min per IP) | `10` |
 
 ### Logging
 
-| Variable | YAML Path | Description | Default |
-|----------|-----------|-------------|---------|
-| `RAMPART_LOG_LEVEL` | `logging.level` | Log level: `debug`, `info`, `warn`, `error` | `info` |
-| `RAMPART_LOG_FORMAT` | `logging.format` | Output format: `json`, `text` | `json` |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` | `info` |
+| `RAMPART_LOG_FORMAT` | Output format: `pretty`, `text`, `json` | `pretty` |
 
-## Precedence Order
+### SMTP (Email)
 
-Configuration values are resolved in the following order (highest priority first):
+Required for transactional emails (password reset, email verification, etc.). If `RAMPART_SMTP_HOST` is not set, email features are disabled.
 
-1. **Environment variables** — always win
-2. **YAML configuration file** — used as defaults
-3. **Built-in defaults** — used when neither is set
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RAMPART_SMTP_HOST` | SMTP server hostname | (none) |
+| `RAMPART_SMTP_PORT` | SMTP server port | `587` |
+| `RAMPART_SMTP_USERNAME` | SMTP authentication username | (none) |
+| `RAMPART_SMTP_PASSWORD` | SMTP authentication password | (none) |
+| `RAMPART_SMTP_FROM` | Sender address for outgoing emails | (none) |
 
-## Validating Configuration
+### Social Login Providers
 
-Start Rampart with the `--validate` flag to check your configuration without starting the server:
+Configure OAuth credentials to enable social login. Each provider is optional — only configure the ones you need.
 
-```bash
-./rampart --validate
-```
+#### Google
 
-This verifies database connectivity, signing key validity, and configuration syntax.
+| Variable | Description |
+|----------|-------------|
+| `RAMPART_GOOGLE_CLIENT_ID` | Google OAuth 2.0 client ID |
+| `RAMPART_GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 client secret |
+
+#### GitHub
+
+| Variable | Description |
+|----------|-------------|
+| `RAMPART_GITHUB_CLIENT_ID` | GitHub OAuth App client ID |
+| `RAMPART_GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret |
+
+#### Apple
+
+| Variable | Description |
+|----------|-------------|
+| `RAMPART_APPLE_CLIENT_ID` | Apple Services ID |
+| `RAMPART_APPLE_TEAM_ID` | Apple Developer Team ID |
+| `RAMPART_APPLE_KEY_ID` | Apple private key ID |
+| `RAMPART_APPLE_PRIVATE_KEY` | Apple private key contents (PEM format) |
