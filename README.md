@@ -45,6 +45,37 @@
 
 ---
 
+## Screenshots
+
+<table>
+<tr>
+<td width="50%" align="center">
+<strong>Admin Dashboard</strong><br />
+<sub>Real-time metrics, login charts, role distribution, and live SSE updates.</sub><br /><br />
+<img src="docs-site/static/img/screenshots/admin-dashboard.png" alt="Admin Dashboard" width="100%" />
+</td>
+<td width="50%" align="center">
+<strong>React SDK Integration</strong><br />
+<sub>User card, API tester, and role-based access control in action.</sub><br /><br />
+<img src="docs-site/static/img/screenshots/react-dashboard.png" alt="React Dashboard" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+<strong>Login Page</strong><br />
+<sub>Clean, branded sign-in form. Works with any OAuth client.</sub><br /><br />
+<img src="docs-site/static/img/screenshots/login.png" alt="Login Page" width="100%" />
+</td>
+<td width="50%" align="center">
+<strong>Consent Screen</strong><br />
+<sub>OAuth consent with scope descriptions. Deny or allow per-app.</sub><br /><br />
+<img src="docs-site/static/img/screenshots/consent.png" alt="Consent Screen" width="100%" />
+</td>
+</tr>
+</table>
+
+---
+
 ## Official SDKs
 
 Eight adapters covering every major stack. Drop-in middleware and client libraries.
