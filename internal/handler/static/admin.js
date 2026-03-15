@@ -106,6 +106,16 @@
       }
     });
   }
+  // Social providers: provider select updates the redirect URI display
+  var providerSelect = document.getElementById("provider-select");
+  var uriDisplay = document.getElementById("redirect-uri-display");
+  if (providerSelect && uriDisplay) {
+    var baseUri = uriDisplay.textContent.trim();
+    providerSelect.addEventListener("change", function () {
+      uriDisplay.textContent = baseUri.replace("{provider}", providerSelect.value);
+    });
+  }
+
   // ── Dashboard SSE (real-time updates) ──────────────────────────────────
   var dashRoot = document.getElementById("dash-root");
   var dashContent = document.getElementById("dash-content");

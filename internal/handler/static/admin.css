@@ -117,6 +117,7 @@
 .social-banner { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; }
 .social-banner-label { font-size: 11px; font-weight: 600; color: #4338ca; margin-bottom: 4px; }
 .social-copy-row { display: flex; align-items: center; gap: 8px; }
+.provider-select { padding: 8px 12px; font-size: 13px; border: 1px solid #c7d2fe; border-radius: 6px; background: white; color: #4338ca; font-weight: 500; cursor: pointer; flex-shrink: 0; }
 .social-copy-row code { flex: 1; display: block; font-size: 13px; padding: 8px 12px; background: white; border: 1px solid #c7d2fe; border-radius: 6px; color: #1e1b4b; word-break: break-all; }
 .copy-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: white; border: 1px solid #c7d2fe; border-radius: 6px; cursor: pointer; color: #4338ca; flex-shrink: 0; }
 .copy-btn:hover { background: #eef2ff; }
