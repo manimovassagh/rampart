@@ -47,7 +47,7 @@ func main() {
 	mux.Handle("GET /api/manager/reports",
 		auth(rampart.RequireRoles("manager")(http.HandlerFunc(managerReportsHandler))))
 
-	// Wrap with CORS
+	// WARNING: Restrict to your frontend domain in production. Never use "*" in production.
 	handler := corsMiddleware(mux)
 
 	fmt.Printf("Sample backend running on http://localhost:%s\n", port)
@@ -156,6 +156,7 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	_ = json.NewEncoder(w).Encode(data)
 }
 
+// WARNING: Restrict to your frontend domain in production. Never use "*" in production.
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")

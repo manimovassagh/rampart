@@ -78,7 +78,11 @@ func RegisterLoginRoutes(r *chi.Mux, loginHandler, refreshHandler, logoutHandler
 	} else {
 		r.With(jsonMW).Post("/login", loginHandler)
 	}
-	r.With(jsonMW).Post("/token/refresh", refreshHandler)
+	if rl != nil {
+		r.With(jsonMW, rl.Middleware()).Post("/token/refresh", refreshHandler)
+	} else {
+		r.With(jsonMW).Post("/token/refresh", refreshHandler)
+	}
 	r.With(jsonMW).Post("/logout", logoutHandler)
 }
 

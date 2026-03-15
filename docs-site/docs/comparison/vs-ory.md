@@ -24,7 +24,7 @@ Ory provides a suite of open-source identity and access management services: Hyd
 | **Database** | PostgreSQL | PostgreSQL, MySQL, CockroachDB |
 | **Self-hosted** | Full feature set, free | Full feature set, free |
 | **Cloud offering** | Planned | Ory Network (managed cloud) |
-| **License** | AGPL-3.0 | Apache 2.0 |
+| **License** | MIT | Apache 2.0 |
 
 ## Architecture Approach
 
@@ -115,7 +115,7 @@ Ory has genuine advantages for certain use cases:
 - **Flexibility.** The headless approach gives complete control over the user experience. If you need a deeply customized login flow with non-standard UI, Ory's approach may suit better.
 - **Zanzibar-based authorization.** Keto implements Google's Zanzibar model for fine-grained, relationship-based access control. This is more expressive than Rampart's RBAC model for complex authorization scenarios (e.g., "user X can edit document Y because they are a member of team Z which owns folder W").
 - **Independent scaling.** In very large deployments, the ability to scale OAuth, identity, and authorization independently can be valuable.
-- **Apache 2.0 license.** More permissive than Rampart's AGPL-3.0 for embedding in proprietary products.
+- **Apache 2.0 license.** Permissive license similar to Rampart's MIT for embedding in proprietary products.
 - **Maturity.** Hydra is OIDC-certified and has been in production use since 2015.
 - **Ory Network.** Managed cloud offering available for teams that want Ory's architecture without operational overhead.
 

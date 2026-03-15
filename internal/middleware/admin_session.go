@@ -9,9 +9,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/google/uuid"
 	"net/http"
 	"strings"
+	"sync/atomic"
+
+	"github.com/google/uuid"
 
 	"github.com/manimovassagh/rampart/internal/token"
 )
@@ -30,17 +32,17 @@ const (
 
 // secureCookies controls whether cookies are sent with the Secure flag.
 // Must be true in production (requires HTTPS). Defaults to false for development.
-var secureCookies bool
+var secureCookies atomic.Bool
 
 // SetSecureCookies configures whether all cookies should have the Secure flag set.
 // Call this at startup before serving requests.
 func SetSecureCookies(secure bool) {
-	secureCookies = secure
+	secureCookies.Store(secure)
 }
 
 // SecureCookiesEnabled returns whether cookies should have the Secure flag set.
 func SecureCookiesEnabled() bool {
-	return secureCookies
+	return secureCookies.Load()
 }
 
 // AdminSession returns middleware that validates admin session cookies.
@@ -161,7 +163,7 @@ func SetAdminSession(w http.ResponseWriter, accessToken string, hmacKey []byte, 
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   secureCookies,
+		Secure:   secureCookies.Load(),
 	})
 }
 
@@ -174,7 +176,7 @@ func ClearAdminSession(w http.ResponseWriter) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   secureCookies,
+		Secure:   secureCookies.Load(),
 	})
 }
 
@@ -187,7 +189,7 @@ func SetFlash(w http.ResponseWriter, message string) {
 		MaxAge:   10,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   secureCookies,
+		Secure:   secureCookies.Load(),
 	})
 }
 
@@ -206,7 +208,7 @@ func GetFlash(w http.ResponseWriter, r *http.Request) string {
 		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   secureCookies,
+		Secure:   secureCookies.Load(),
 	})
 
 	decoded, err := base64.URLEncoding.DecodeString(cookie.Value)
@@ -246,7 +248,7 @@ func SetOAuthCSRFCookie(w http.ResponseWriter, csrfToken string) {
 		MaxAge:   600, // 10 minutes
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		Secure:   secureCookies,
+		Secure:   secureCookies.Load(),
 	})
 }
 
@@ -263,7 +265,7 @@ func SetConsentUserCookie(w http.ResponseWriter, userID uuid.UUID, hmacKey []byt
 		MaxAge:   600, // 10 minutes
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		Secure:   secureCookies,
+		Secure:   secureCookies.Load(),
 	})
 }
 
@@ -295,7 +297,7 @@ func ClearConsentUserCookie(w http.ResponseWriter) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		Secure:   secureCookies,
+		Secure:   secureCookies.Load(),
 	})
 }
 
@@ -334,7 +336,7 @@ func ensureCSRFCookie(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   3600,
 		HttpOnly: true, // Token is injected server-side via Go templates
 		SameSite: http.SameSiteLaxMode,
-		Secure:   secureCookies,
+		Secure:   secureCookies.Load(),
 	})
 }
 

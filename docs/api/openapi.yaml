@@ -21,8 +21,8 @@ info:
     name: Rampart
     url: https://github.com/manimovassagh/rampart
   license:
-    name: AGPL-3.0
-    url: https://www.gnu.org/licenses/agpl-3.0.html
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 
 servers:
   - url: http://localhost:8080

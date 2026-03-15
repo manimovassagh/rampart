@@ -87,8 +87,12 @@ class RampartAuth:
         if isinstance(roles, str):
             roles = [roles]
 
+        sub = payload.get("sub", "")
+        if not sub:
+            raise jwt.InvalidTokenError("Token is missing required 'sub' claim")
+
         return RampartClaims(
-            sub=payload["sub"],
+            sub=sub,
             iss=payload["iss"],
             iat=payload.get("iat", 0),
             exp=payload.get("exp", 0),

@@ -32,8 +32,10 @@ const (
 )
 
 const (
-	defaultAccessTokenTTL  = 900    // 15 minutes
-	defaultRefreshTokenTTL = 604800 // 7 days
+	defaultAccessTokenTTL  = 900     // 15 minutes
+	defaultRefreshTokenTTL = 604800  // 7 days
+	maxAccessTokenTTL      = 3600    // 1 hour
+	maxRefreshTokenTTL     = 7776000 // 90 days
 	defaultSigningKeyPath  = "rampart-signing-key.pem"
 	defaultIssuer          = "http://localhost:8080"
 
@@ -175,6 +177,9 @@ func Load() (*Config, error) {
 		if secs < 1 {
 			return nil, fmt.Errorf("RAMPART_ACCESS_TOKEN_TTL must be positive")
 		}
+		if secs > maxAccessTokenTTL {
+			return nil, fmt.Errorf("RAMPART_ACCESS_TOKEN_TTL %d exceeds maximum of %d seconds (1 hour)", secs, maxAccessTokenTTL)
+		}
 		cfg.AccessTokenTTL = time.Duration(secs) * time.Second
 	}
 
@@ -186,6 +191,9 @@ func Load() (*Config, error) {
 		}
 		if secs < 1 {
 			return nil, fmt.Errorf("RAMPART_REFRESH_TOKEN_TTL must be positive")
+		}
+		if secs > maxRefreshTokenTTL {
+			return nil, fmt.Errorf("RAMPART_REFRESH_TOKEN_TTL %d exceeds maximum of %d seconds (90 days)", secs, maxRefreshTokenTTL)
 		}
 		cfg.RefreshTokenTTL = time.Duration(secs) * time.Second
 	}

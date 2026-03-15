@@ -24,7 +24,7 @@ LABEL org.opencontainers.image.title="Rampart" \
       org.opencontainers.image.description="Lightweight, modern identity and access management server" \
       org.opencontainers.image.source="https://github.com/manimovassagh/rampart" \
       org.opencontainers.image.vendor="Rampart" \
-      org.opencontainers.image.licenses="AGPL-3.0"
+      org.opencontainers.image.licenses="MIT"
 
 # Install minimal runtime dependencies and clean cache in same layer
 RUN apk add --no-cache ca-certificates tzdata \

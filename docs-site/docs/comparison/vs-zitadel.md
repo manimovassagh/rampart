@@ -22,7 +22,7 @@ Zitadel is a Go-based identity management platform that provides OAuth 2.0/OIDC,
 | **Extensibility** | Plugin system (planned), webhooks | Actions (JavaScript/TypeScript runtime) |
 | **Multi-tenancy** | Organizations | Organizations + instances |
 | **Resource usage** | ~30 MB idle | ~100–200 MB idle |
-| **License** | AGPL-3.0 | Apache 2.0 |
+| **License** | MIT | Apache 2.0 |
 | **OIDC certified** | Planned | Yes |
 
 ## Database Requirements

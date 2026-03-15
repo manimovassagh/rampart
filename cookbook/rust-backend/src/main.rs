@@ -230,6 +230,7 @@ async fn main() -> std::io::Result<()> {
     println!("  GET /api/manager/reports   — protected (requires \"manager\" role)");
 
     HttpServer::new(move || {
+        // WARNING: Restrict to your frontend domain in production. Never use "*" in production.
         let cors = Cors::default()
             .allow_any_origin()
             .allow_any_method()

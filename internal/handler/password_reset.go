@@ -142,7 +142,6 @@ func (h *PasswordResetHandler) processResetRequest(email string) {
 	if !h.email.Enabled() {
 		h.logger.Warn("SMTP not configured — password reset token generated but cannot be delivered",
 			"user_id", user.ID,
-			"token_prefix", token[:8],
 		)
 		return
 	}

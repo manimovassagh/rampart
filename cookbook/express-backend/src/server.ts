@@ -7,6 +7,7 @@ const PORT = Number(process.env.PORT ?? 3001);
 
 const app = express();
 
+// WARNING: Restrict to your frontend domain in production. Never use "*" in production.
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 

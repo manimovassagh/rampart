@@ -94,6 +94,7 @@ function verifyToken(Request $request, string $jwksUrl, string $issuer, ?array &
 $app = AppFactory::create();
 
 // ── CORS Middleware ──────────────────────────────────────────────────────────
+// WARNING: Restrict to your frontend domain in production. Never use "*" in production.
 
 $app->add(function (Request $request, RequestHandler $handler): Response {
     if ($request->getMethod() === 'OPTIONS') {
