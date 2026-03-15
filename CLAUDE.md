@@ -43,6 +43,11 @@ Rampart is a Go-based IAM/OAuth 2.0 server with OIDC support.
 - If custom styles are needed, add CSS classes to `internal/handler/static/admin.css`
 - This applies to all Go templates in `internal/handler/templates/`
 
+## CRITICAL: Recheck Docs After Changes
+- After any significant change, launch a separate agent to verify GitHub page, README rendering, screenshots, and badges
+- Check that all links resolve, images render, and badges show correct data
+- Multiple PRs are OK if they touch different files with no conflict risk
+
 ## CRITICAL: Use Full Power by Default
 - Always launch parallel agents when there is independent work
 - Use monitoring, verification, and pentest agents proactively
