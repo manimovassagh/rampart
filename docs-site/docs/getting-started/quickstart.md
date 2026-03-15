@@ -172,6 +172,6 @@ docker compose down -v
 
 - [Docker deployment guide](./docker.md) — production Docker configuration
 - [Configuration reference](./configuration.md) — environment variables and YAML config
-- [Social login](./social-login.md) — configure Google, GitHub, and Apple sign-in
+- [Social login](./configuration#social-login-providers) — configure Google, GitHub, and Apple sign-in
 - [CLI tool](./cli.md) — full CLI command reference
 - [API overview](../api/overview.md) — REST API documentation
