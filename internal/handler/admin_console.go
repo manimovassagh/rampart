@@ -31,7 +31,7 @@ import (
 //go:embed templates/admin/*.html templates/admin/partials/*.html
 var adminTemplateFS embed.FS
 
-//go:embed static/admin.css static/admin.js static/htmx.min.js
+//go:embed static/admin.css static/admin.js static/htmx.min.js static/consent.css
 var staticFS embed.FS
 
 // Admin console string constants (SonarQube S1192 compliance).
