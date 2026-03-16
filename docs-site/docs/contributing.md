@@ -50,11 +50,11 @@ make check
 # Create the database
 createdb rampart
 
-# Apply migrations
-./bin/rampart migrate up --config configs/dev.yaml
+# Set the database URL
+export RAMPART_DB_URL="postgres://localhost:5432/rampart?sslmode=disable"
 
-# (Optional) Seed development data
-./bin/rampart seed --config configs/dev.yaml
+# Or use Docker Compose (recommended — handles database automatically)
+docker compose up -d
 ```
 
 ### Running the Server
@@ -63,8 +63,9 @@ createdb rampart
 # Build and run the server
 make run
 
-# Or run directly after building
-./bin/rampart serve --config configs/dev.yaml
+# Or run directly after building (configured via environment variables)
+export RAMPART_DB_URL="postgres://localhost:5432/rampart?sslmode=disable"
+./bin/rampart
 
 # The server starts on http://localhost:8080 by default
 # Admin UI: http://localhost:8080/admin
@@ -73,13 +74,12 @@ make run
 
 ### Environment Variables
 
-For local development, copy the example configuration:
+Rampart is configured entirely through environment variables (see [Configuration](../getting-started/configuration.md)). For local development, set at minimum:
 
 ```bash
-cp configs/dev.yaml.example configs/dev.yaml
+export RAMPART_DB_URL="postgres://localhost:5432/rampart?sslmode=disable"
+export RAMPART_ISSUER="http://localhost:8080"
 ```
-
-Edit `configs/dev.yaml` with your local PostgreSQL connection details.
 
 ## Code Style
 

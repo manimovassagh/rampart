@@ -1,12 +1,161 @@
 ---
 sidebar_position: 1
 title: API Overview
-description: Design principles, authentication, error handling, pagination, and rate limiting for the Rampart REST API.
+description: Complete endpoint reference, design principles, authentication, error handling, pagination, and rate limiting for the Rampart REST API.
 ---
 
 # API Overview
 
 Rampart exposes a RESTful JSON API for all identity and access management operations. Every feature available in the admin console or CLI is backed by this API, making it the single source of truth for integrations, automation, and custom tooling.
+
+## Complete Endpoint Reference
+
+All endpoints exposed by Rampart, organized by category. Auth column indicates: **No** (public), **Yes** (Bearer token required), **Admin** (admin role required).
+
+### Authentication
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/register` | No | User self-registration |
+| POST | `/login` | No | Authenticate with username/email and password |
+| POST | `/logout` | No | Invalidate a session by refresh token |
+| POST | `/token/refresh` | No | Exchange a refresh token for a new access token |
+| GET | `/me` | Yes | Get the authenticated user's profile |
+
+### Password Reset
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/forgot-password` | No | Request a password reset email |
+| POST | `/reset-password` | No | Reset password using a reset token |
+
+### Email Verification
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/verify-email/send` | No | Send a verification email |
+| GET | `/verify-email` | No | Verify email using a token (query param) |
+
+### MFA -- TOTP
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/mfa/totp/enroll` | Yes | Start TOTP enrollment, returns QR code / secret |
+| POST | `/mfa/totp/verify-setup` | Yes | Confirm TOTP setup with a verification code |
+| POST | `/mfa/totp/disable` | Yes | Disable TOTP for the authenticated user |
+| POST | `/mfa/totp/verify` | No | Verify a TOTP code during login (uses MFA token) |
+
+### MFA -- WebAuthn / Passkeys
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/mfa/webauthn/register/begin` | Yes | Begin WebAuthn credential registration |
+| POST | `/mfa/webauthn/register/complete` | Yes | Complete WebAuthn credential registration |
+| GET | `/mfa/webauthn/credentials` | Yes | List WebAuthn credentials for the authenticated user |
+| DELETE | `/mfa/webauthn/credentials/{id}` | Yes | Delete a WebAuthn credential |
+| POST | `/mfa/webauthn/login/begin` | No | Begin WebAuthn login challenge (uses MFA token) |
+| POST | `/mfa/webauthn/login/complete` | No | Complete WebAuthn login challenge |
+
+### OAuth 2.0
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/oauth/authorize` | No | Authorization endpoint -- initiates user authentication |
+| POST | `/oauth/authorize` | No | Authorization endpoint -- form submission handler |
+| POST | `/oauth/consent` | No | User consent submission |
+| POST | `/oauth/token` | Conditional | Token endpoint -- issues and refreshes tokens |
+| POST | `/oauth/revoke` | Yes | Revocation endpoint -- invalidates tokens (RFC 7009) |
+
+### Social Login
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/oauth/social/{provider}` | No | Initiate social login (redirect to provider) |
+| GET | `/oauth/social/{provider}/callback` | No | Social login callback (GET) |
+| POST | `/oauth/social/{provider}/callback` | No | Social login callback (POST, e.g. Apple Sign In) |
+
+### SAML
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/saml/providers` | No | List configured SAML identity providers |
+| GET | `/saml/{providerID}/metadata` | No | SP metadata XML for a SAML provider |
+| GET | `/saml/{providerID}/login` | No | Initiate SAML SSO login (redirect to IdP) |
+| POST | `/saml/{providerID}/acs` | No | Assertion Consumer Service (receives SAML response) |
+
+### OIDC Discovery
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/.well-known/openid-configuration` | No | OpenID Connect discovery document |
+| GET | `/.well-known/jwks.json` | No | JSON Web Key Set for token verification |
+
+### SCIM 2.0 Provisioning
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/scim/v2/ServiceProviderConfig` | Admin | SCIM service provider configuration |
+| GET | `/scim/v2/ResourceTypes` | Admin | SCIM resource type definitions |
+| GET | `/scim/v2/Schemas` | Admin | SCIM schema definitions |
+| GET | `/scim/v2/Users` | Admin | List SCIM users |
+| POST | `/scim/v2/Users` | Admin | Create a SCIM user |
+| GET | `/scim/v2/Users/{id}` | Admin | Get a SCIM user |
+| PUT | `/scim/v2/Users/{id}` | Admin | Replace a SCIM user |
+| PATCH | `/scim/v2/Users/{id}` | Admin | Partially update a SCIM user |
+| DELETE | `/scim/v2/Users/{id}` | Admin | Delete a SCIM user |
+| GET | `/scim/v2/Groups` | Admin | List SCIM groups |
+| POST | `/scim/v2/Groups` | Admin | Create a SCIM group |
+| GET | `/scim/v2/Groups/{id}` | Admin | Get a SCIM group |
+| PUT | `/scim/v2/Groups/{id}` | Admin | Replace a SCIM group |
+| PATCH | `/scim/v2/Groups/{id}` | Admin | Partially update a SCIM group |
+| DELETE | `/scim/v2/Groups/{id}` | Admin | Delete a SCIM group |
+
+### Admin API -- Users
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/admin/stats` | Admin | Dashboard statistics (user count, session count, etc.) |
+| GET | `/api/v1/admin/users` | Admin | List users with pagination and filtering |
+| POST | `/api/v1/admin/users` | Admin | Create a new user |
+| GET | `/api/v1/admin/users/{id}` | Admin | Get a user by ID |
+| PUT | `/api/v1/admin/users/{id}` | Admin | Update a user |
+| DELETE | `/api/v1/admin/users/{id}` | Admin | Delete a user |
+| POST | `/api/v1/admin/users/{id}/reset-password` | Admin | Admin password reset for a user |
+| GET | `/api/v1/admin/users/{id}/sessions` | Admin | List sessions for a user |
+| DELETE | `/api/v1/admin/users/{id}/sessions` | Admin | Revoke all sessions for a user |
+
+### Admin API -- Organizations
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/admin/organizations` | Admin | List organizations |
+| POST | `/api/v1/admin/organizations` | Admin | Create an organization |
+| GET | `/api/v1/admin/organizations/{id}` | Admin | Get an organization |
+| PUT | `/api/v1/admin/organizations/{id}` | Admin | Update an organization |
+| DELETE | `/api/v1/admin/organizations/{id}` | Admin | Delete an organization |
+| GET | `/api/v1/admin/organizations/{id}/settings` | Admin | Get organization settings |
+| PUT | `/api/v1/admin/organizations/{id}/settings` | Admin | Update organization settings |
+| GET | `/api/v1/admin/organizations/{id}/export` | Admin | Export organization configuration |
+| POST | `/api/v1/admin/organizations/{id}/import` | Admin | Import organization configuration |
+
+### Admin API -- Compliance
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/compliance/soc2` | Admin | Generate SOC 2 compliance report |
+| GET | `/api/v1/compliance/gdpr` | Admin | Generate GDPR compliance report |
+| GET | `/api/v1/compliance/hipaa` | Admin | Generate HIPAA compliance report |
+| GET | `/api/v1/compliance/audit-export` | Admin | Export audit trail |
+
+### Health & Monitoring
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/healthz` | No | Liveness probe -- returns 200 if server is running |
+| GET | `/readyz` | No | Readiness probe -- returns 200 if database is healthy, 503 otherwise |
+| GET | `/metrics` | Token | Prometheus metrics (requires `RAMPART_METRICS_TOKEN`) |
+
+---
 
 ## Design Principles
 
@@ -26,13 +175,20 @@ All API endpoints are relative to your Rampart instance base URL:
 https://your-rampart-instance
 ```
 
-The API is organized into three endpoint groups:
+The API is organized into these endpoint groups:
 
 | Group | Base Path | Purpose |
 |-------|-----------|---------|
-| **OAuth / OIDC** | `/oauth/` | Token issuance, authorization, revocation, introspection, UserInfo |
+| **Authentication** | `/` | Registration, login, logout, token refresh, password reset, email verification |
+| **User Profile** | `/me` | Authenticated user's own profile |
+| **MFA** | `/mfa/` | TOTP and WebAuthn enrollment, verification, and management |
+| **OAuth / OIDC** | `/oauth/` | Token issuance, authorization, consent, revocation, social login |
+| **SAML** | `/saml/` | SAML SP metadata, login initiation, and assertion consumer |
 | **Discovery** | `/.well-known/` | OpenID Connect discovery and JWKS |
-| **Admin API** | `/api/v1/admin/` | User, organization, role, client, session, and audit management |
+| **SCIM** | `/scim/v2/` | SCIM 2.0 user and group provisioning |
+| **Admin API** | `/api/v1/admin/` | User, organization, session, and stats management |
+| **Compliance** | `/api/v1/compliance/` | SOC 2, GDPR, HIPAA reports and audit export |
+| **Health** | `/healthz`, `/readyz` | Health and readiness probes |
 
 ### URL Convention
 
@@ -56,9 +212,22 @@ Link: <https://your-rampart-instance/api/v2/admin/users>; rel="successor-version
 
 ## Authentication
 
+### Public Endpoints
+
+The following endpoints do not require authentication: `/register`, `/login`, `/forgot-password`, `/reset-password`, `/verify-email/send`, `/verify-email`, `/mfa/totp/verify`, `/mfa/webauthn/login/*`, `/oauth/authorize`, `/oauth/social/*`, `/saml/*`, `/.well-known/*`, `/healthz`, `/readyz`.
+
+### Bearer Token Endpoints
+
+Endpoints like `/me`, `/mfa/totp/enroll`, `/mfa/totp/verify-setup`, `/mfa/totp/disable`, and `/mfa/webauthn/register/*` require a valid Bearer token in the `Authorization` header.
+
+```bash
+curl -X GET https://your-rampart-instance/me \
+  -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIs..."
+```
+
 ### Admin API
 
-All `/api/v1/admin/` endpoints require a valid Bearer token in the `Authorization` header. The token must belong to a user or service account with the appropriate admin role.
+All `/api/v1/admin/` endpoints require a valid Bearer token belonging to a user with the `admin` role.
 
 ```bash
 curl -X GET https://your-rampart-instance/api/v1/admin/users \
@@ -66,37 +235,13 @@ curl -X GET https://your-rampart-instance/api/v1/admin/users \
   -H "Content-Type: application/json"
 ```
 
-To obtain an admin token, authenticate using the OAuth token endpoint with a client that has admin scopes:
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=admin-cli" \
-  -d "client_secret=your-client-secret" \
-  -d "scope=openid admin"
-```
-
-**Response:**
-
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "scope": "openid admin"
-}
-```
-
-Use the returned `access_token` as the Bearer token for all subsequent Admin API calls.
-
 ### OAuth Endpoints
 
 OAuth endpoints use standard OAuth 2.0 authentication mechanisms:
 
 - **Confidential clients** authenticate via HTTP Basic (`Authorization: Basic base64(client_id:client_secret)`) or by including `client_id` and `client_secret` in the request body.
 - **Public clients** (SPAs, mobile apps) use PKCE and do not send a client secret. Only the `client_id` is required.
-- **Token introspection and revocation** require client authentication.
+- **Token revocation** requires client authentication.
 
 ### Client Authentication Methods
 
@@ -106,26 +251,15 @@ OAuth endpoints use standard OAuth 2.0 authentication mechanisms:
 | `client_secret_post` | `client_id` + `client_secret` in body | When Basic auth is not practical |
 | `none` | `client_id` only | Public clients (SPAs, mobile apps) with PKCE |
 
-### API Keys (Future)
-
-Long-lived API keys for service-to-service integrations are planned for a future release.
-
 ## Content Type
 
 All request and response bodies use JSON (`application/json`), except for the OAuth token endpoint which accepts `application/x-www-form-urlencoded` as required by RFC 6749.
 
 ```bash
-# Admin API -- JSON body
-curl -X POST https://your-rampart-instance/api/v1/admin/users \
-  -H "Authorization: Bearer <token>" \
+# Authentication endpoints -- JSON body
+curl -X POST https://your-rampart-instance/login \
   -H "Content-Type: application/json" \
-  -d '{
-    "username": "jane.doe",
-    "email": "jane@example.com",
-    "first_name": "Jane",
-    "last_name": "Doe",
-    "enabled": true
-  }'
+  -d '{"identifier": "jane@example.com", "password": "SecureP@ssw0rd!"}'
 ```
 
 ```bash
@@ -215,7 +349,7 @@ When a request body fails validation, the response includes field-level details:
 |--------|---------|
 | 200 | Success (GET, PUT, POST for token operations) |
 | 201 | Resource created (POST) |
-| 204 | Success with no content (DELETE) |
+| 204 | Success with no content (DELETE, logout) |
 | 301 | Redirect (trailing slash removal) |
 | 302 | OAuth redirect (authorize endpoint) |
 | 400 | Bad request |
@@ -293,10 +427,6 @@ curl -X GET "https://your-rampart-instance/api/v1/admin/users?enabled=true&organ
 # Search users by email domain
 curl -X GET "https://your-rampart-instance/api/v1/admin/users?search=@example.com" \
   -H "Authorization: Bearer <token>"
-
-# Filter audit events by type and date range
-curl -X GET "https://your-rampart-instance/api/v1/admin/events?type=user.login&from=2026-03-01T00:00:00Z&to=2026-03-05T23:59:59Z" \
-  -H "Authorization: Bearer <token>"
 ```
 
 The `search` parameter performs a case-insensitive substring match against common text fields (username, email, first name, last name for users; name and slug for organizations).
@@ -323,9 +453,12 @@ Rampart enforces rate limits to protect against abuse. Limits are applied per cl
 
 | Endpoint Group | Limit | Window |
 |----------------|-------|--------|
+| `POST /login` | 20 requests | per minute per IP |
+| `POST /register` | 20 requests | per minute per IP |
+| `POST /forgot-password` | 10 requests | per minute per IP |
+| `POST /token/refresh` | 20 requests | per minute per IP |
+| `POST /mfa/totp/verify` | 20 requests | per minute per IP |
 | `POST /oauth/token` | 20 requests | per minute per IP |
-| `POST /oauth/authorize` | 30 requests | per minute per IP |
-| `POST /oauth/introspect` | 100 requests | per minute per client |
 | Admin API (read) | 300 requests | per minute per token |
 | Admin API (write) | 60 requests | per minute per token |
 
@@ -370,16 +503,14 @@ If you provide a `X-Request-Id` header in your request, Rampart will use your va
 
 ## CORS
 
-Cross-Origin Resource Sharing (CORS) is configured per client application. When registering a client in the admin console or via the Admin API, you specify allowed redirect URIs and web origins. Rampart uses these origins to set CORS headers on OAuth and discovery endpoints.
+Cross-Origin Resource Sharing (CORS) is configured via the `RAMPART_ALLOWED_ORIGINS` environment variable. Rampart uses these origins to set CORS headers on all endpoints.
 
 ```
 Access-Control-Allow-Origin: https://app.example.com
-Access-Control-Allow-Methods: GET, POST, OPTIONS
-Access-Control-Allow-Headers: Authorization, Content-Type
-Access-Control-Max-Age: 86400
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Allow-Headers: Accept, Authorization, Content-Type, X-Request-Id, X-Org-Context
+Access-Control-Max-Age: 300
 ```
-
-Admin API endpoints do not support CORS by default -- they are intended for server-to-server or admin console use only. If you need to call Admin API endpoints from a browser, configure the `admin.cors_origins` setting.
 
 ## Health Check
 
@@ -395,7 +526,7 @@ curl -X GET https://your-rampart-instance/healthz
 }
 ```
 
-The health endpoint (`/healthz`) returns HTTP 200 when the server is running. A readiness probe is available at `/readyz` — it returns HTTP 200 only when the server is ready to accept traffic (database connectivity verified), and HTTP 503 when the database is unhealthy.
+The health endpoint (`/healthz`) returns HTTP 200 when the server is running. A readiness probe is available at `/readyz` -- it returns HTTP 200 only when the server is ready to accept traffic (database connectivity verified), and HTTP 503 when the database is unhealthy.
 
 ## Idempotency
 
@@ -420,77 +551,62 @@ PUT and DELETE operations are naturally idempotent and do not require this heade
 
 ## Common curl Examples
 
-### Authenticate and get an admin token
+### Register a new user
 
 ```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=admin-cli" \
-  -d "client_secret=your-secret" \
-  -d "scope=openid admin"
-```
-
-### List users with pagination and filtering
-
-```bash
-curl -X GET "https://your-rampart-instance/api/v1/admin/users?limit=10&order=asc&search=jane" \
-  -H "Authorization: Bearer <token>"
-```
-
-### Create a user
-
-```bash
-curl -X POST https://your-rampart-instance/api/v1/admin/users \
-  -H "Authorization: Bearer <token>" \
+curl -X POST https://your-rampart-instance/register \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "alice",
-    "email": "alice@example.com",
-    "first_name": "Alice",
-    "last_name": "Johnson",
-    "enabled": true,
+    "username": "jane.doe",
+    "email": "jane@example.com",
+    "password": "SecureP@ssw0rd!",
+    "given_name": "Jane",
+    "family_name": "Doe"
+  }'
+```
+
+### Log in
+
+```bash
+curl -X POST https://your-rampart-instance/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identifier": "jane@example.com",
     "password": "SecureP@ssw0rd!"
   }'
 ```
 
-### Update a user
+### Get current user profile
 
 ```bash
-curl -X PUT https://your-rampart-instance/api/v1/admin/users/usr_1234567890 \
-  -H "Authorization: Bearer <token>" \
+curl -X GET https://your-rampart-instance/me \
+  -H "Authorization: Bearer <access_token>"
+```
+
+### Refresh an access token
+
+```bash
+curl -X POST https://your-rampart-instance/token/refresh \
   -H "Content-Type: application/json" \
-  -d '{
-    "first_name": "Alice",
-    "last_name": "Smith",
-    "enabled": false
-  }'
+  -d '{"refresh_token": "<refresh_token>"}'
 ```
 
-### Delete a user
+### Log out
 
 ```bash
-curl -X DELETE https://your-rampart-instance/api/v1/admin/users/usr_1234567890 \
-  -H "Authorization: Bearer <token>"
+curl -X POST https://your-rampart-instance/logout \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "<refresh_token>"}'
 ```
 
-### Introspect a token
+### Check server health
 
 ```bash
-curl -X POST https://your-rampart-instance/oauth/introspect \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -u "my-service:secret123" \
-  -d "token=eyJhbGciOiJSUzI1NiIs..."
+curl -X GET https://your-rampart-instance/healthz
 ```
 
 ### Fetch OIDC discovery document
 
 ```bash
 curl -X GET https://your-rampart-instance/.well-known/openid-configuration
-```
-
-### Check server health
-
-```bash
-curl -X GET https://your-rampart-instance/health
 ```

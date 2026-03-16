@@ -25,8 +25,8 @@ Each skill creates production-ready code — not scaffolding. You get proper err
 
 | Command | What It Does |
 |---------|-------------|
-| `/rampart-react-setup` | Adds OAuth 2.0 PKCE login flow to a React SPA. Creates `AuthProvider`, `useAuth()` hook, `ProtectedRoute` component, and OAuth callback handler using `@rampart/react`. |
-| `/rampart-node-setup` | Adds JWT validation middleware to an Express app. Installs `@rampart/node`, protects routes, and provides typed `req.auth` claims. |
+| `/rampart-react-setup` | Adds OAuth 2.0 PKCE login flow to a React SPA. Creates `AuthProvider`, `useAuth()` hook, `ProtectedRoute` component, and OAuth callback handler using `@rampart-auth/react`. |
+| `/rampart-node-setup` | Adds JWT validation middleware to an Express app. Installs `@rampart-auth/node`, protects routes, and provides typed `req.auth` claims. |
 | `/rampart-nextjs-setup` | Sets up server-side JWT validation, Next.js middleware auth guards, API route protection, and client-side auth context using `jose`. |
 | `/rampart-go-setup` | Adds JWKS-based JWT middleware to a Go backend (net/http, chi, gin, or fiber). Creates typed claims and Rampart-compatible error responses. |
 | `/rampart-python-setup` | Adds JWT verification to FastAPI or Flask. Auto-detects your framework, creates auth dependencies/decorators, and sets up JWKS validation. |
@@ -49,7 +49,7 @@ Each skill creates production-ready code — not scaffolding. You get proper err
 ```
 
 The skill will:
-1. Install `@rampart/react` (or `jose` as a fallback)
+1. Install `@rampart-auth/react` (or `jose` as a fallback)
 2. Create `src/auth/config.ts` with your issuer URL
 3. Create `src/auth/AuthProvider.tsx` with login/logout/token state
 4. Create `src/auth/Callback.tsx` to handle the OAuth redirect
@@ -64,7 +64,7 @@ The skill will:
 ```
 
 The skill will:
-1. Install `@rampart/node` and `jose`
+1. Install `@rampart-auth/node` and `jose`
 2. Add `rampartAuth()` middleware to your Express app
 3. Give you typed `req.auth` with user claims (sub, email, org_id, etc.)
 4. Configure Rampart-standard 401 JSON error responses

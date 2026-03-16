@@ -112,8 +112,8 @@ rampart-cli whoami
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "email": "admin@example.com",
-  "first_name": "Admin",
-  "last_name": "User",
+  "given_name": "Admin",
+  "family_name": "User",
   "roles": ["admin"],
   "organization": "default"
 }
@@ -168,8 +168,8 @@ rampart-cli users get --email jane@example.com
 {
   "id": "660e8400-e29b-41d4-a716-446655440001",
   "email": "jane@example.com",
-  "first_name": "Jane",
-  "last_name": "Smith",
+  "given_name": "Jane",
+  "family_name": "Smith",
   "roles": ["user"],
   "organization": "default",
   "created_at": "2026-03-05T10:30:00Z",

@@ -1,580 +1,547 @@
 ---
 sidebar_position: 2
 title: Authentication Endpoints
-description: Complete reference for Rampart's OAuth 2.0 authentication endpoints -- token issuance, authorization, revocation, and introspection with full request and response examples.
+description: Complete reference for Rampart's authentication endpoints -- registration, login, logout, token refresh, user profile, password reset, email verification, and MFA.
 ---
 
 # Authentication Endpoints
 
-This page covers the core authentication endpoints used to obtain, validate, and revoke tokens. These endpoints implement the OAuth 2.0 and OpenID Connect specifications (RFC 6749, RFC 7009, RFC 7662).
+This page covers Rampart's core authentication endpoints for user registration, login/logout, token management, password reset, email verification, and multi-factor authentication. These are JSON API endpoints separate from the [OAuth 2.0 endpoints](./oauth-endpoints.md).
 
-## POST /oauth/token
-
-The token endpoint issues access tokens, ID tokens, and refresh tokens. It supports multiple grant types depending on the use case.
-
-**Content-Type:** `application/x-www-form-urlencoded`
+**Content-Type:** All request and response bodies use `application/json`.
 
 ---
 
-### Authorization Code Grant
+## POST /register
 
-Used by web applications and native apps after the user completes the authorization flow. This is the most common grant type for user-facing applications.
+Create a new user account via self-registration.
 
-**Parameters:**
+**Auth required:** No
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `grant_type` | string | Yes | Must be `authorization_code` |
-| `code` | string | Yes | The authorization code received from the authorize endpoint |
-| `redirect_uri` | string | Yes | Must match the redirect URI used in the authorization request |
-| `client_id` | string | Yes | The client identifier |
-| `client_secret` | string | Conditional | Required for confidential clients |
-| `code_verifier` | string | Conditional | PKCE code verifier (required for public clients, recommended for all) |
+### Request Body
 
-**Request (confidential client):**
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=authorization_code" \
-  -d "code=SplxlOBeZQQYbYS6WxSbIA" \
-  -d "redirect_uri=https://app.example.com/callback" \
-  -d "client_id=my-web-app" \
-  -d "client_secret=my-client-secret"
-```
-
-**Request (public client with PKCE):**
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=authorization_code" \
-  -d "code=SplxlOBeZQQYbYS6WxSbIA" \
-  -d "redirect_uri=https://app.example.com/callback" \
-  -d "client_id=my-spa" \
-  -d "code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InJhbXBhcnQtMSJ9.eyJpc3MiOiJodHRwczovL3lvdXItcmFtcGFydC1pbnN0YW5jZSIsInN1YiI6InVzcl8xMjM0NTY3ODkwIiwiYXVkIjoibXktd2ViLWFwcCIsImV4cCI6MTcwOTUxNDAwMCwiaWF0IjoxNzA5NTEwNDAwLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIn0.signature",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4gZXhhbXBsZQ",
-  "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InJhbXBhcnQtMSJ9.eyJpc3MiOiJodHRwczovL3lvdXItcmFtcGFydC1pbnN0YW5jZSIsInN1YiI6InVzcl8xMjM0NTY3ODkwIiwiYXVkIjoibXktd2ViLWFwcCIsImV4cCI6MTcwOTUxNDAwMCwiaWF0IjoxNzA5NTEwNDAwLCJub25jZSI6ImFiYzEyMyIsIm5hbWUiOiJKYW5lIERvZSIsImVtYWlsIjoiamFuZUBleGFtcGxlLmNvbSJ9.signature",
-  "scope": "openid profile email"
-}
-```
-
-The `id_token` is included only when the `openid` scope was requested. The `refresh_token` is included only when the client is configured to support refresh tokens.
-
----
-
-### Client Credentials Grant
-
-Used for service-to-service authentication where no user is involved. The client authenticates directly with its own credentials.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `grant_type` | string | Yes | Must be `client_credentials` |
-| `client_id` | string | Yes | The client identifier |
-| `client_secret` | string | Yes | The client secret |
-| `scope` | string | No | Space-separated list of requested scopes |
-
-**Request (body parameters):**
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=billing-service" \
-  -d "client_secret=svc-secret-abc123" \
-  -d "scope=users:read invoices:write"
-```
-
-**Request (HTTP Basic authentication):**
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -u "billing-service:svc-secret-abc123" \
-  -d "grant_type=client_credentials" \
-  -d "scope=users:read invoices:write"
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InJhbXBhcnQtMSJ9.eyJpc3MiOiJodHRwczovL3lvdXItcmFtcGFydC1pbnN0YW5jZSIsInN1YiI6ImJpbGxpbmctc2VydmljZSIsImF1ZCI6Imh0dHBzOi8veW91ci1yYW1wYXJ0LWluc3RhbmNlIiwiZXhwIjoxNzA5NTE0MDAwLCJpYXQiOjE3MDk1MTA0MDAsInNjb3BlIjoidXNlcnM6cmVhZCBpbnZvaWNlczp3cml0ZSJ9.signature",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "scope": "users:read invoices:write"
-}
-```
-
-Client credentials grants do not return a refresh token or an ID token, since there is no end-user session.
-
----
-
-### Refresh Token Grant
-
-Used to obtain a new access token using a previously issued refresh token, without requiring the user to re-authenticate.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `grant_type` | string | Yes | Must be `refresh_token` |
-| `refresh_token` | string | Yes | The refresh token issued during the original token request |
-| `client_id` | string | Yes | The client identifier |
-| `client_secret` | string | Conditional | Required for confidential clients |
-| `scope` | string | No | Subset of originally granted scopes (defaults to original scopes if omitted) |
-
-**Request:**
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=refresh_token" \
-  -d "refresh_token=dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4gZXhhbXBsZQ" \
-  -d "client_id=my-web-app" \
-  -d "client_secret=my-client-secret"
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIs...new-access-token",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "refresh_token": "bmV3LXJlZnJlc2gtdG9rZW4tZXhhbXBsZQ",
-  "id_token": "eyJhbGciOiJSUzI1NiIs...new-id-token",
-  "scope": "openid profile email"
-}
-```
-
-**Refresh token rotation:** Rampart implements refresh token rotation by default. Each time a refresh token is used, a new refresh token is issued and the previous one is invalidated. If a previously used refresh token is presented again, Rampart treats it as a potential token theft and revokes all tokens in the chain (replay detection).
-
----
-
-### Resource Owner Password Credentials Grant
-
-Used for trusted first-party applications where the user provides credentials directly to the client. This grant type is discouraged for third-party applications and is **disabled by default**.
-
-:::caution
-The password grant is considered a legacy flow. Use Authorization Code with PKCE instead whenever possible. Enable this grant only for trusted first-party clients that cannot use a browser-based flow.
-:::
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `grant_type` | string | Yes | Must be `password` |
-| `username` | string | Yes | The user's username or email |
-| `password` | string | Yes | The user's password |
-| `client_id` | string | Yes | The client identifier |
-| `client_secret` | string | Conditional | Required for confidential clients |
-| `scope` | string | No | Space-separated list of requested scopes |
-
-**Request:**
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=password" \
-  -d "username=jane.doe" \
-  -d "password=SecureP@ssw0rd!" \
-  -d "client_id=admin-cli" \
-  -d "client_secret=cli-secret" \
-  -d "scope=openid profile"
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIs...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "refresh_token": "cmVmcmVzaC10b2tlbi1leGFtcGxl",
-  "id_token": "eyJhbGciOiJSUzI1NiIs...",
-  "scope": "openid profile"
-}
-```
-
-**Error response (400 Bad Request):**
-
-```json
-{
-  "error": "invalid_grant",
-  "error_description": "Invalid username or password."
-}
-```
-
-The error message is intentionally vague to prevent user enumeration attacks.
-
----
-
-### Device Authorization Grant
-
-Used for input-constrained devices (smart TVs, CLI tools, IoT devices) that cannot use a browser-based flow directly. The client polls this endpoint after initiating the device flow via `POST /oauth/device/code`.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `grant_type` | string | Yes | Must be `urn:ietf:params:oauth:grant-type:device_code` |
-| `device_code` | string | Yes | The device code from the device authorization response |
-| `client_id` | string | Yes | The client identifier |
-
-**Request:**
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=urn:ietf:params:oauth:grant-type:device_code" \
-  -d "device_code=GmRhmhcxhwAzkoEqiMEg_DnyEysNkuNhszIySk9eS" \
-  -d "client_id=device-app"
-```
-
-**Response while waiting (400 Bad Request):**
-
-```json
-{
-  "error": "authorization_pending",
-  "error_description": "The user has not yet authorized the device."
-}
-```
-
-**Response if polling too fast (400 Bad Request):**
-
-```json
-{
-  "error": "slow_down",
-  "error_description": "Polling too frequently. Increase the interval by 5 seconds.",
-  "interval": 10
-}
-```
-
-**Response after user authorizes (200 OK):**
-
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIs...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "refresh_token": "ZGV2aWNlLXJlZnJlc2gtdG9rZW4",
-  "id_token": "eyJhbGciOiJSUzI1NiIs...",
-  "scope": "openid profile"
-}
-```
-
-**Response if device code expired (400 Bad Request):**
-
-```json
-{
-  "error": "expired_token",
-  "error_description": "The device code has expired. Please restart the device authorization flow."
-}
-```
-
----
-
-### Token Error Responses
-
-All grant types may return the following errors:
-
-| Error | HTTP Status | Description |
-|-------|-------------|-------------|
-| `invalid_request` | 400 | Missing required parameter or malformed request |
-| `invalid_client` | 401 | Client authentication failed |
-| `invalid_grant` | 400 | Code, refresh token, or credentials are invalid or expired |
-| `unauthorized_client` | 400 | Client is not authorized for this grant type |
-| `unsupported_grant_type` | 400 | Grant type not supported or not enabled for this client |
-| `invalid_scope` | 400 | Requested scope is invalid or not allowed for this client |
-| `authorization_pending` | 400 | Device code: user has not yet authorized |
-| `slow_down` | 400 | Device code: client is polling too frequently |
-| `expired_token` | 400 | Device code: the device code has expired |
-
----
-
-## GET /oauth/authorize
-
-The authorization endpoint initiates the user-facing OAuth 2.0 authorization flow. The client redirects the user's browser to this endpoint. After authentication and consent, Rampart redirects back to the client with an authorization code.
-
-**This is a browser-based redirect endpoint, not a JSON API.**
-
-### Request Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `response_type` | string | Yes | Must be `code` for Authorization Code flow |
-| `client_id` | string | Yes | The registered client identifier |
-| `redirect_uri` | string | Yes | Must match a registered redirect URI for the client |
-| `scope` | string | No | Space-separated list of scopes (default: `openid`) |
-| `state` | string | Recommended | Opaque value to prevent CSRF -- returned unchanged in the redirect |
-| `nonce` | string | No | Value included in the ID token to prevent replay attacks |
-| `code_challenge` | string | Conditional | PKCE challenge (required for public clients, recommended for all) |
-| `code_challenge_method` | string | Conditional | Must be `S256` (plain is not supported for security reasons) |
-| `prompt` | string | No | `none`, `login`, or `consent` -- controls authentication UI behavior |
-| `login_hint` | string | No | Pre-fills the username/email field on the login page |
-| `organization_id` | string | No | Scopes the login to a specific organization and applies its theme |
-| `max_age` | integer | No | Maximum authentication age in seconds. Forces re-authentication if the user's session is older. |
-| `ui_locales` | string | No | Space-separated list of preferred locales (e.g., `en de fr`) |
-| `acr_values` | string | No | Requested authentication context class references |
-
-### Example: Authorization Code with PKCE
-
-**Step 1: Generate PKCE values (client-side)**
-
-```bash
-# Generate code_verifier (43-128 characters, unreserved URI characters)
-CODE_VERIFIER=$(openssl rand -base64 32 | tr -d '=' | tr '/+' '_-')
-
-# Generate code_challenge (SHA256 hash of verifier, base64url-encoded)
-CODE_CHALLENGE=$(echo -n "$CODE_VERIFIER" | \
-  openssl dgst -sha256 -binary | base64 | tr -d '=' | tr '/+' '_-')
-
-echo "Verifier: $CODE_VERIFIER"
-echo "Challenge: $CODE_CHALLENGE"
-```
-
-**Step 2: Redirect user to authorize**
-
-```
-GET https://your-rampart-instance/oauth/authorize
-  ?response_type=code
-  &client_id=my-spa
-  &redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback
-  &scope=openid%20profile%20email
-  &state=xyzABC123
-  &nonce=n-0S6_WzA2Mj
-  &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
-  &code_challenge_method=S256
-```
-
-**Step 3: User authenticates and consents**
-
-Rampart displays the login page (themed per organization). After successful authentication and consent, the user is redirected back:
-
-```
-HTTP/1.1 302 Found
-Location: https://app.example.com/callback?code=SplxlOBeZQQYbYS6WxSbIA&state=xyzABC123
-```
-
-**Step 4: Exchange code for tokens**
-
-Use `POST /oauth/token` with the `authorization_code` grant type, including the `code_verifier`.
-
-### Prompt Parameter Behavior
-
-| Value | Behavior |
-|-------|----------|
-| `none` | No login or consent UI is shown. Returns `login_required` or `consent_required` error if user interaction is needed. Useful for silent authentication checks. |
-| `login` | Forces re-authentication even if the user has an active session. |
-| `consent` | Forces the consent screen even if the user previously consented to the requested scopes. |
-
-### Successful Redirect
-
-```
-HTTP/1.1 302 Found
-Location: https://app.example.com/callback
-  ?code=SplxlOBeZQQYbYS6WxSbIA
-  &state=xyzABC123
-```
-
-The authorization code is single-use and expires after 10 minutes.
-
-### Error Redirect
-
-If the request is invalid but the `redirect_uri` can be validated, errors are returned as query parameters on the redirect:
-
-```
-https://app.example.com/callback
-  ?error=invalid_scope
-  &error_description=The+requested+scope+%27admin%27+is+not+allowed+for+this+client
-  &state=xyzABC123
-```
-
-If the `redirect_uri` itself is invalid, unregistered, or missing, Rampart displays an error page directly instead of redirecting. This prevents open redirect attacks.
-
----
-
-## POST /oauth/revoke
-
-The revocation endpoint invalidates an access token or refresh token. Implements [RFC 7009](https://datatracker.ietf.org/doc/html/rfc7009).
-
-**Content-Type:** `application/x-www-form-urlencoded`
-
-Client authentication is required via HTTP Basic or body parameters.
-
-### Request Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `token` | string | Yes | The token to revoke |
-| `token_type_hint` | string | No | `access_token` or `refresh_token` -- helps the server locate the token faster |
-
-### Revoke a Refresh Token
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/revoke \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -u "my-web-app:my-client-secret" \
-  -d "token=dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4gZXhhbXBsZQ" \
-  -d "token_type_hint=refresh_token"
-```
-
-### Revoke an Access Token
-
-```bash
-curl -X POST https://your-rampart-instance/oauth/revoke \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -u "my-web-app:my-client-secret" \
-  -d "token=eyJhbGciOiJSUzI1NiIs..." \
-  -d "token_type_hint=access_token"
-```
-
-### Response (200 OK)
-
-Per RFC 7009, the revocation endpoint **always** returns HTTP 200 OK, even if the token was already invalid, expired, or not recognized. This prevents token fishing attacks.
-
-```
-HTTP/1.1 200 OK
-Content-Length: 0
-```
-
-**Revocation behavior:**
-
-- When a **refresh token** is revoked, all access tokens issued from that refresh token are also invalidated.
-- When an **access token** is revoked, it is added to a deny list. The deny list entry expires when the token would have naturally expired.
-- Revocation is logged as a `token.revoked` audit event.
-
----
-
-## POST /oauth/introspect
-
-The introspection endpoint allows resource servers to validate a token and retrieve its metadata. Implements [RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662).
-
-**Content-Type:** `application/x-www-form-urlencoded`
-
-Client authentication is required. Only clients with the `token_introspection` capability can call this endpoint.
-
-### Request Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `token` | string | Yes | The token to introspect |
-| `token_type_hint` | string | No | `access_token` or `refresh_token` |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `username` | string | Yes | Unique username (3--128 chars, lowercase alphanumeric, dots, hyphens, underscores) |
+| `email` | string | Yes | Valid email address, unique within the organization |
+| `password` | string | Yes | Must meet the organization's password policy |
+| `given_name` | string | Yes | User's first name |
+| `family_name` | string | Yes | User's last name |
+| `org_slug` | string | No | Organization slug to register under (default: default organization) |
 
 ### Request
 
 ```bash
-curl -X POST https://your-rampart-instance/oauth/introspect \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -u "resource-server:rs-secret-456" \
-  -d "token=eyJhbGciOiJSUzI1NiIs..." \
-  -d "token_type_hint=access_token"
+curl -X POST https://your-rampart-instance/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "jane.doe",
+    "email": "jane@example.com",
+    "password": "SecureP@ssw0rd!",
+    "given_name": "Jane",
+    "family_name": "Doe"
+  }'
 ```
 
-### Response: Active Token (200 OK)
+### Response (201 Created)
 
 ```json
 {
-  "active": true,
-  "scope": "openid profile email",
-  "client_id": "my-web-app",
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "org_id": "770e8400-e29b-41d4-a716-446655440001",
   "username": "jane.doe",
+  "email": "jane@example.com",
+  "email_verified": false,
+  "given_name": "Jane",
+  "family_name": "Doe",
+  "enabled": true,
+  "created_at": "2026-03-05T10:00:00Z",
+  "updated_at": "2026-03-05T10:00:00Z"
+}
+```
+
+### Error Responses
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 400 | `bad_request` | Invalid JSON or missing required fields |
+| 409 | `conflict` | Username or email already exists |
+| 422 | `validation_error` | Field validation failed (weak password, invalid email, etc.) |
+
+**Notes:**
+- Inputs are normalized: email and username are lowercased, all fields are trimmed.
+- If the organization has email verification enabled, a verification email is sent automatically after registration.
+- Response time is constant (~250ms minimum) to prevent user enumeration via timing.
+
+---
+
+## POST /login
+
+Authenticate a user with username/email and password. Returns access and refresh tokens.
+
+**Auth required:** No
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `identifier` | string | Yes | Username or email address |
+| `password` | string | Yes | User's password |
+| `org_slug` | string | No | Organization slug (default: default organization) |
+
+### Request
+
+```bash
+curl -X POST https://your-rampart-instance/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identifier": "jane@example.com",
+    "password": "SecureP@ssw0rd!"
+  }'
+```
+
+### Response (200 OK) -- Standard Login
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4",
   "token_type": "Bearer",
-  "exp": 1709514000,
-  "iat": 1709510400,
-  "nbf": 1709510400,
-  "sub": "usr_1234567890",
-  "aud": "my-web-app",
-  "iss": "https://your-rampart-instance",
-  "jti": "tok_abc123def456",
-  "organization_id": "org_default"
+  "expires_in": 3600,
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "org_id": "770e8400-e29b-41d4-a716-446655440001",
+    "username": "jane.doe",
+    "email": "jane@example.com",
+    "email_verified": true,
+    "given_name": "Jane",
+    "family_name": "Doe",
+    "enabled": true,
+    "created_at": "2026-03-05T10:00:00Z",
+    "updated_at": "2026-03-05T12:00:00Z"
+  }
+}
+```
+
+### Response (200 OK) -- MFA Required
+
+When the user has MFA enabled, the server returns an MFA challenge instead of tokens:
+
+```json
+{
+  "mfa_required": true,
+  "mfa_token": "eyJhbGciOiJSUzI1NiIs...",
+  "mfa_methods": ["totp", "webauthn"],
+  "message": "MFA verification required."
+}
+```
+
+Use the `mfa_token` with `POST /mfa/totp/verify` or `POST /mfa/webauthn/login/begin` to complete authentication.
+
+### Error Responses
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 400 | `bad_request` | Missing identifier or password |
+| 401 | `unauthorized` | Invalid credentials (user not found, wrong password, account disabled, or account locked) |
+| 403 | `email_not_verified` | Email verification required before login |
+
+**Notes:**
+- The error message is intentionally vague ("Invalid credentials.") to prevent user enumeration.
+- Failed login attempts are tracked. After exceeding the max attempts (default: 5), the account is locked for a configurable duration (default: 15 minutes).
+- Response time is constant (~250ms minimum) to prevent timing attacks.
+- The `identifier` field accepts either a username or email address.
+
+---
+
+## POST /token/refresh
+
+Exchange a refresh token for a new access token and refresh token.
+
+**Auth required:** No
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `refresh_token` | string | Yes | A valid, unused refresh token |
+
+### Request
+
+```bash
+curl -X POST https://your-rampart-instance/token/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4"}'
+```
+
+### Response (200 OK)
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...new-access-token",
+  "refresh_token": "bmV3LXJlZnJlc2gtdG9rZW4",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+### Error Responses
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 400 | `bad_request` | Invalid JSON |
+| 401 | `unauthorized` | Refresh token is missing, invalid, expired, or already rotated |
+
+**Notes:**
+- Rampart implements **refresh token rotation**: each use issues a new refresh token and invalidates the old one. If a previously used refresh token is presented again, Rampart treats it as potential token theft and invalidates the session (replay detection).
+
+---
+
+## POST /logout
+
+End a user session by invalidating the refresh token.
+
+**Auth required:** No
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `refresh_token` | string | Yes | The refresh token to invalidate |
+
+### Request
+
+```bash
+curl -X POST https://your-rampart-instance/logout \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4"}'
+```
+
+### Response (204 No Content)
+
+Returns an empty response on success. Also returns 204 if the refresh token is not found (prevents token fishing).
+
+---
+
+## GET /me
+
+Returns the authenticated user's profile information from the JWT claims, plus linked social accounts.
+
+**Auth required:** Yes (Bearer token)
+
+### Request
+
+```bash
+curl -X GET https://your-rampart-instance/me \
+  -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIs..."
+```
+
+### Response (200 OK)
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "org_id": "770e8400-e29b-41d4-a716-446655440001",
+  "preferred_username": "jane.doe",
+  "email": "jane@example.com",
+  "email_verified": true,
+  "given_name": "Jane",
+  "family_name": "Doe",
+  "social_accounts": [
+    {
+      "id": "880e8400-e29b-41d4-a716-446655440002",
+      "provider": "google",
+      "email": "jane@gmail.com",
+      "name": "Jane Doe"
+    }
+  ]
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `active` | boolean | Whether the token is currently valid |
-| `scope` | string | Space-separated list of granted scopes |
-| `client_id` | string | The client that requested this token |
-| `username` | string | The username of the token's subject (if applicable) |
-| `token_type` | string | The type of token (`Bearer`) |
-| `exp` | integer | Expiration time (Unix timestamp) |
-| `iat` | integer | Issued-at time (Unix timestamp) |
-| `nbf` | integer | Not-before time (Unix timestamp) |
-| `sub` | string | Subject identifier (user ID or client ID) |
-| `aud` | string | Intended audience |
-| `iss` | string | Issuer URL |
-| `jti` | string | Unique token identifier |
-| `organization_id` | string | The organization this token belongs to |
+| `id` | string | User ID (UUID) |
+| `org_id` | string | Organization ID (UUID) |
+| `preferred_username` | string | The user's username |
+| `email` | string | The user's email address |
+| `email_verified` | boolean | Whether the email has been verified |
+| `given_name` | string | First name |
+| `family_name` | string | Last name |
+| `social_accounts` | array | Linked social/federated identities (empty if none) |
 
-### Response: Inactive Token (200 OK)
+### Error Responses
 
-If the token is expired, revoked, malformed, or not recognized, the response contains only `active: false`. This prevents information leakage about why the token is inactive.
+| Status | Error | Description |
+|--------|-------|-------------|
+| 401 | `unauthorized` | Missing or invalid Bearer token |
 
-```json
-{
-  "active": false
-}
-```
-
-### Introspection vs. Local JWT Validation
-
-For most use cases, resource servers should validate JWTs **locally** using the public keys from the [JWKS endpoint](./oidc-discovery.md#get-well-knownjwksjson). Local validation is faster and does not require a network call for every request.
-
-Use introspection when you need:
-
-| Scenario | Why Introspection |
-|----------|-------------------|
-| Real-time revocation checking | JWTs remain valid until expiry; introspection checks the deny list |
-| Opaque tokens | Opaque tokens cannot be validated locally |
-| Token metadata | Metadata not encoded in the JWT claims |
-| Centralized policy decisions | Server-side token validation with current state |
+**Notes:**
+- Response includes `Cache-Control: no-store` and `Pragma: no-cache` headers.
 
 ---
 
-## Token Lifetimes
+## POST /forgot-password
 
-Default token lifetimes are configurable per client in the admin console or via the Admin API:
+Request a password reset email. Always returns 200 to prevent email enumeration.
 
-| Token Type | Default Lifetime | Configurable Range | Notes |
-|------------|------------------|--------------------|-------|
-| Access token | 1 hour | 5 minutes to 24 hours | Short-lived by design |
-| Refresh token | 30 days | 1 hour to 365 days | Rotated on each use |
-| ID token | 1 hour | 5 minutes to 24 hours | Matches access token lifetime |
-| Authorization code | 10 minutes | 1 minute to 10 minutes | Single-use |
-| Device code | 10 minutes | 1 minute to 30 minutes | Configurable per client |
+**Auth required:** No
 
-### Absolute vs. Sliding Expiration
+### Request Body
 
-Refresh tokens support two expiration modes:
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | Yes | The email address to send the reset link to |
 
-- **Absolute expiration** (default): The refresh token expires at a fixed time regardless of usage. After 30 days, the user must re-authenticate.
-- **Sliding expiration**: Each use of the refresh token extends its lifetime by the configured duration. The token only expires after a period of inactivity. A maximum absolute lifetime can be set as a safety limit.
+### Request
 
-Configure this per client via `refresh_token_expiration_mode` (`absolute` or `sliding`).
+```bash
+curl -X POST https://your-rampart-instance/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email": "jane@example.com"}'
+```
+
+### Response (200 OK)
+
+```json
+{
+  "message": "If an account with that email exists, a password reset link has been sent."
+}
+```
+
+**Notes:**
+- Always returns 200 regardless of whether the email exists. This prevents email enumeration.
+- The reset token expires after 1 hour.
+- Requires SMTP to be configured for email delivery.
+
+---
+
+## POST /reset-password
+
+Reset a user's password using a reset token from the forgot-password email.
+
+**Auth required:** No
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token` | string | Yes | The reset token from the email link |
+| `new_password` | string | Yes | The new password (must meet organization password policy) |
+
+### Request
+
+```bash
+curl -X POST https://your-rampart-instance/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "a1b2c3d4e5f6...",
+    "new_password": "NewSecureP@ssw0rd!"
+  }'
+```
+
+### Response (200 OK)
+
+```json
+{
+  "message": "Password has been reset successfully. You can now log in with your new password."
+}
+```
+
+### Error Responses
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 400 | `invalid_request` | Missing token or new_password |
+| 400 | `invalid_token` | Token is invalid, expired, or already used |
+| 422 | `validation_error` | New password does not meet the organization's password policy |
+
+**Notes:**
+- All existing sessions for the user are revoked when the password is reset.
+- The reset token is single-use.
+
+---
+
+## POST /verify-email/send
+
+Send an email verification link. Always returns 200 to prevent email enumeration.
+
+**Auth required:** No
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | Yes | The email address to send the verification link to |
+
+### Request
+
+```bash
+curl -X POST https://your-rampart-instance/verify-email/send \
+  -H "Content-Type: application/json" \
+  -d '{"email": "jane@example.com"}'
+```
+
+### Response (200 OK)
+
+```json
+{
+  "message": "If an account with that email exists, a verification link has been sent."
+}
+```
+
+---
+
+## GET /verify-email
+
+Verify an email address using the token from the verification email.
+
+**Auth required:** No
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `token` | string | Yes | The verification token from the email link |
+
+### Request
+
+```bash
+curl -X GET "https://your-rampart-instance/verify-email?token=a1b2c3d4e5f6..."
+```
+
+### Error Responses
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 400 | `invalid_token` | Token is invalid, expired, or already used |
+
+**Notes:**
+- The verification token expires after 24 hours.
+- The token is single-use.
+
+---
+
+## MFA Endpoints
+
+### POST /mfa/totp/enroll
+
+Begin TOTP enrollment for the authenticated user. Returns a TOTP secret and provisioning URI for generating a QR code.
+
+**Auth required:** Yes (Bearer token)
+
+```bash
+curl -X POST https://your-rampart-instance/mfa/totp/enroll \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json"
+```
+
+### POST /mfa/totp/verify-setup
+
+Confirm TOTP setup by providing a valid TOTP code from the authenticator app.
+
+**Auth required:** Yes (Bearer token)
+
+```bash
+curl -X POST https://your-rampart-instance/mfa/totp/verify-setup \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "123456"}'
+```
+
+### POST /mfa/totp/disable
+
+Disable TOTP for the authenticated user.
+
+**Auth required:** Yes (Bearer token)
+
+```bash
+curl -X POST https://your-rampart-instance/mfa/totp/disable \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "123456"}'
+```
+
+### POST /mfa/totp/verify
+
+Verify a TOTP code during the login flow. This endpoint is called after `POST /login` returns an MFA challenge.
+
+**Auth required:** No (uses MFA token from login response)
+
+```bash
+curl -X POST https://your-rampart-instance/mfa/totp/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mfa_token": "eyJhbGciOiJSUzI1NiIs...",
+    "code": "123456"
+  }'
+```
+
+**Response (200 OK):** Returns the same token response as a successful login (access token, refresh token, user object).
+
+---
+
+## WebAuthn / Passkey Endpoints
+
+### POST /mfa/webauthn/register/begin
+
+Begin registering a new WebAuthn credential (passkey) for the authenticated user.
+
+**Auth required:** Yes (Bearer token)
+
+### POST /mfa/webauthn/register/complete
+
+Complete WebAuthn credential registration by submitting the authenticator's response.
+
+**Auth required:** Yes (Bearer token)
+
+### GET /mfa/webauthn/credentials
+
+List all WebAuthn credentials for the authenticated user.
+
+**Auth required:** Yes (Bearer token)
+
+```bash
+curl -X GET https://your-rampart-instance/mfa/webauthn/credentials \
+  -H "Authorization: Bearer <access_token>"
+```
+
+### DELETE /mfa/webauthn/credentials/\{id\}
+
+Delete a specific WebAuthn credential.
+
+**Auth required:** Yes (Bearer token)
+
+```bash
+curl -X DELETE https://your-rampart-instance/mfa/webauthn/credentials/credential-id-here \
+  -H "Authorization: Bearer <access_token>"
+```
+
+### POST /mfa/webauthn/login/begin
+
+Begin a WebAuthn login challenge. Called after `POST /login` returns an MFA challenge with `webauthn` in `mfa_methods`.
+
+**Auth required:** No (uses MFA token from login response)
+
+```bash
+curl -X POST https://your-rampart-instance/mfa/webauthn/login/begin \
+  -H "Content-Type: application/json" \
+  -d '{"mfa_token": "eyJhbGciOiJSUzI1NiIs..."}'
+```
+
+### POST /mfa/webauthn/login/complete
+
+Complete the WebAuthn login challenge by submitting the authenticator's assertion.
+
+**Auth required:** No (uses MFA token)
+
+**Response (200 OK):** Returns the same token response as a successful login.
 
 ---
 
 ## Security Considerations
 
-- **Always use HTTPS** in production. Rampart rejects non-HTTPS redirect URIs unless the `RAMPART_DEV_MODE=true` environment variable is set.
-- **Always use PKCE** for public clients (SPAs, mobile apps). Rampart enforces PKCE for public clients and strongly recommends it for confidential clients as well.
-- **Store tokens securely.** Keep access tokens in memory only. Store refresh tokens in secure HTTP-only cookies or platform-specific secure storage (Keychain, Keystore).
-- **Use short-lived access tokens.** Rely on refresh tokens for session continuity rather than long-lived access tokens.
-- **Validate the `state` parameter** in your client to prevent CSRF attacks on the authorization flow.
-- **Validate the `nonce` claim** in ID tokens to prevent replay attacks.
-- **Validate the `iss` and `aud` claims** in tokens to ensure they were issued by your Rampart instance for your client.
-- The password grant is disabled by default. Enable it only for trusted first-party clients that cannot use a browser-based flow.
-- Failed authentication attempts are rate-limited per IP and logged as audit events.
+- **Timing safety:** Registration and login responses take a minimum of 250ms to prevent user enumeration via timing analysis.
+- **Account lockout:** After exceeding the maximum failed login attempts (default: 5), the account is locked for a configurable duration (default: 15 minutes).
+- **Refresh token rotation:** Each refresh token is single-use. Reuse of an old token triggers session revocation (replay detection).
+- **Email enumeration prevention:** The `/forgot-password` and `/verify-email/send` endpoints always return 200 regardless of whether the email exists.
+- **Password policy:** Passwords are validated against the organization's password policy (configurable min length, uppercase, lowercase, digit, special character requirements).
